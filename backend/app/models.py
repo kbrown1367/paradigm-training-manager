@@ -62,6 +62,12 @@ class Officer(db.Model):
 
     agency = db.relationship("Agency", back_populates="officers")
 
+    awards = db.relationship(
+        "OfficerAward",
+        back_populates="officer",
+        cascade="save-update, merge",
+    )
+
     __table_args__ = (
         db.UniqueConstraint(
             "agency_id",
@@ -94,3 +100,39 @@ class ImportJob(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
     agency = db.relationship("Agency", back_populates="import_jobs")
+
+
+class OfficerAward(db.Model):
+    __tablename__ = "officer_awards"
+
+    id = db.Column(db.Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    agency_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("agencies.id"),
+        nullable=False,
+        index=True,
+    )
+    officer_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("officers.id"),
+        nullable=False,
+        index=True,
+    )
+    award_type = db.Column(db.String(50), nullable=False)
+    award_name = db.Column(db.String(255), nullable=False)
+    award_date = db.Column(db.Date, nullable=False)
+    source = db.Column(db.String(50), nullable=False, default="TCOLE")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+
+    officer = db.relationship("Officer", back_populates="awards")
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "agency_id",
+            "officer_id",
+            "award_type",
+            "award_name",
+            "award_date",
+            name="uq_officer_award",
+        ),
+    )

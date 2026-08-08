@@ -7,7 +7,7 @@ from app.importers.tcole_awards import (
     import_awards_roster,
     parse_officer_name,
 )
-from app.models import Agency, Officer
+from app.models import Agency, Officer, OfficerAward
 
 
 @pytest.fixture()
@@ -53,7 +53,7 @@ def test_parse_tcole_name_with_middle_and_suffix():
     }
 
 
-def test_awards_file_creates_unique_officers(app):
+def test_awards_file_creates_officers_and_awards(app):
     csv_content = """P_ID1,OFFICER_NAME1,Type1,Award,Date
 484608,"ACOSTA, CELIA",Certificate,Basic Peace Officer,07/29/2022
 484608,"ACOSTA, CELIA",Certificate,Intermediate Peace Officer,08/20/2025
@@ -69,55 +69,87 @@ def test_awards_file_creates_unique_officers(app):
             csv_content,
         )
 
-        officers = Officer.query.order_by(Officer.tcole_pid).all()
-
         assert result["rows_processed"] == 4
         assert result["unique_officers"] == 2
         assert result["officers_created"] == 2
-        assert result["officers_updated"] == 0
+        assert result["awards_created"] == 4
+        assert result["awards_skipped"] == 0
 
-        assert len(officers) == 2
-
-        assert officers[0].tcole_pid == "484608"
-        assert officers[0].first_name == "CELIA"
-        assert officers[0].last_name == "ACOSTA"
-
-        assert officers[1].tcole_pid == "556622"
-        assert officers[1].first_name == "JOE"
-        assert officers[1].middle_name == "A."
-        assert officers[1].last_name == "ARANZETA"
+        assert Officer.query.count() == 2
+        assert OfficerAward.query.count() == 4
 
 
-def test_reimport_updates_existing_officer_without_duplicate(app):
-    original = """P_ID1,OFFICER_NAME1,Type1,Award,Date
+def test_license_and_certificate_types_are_preserved(app):
+    csv_content = """P_ID1,OFFICER_NAME1,Type1,Award,Date
+484608,"ACOSTA, CELIA",Certificate,Basic Peace Officer,07/29/2022
 484608,"ACOSTA, CELIA",License,Peace Officer License,07/30/2020
-"""
-
-    updated = """P_ID1,OFFICER_NAME1,Type1,Award,Date
-484608,"ACOSTA, CELIA M.",License,Peace Officer License,07/30/2020
 """
 
     with app.app_context():
         agency = make_agency()
 
-        first_result = import_awards_roster(
+        import_awards_roster(
             agency.id,
-            original,
+            csv_content,
         )
 
-        second_result = import_awards_roster(
+        certificate = OfficerAward.query.filter_by(
+            award_type="Certificate"
+        ).one()
+
+        license_award = OfficerAward.query.filter_by(
+            award_type="License"
+        ).one()
+
+        assert certificate.award_name == "Basic Peace Officer"
+        assert license_award.award_name == "Peace Officer License"
+
+
+def test_award_date_is_parsed(app):
+    csv_content = """P_ID1,OFFICER_NAME1,Type1,Award,Date
+484608,"ACOSTA, CELIA",Certificate,Basic Peace Officer,07/29/2022
+"""
+
+    with app.app_context():
+        agency = make_agency()
+
+        import_awards_roster(
             agency.id,
-            updated,
+            csv_content,
         )
 
-        officers = Officer.query.all()
+        award = OfficerAward.query.one()
 
-        assert first_result["officers_created"] == 1
-        assert second_result["officers_created"] == 0
-        assert second_result["officers_updated"] == 1
+        assert award.award_date.year == 2022
+        assert award.award_date.month == 7
+        assert award.award_date.day == 29
 
-        assert len(officers) == 1
-        assert officers[0].middle_name == "M."
+
+def test_reimport_does_not_duplicate_awards(app):
+    csv_content = """P_ID1,OFFICER_NAME1,Type1,Award,Date
+484608,"ACOSTA, CELIA",Certificate,Basic Peace Officer,07/29/2022
+484608,"ACOSTA, CELIA",License,Peace Officer License,07/30/2020
+"""
+
+    with app.app_context():
+        agency = make_agency()
+
+        first = import_awards_roster(
+            agency.id,
+            csv_content,
+        )
+
+        second = import_awards_roster(
+            agency.id,
+            csv_content,
+        )
+
+        assert first["awards_created"] == 2
+        assert second["awards_created"] == 0
+        assert second["awards_skipped"] == 2
+
+        assert Officer.query.count() == 1
+        assert OfficerAward.query.count() == 2
 
 
 def test_same_pid_is_isolated_between_agencies(app):
@@ -139,12 +171,45 @@ def test_same_pid_is_isolated_between_agencies(app):
             csv_content,
         )
 
-        officers = Officer.query.filter_by(
+        assert Officer.query.filter_by(
             tcole_pid="484608"
-        ).all()
+        ).count() == 2
 
-        assert len(officers) == 2
-        assert officers[0].agency_id != officers[1].agency_id
+        assert OfficerAward.query.count() == 2
+
+
+def test_invalid_award_type_is_rejected(app):
+    csv_content = """P_ID1,OFFICER_NAME1,Type1,Award,Date
+484608,"ACOSTA, CELIA",Unknown,Basic Peace Officer,07/29/2022
+"""
+
+    with app.app_context():
+        agency = make_agency()
+
+        with pytest.raises(AwardsImportError):
+            import_awards_roster(
+                agency.id,
+                csv_content,
+            )
+
+
+def test_invalid_date_rolls_back_entire_import(app):
+    csv_content = """P_ID1,OFFICER_NAME1,Type1,Award,Date
+484608,"ACOSTA, CELIA",Certificate,Basic Peace Officer,07/29/2022
+556622,"ARANZETA, JOE A.",License,Peace Officer License,NOT-A-DATE
+"""
+
+    with app.app_context():
+        agency = make_agency()
+
+        with pytest.raises(AwardsImportError):
+            import_awards_roster(
+                agency.id,
+                csv_content,
+            )
+
+        assert Officer.query.count() == 0
+        assert OfficerAward.query.count() == 0
 
 
 def test_invalid_file_is_rejected(app):

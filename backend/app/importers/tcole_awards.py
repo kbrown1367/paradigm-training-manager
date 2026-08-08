@@ -1,8 +1,9 @@
 import csv
 import io
+from datetime import datetime
 
 from app.extensions import db
-from app.models import Officer
+from app.models import Officer, OfficerAward
 
 
 REQUIRED_COLUMNS = {
@@ -41,22 +42,34 @@ def parse_officer_name(value):
             f"Officer name is incomplete: {value}"
         )
 
-    first_name = parts[0]
-    middle_name = " ".join(parts[1:]) if len(parts) > 1 else None
-
     return {
-        "first_name": first_name,
-        "middle_name": middle_name,
+        "first_name": parts[0],
+        "middle_name": " ".join(parts[1:]) if len(parts) > 1 else None,
         "last_name": last_name,
     }
+
+
+def parse_award_date(value, row_number):
+    value = (value or "").strip()
+
+    if not value:
+        raise AwardsImportError(
+            f"Row {row_number}: award date is missing."
+        )
+
+    try:
+        return datetime.strptime(value, "%m/%d/%Y").date()
+    except ValueError as exc:
+        raise AwardsImportError(
+            f"Row {row_number}: invalid award date '{value}'."
+        ) from exc
 
 
 def import_awards_roster(agency_id, csv_content):
     if isinstance(csv_content, bytes):
         csv_content = csv_content.decode("utf-8-sig")
 
-    stream = io.StringIO(csv_content)
-    reader = csv.DictReader(stream)
+    reader = csv.DictReader(io.StringIO(csv_content))
 
     if reader.fieldnames is None:
         raise AwardsImportError("The awards file is empty.")
@@ -76,59 +89,125 @@ def import_awards_roster(agency_id, csv_content):
         )
 
     rows_processed = 0
-    created = 0
-    updated = 0
-    seen_pids = set()
+    officers_created = 0
+    officers_updated = 0
+    awards_created = 0
+    awards_skipped = 0
 
-    for row_number, row in enumerate(reader, start=2):
-        pid = (row.get("P_ID1") or "").strip()
-        officer_name = (row.get("OFFICER_NAME1") or "").strip()
+    officers_by_pid = {}
+    seen_awards = set()
 
-        if not pid:
-            raise AwardsImportError(
-                f"Row {row_number}: TCOLE PID is missing."
+    try:
+        for row_number, row in enumerate(reader, start=2):
+            pid = (row.get("P_ID1") or "").strip()
+            officer_name = (row.get("OFFICER_NAME1") or "").strip()
+            award_type = (row.get("Type1") or "").strip()
+            award_name = (row.get("Award") or "").strip()
+
+            if not pid:
+                raise AwardsImportError(
+                    f"Row {row_number}: TCOLE PID is missing."
+                )
+
+            if not officer_name:
+                raise AwardsImportError(
+                    f"Row {row_number}: officer name is missing."
+                )
+
+            if award_type not in {"Certificate", "License"}:
+                raise AwardsImportError(
+                    f"Row {row_number}: unsupported award type '{award_type}'."
+                )
+
+            if not award_name:
+                raise AwardsImportError(
+                    f"Row {row_number}: award name is missing."
+                )
+
+            award_date = parse_award_date(
+                row.get("Date"),
+                row_number,
             )
 
-        if not officer_name:
-            raise AwardsImportError(
-                f"Row {row_number}: officer name is missing."
+            rows_processed += 1
+
+            officer = officers_by_pid.get(pid)
+
+            if officer is None:
+                name = parse_officer_name(officer_name)
+
+                officer = Officer.query.filter_by(
+                    agency_id=agency_id,
+                    tcole_pid=pid,
+                ).one_or_none()
+
+                if officer is None:
+                    officer = Officer(
+                        agency_id=agency_id,
+                        tcole_pid=pid,
+                        first_name=name["first_name"],
+                        middle_name=name["middle_name"],
+                        last_name=name["last_name"],
+                    )
+                    db.session.add(officer)
+                    db.session.flush()
+                    officers_created += 1
+                else:
+                    officer.first_name = name["first_name"]
+                    officer.middle_name = name["middle_name"]
+                    officer.last_name = name["last_name"]
+                    officers_updated += 1
+
+                officers_by_pid[pid] = officer
+
+            award_key = (
+                officer.id,
+                award_type,
+                award_name,
+                award_date,
             )
 
-        rows_processed += 1
+            if award_key in seen_awards:
+                awards_skipped += 1
+                continue
 
-        if pid in seen_pids:
-            continue
+            seen_awards.add(award_key)
 
-        seen_pids.add(pid)
-
-        name = parse_officer_name(officer_name)
-
-        officer = Officer.query.filter_by(
-            agency_id=agency_id,
-            tcole_pid=pid,
-        ).one_or_none()
-
-        if officer is None:
-            officer = Officer(
+            existing_award = OfficerAward.query.filter_by(
                 agency_id=agency_id,
-                tcole_pid=pid,
-                first_name=name["first_name"],
-                middle_name=name["middle_name"],
-                last_name=name["last_name"],
-            )
-            db.session.add(officer)
-            created += 1
-        else:
-            officer.first_name = name["first_name"]
-            officer.middle_name = name["middle_name"]
-            officer.last_name = name["last_name"]
-            updated += 1
+                officer_id=officer.id,
+                award_type=award_type,
+                award_name=award_name,
+                award_date=award_date,
+            ).one_or_none()
 
-    db.session.commit()
+            if existing_award is not None:
+                awards_skipped += 1
+                continue
+
+            db.session.add(
+                OfficerAward(
+                    agency_id=agency_id,
+                    officer_id=officer.id,
+                    award_type=award_type,
+                    award_name=award_name,
+                    award_date=award_date,
+                )
+            )
+
+            awards_created += 1
+
+        db.session.commit()
+
+    except Exception:
+        db.session.rollback()
+        raise
 
     return {
         "rows_processed": rows_processed,
-        "unique_officers": len(seen_pids),
-        "officers_created": created,
-        "officers_updated": updated,
+        "unique_officers": len(officers_by_pid),
+        "officers_created": officers_created,
+        "officers_updated": officers_updated,
+        "awards_created": awards_created,
+        "awards_skipped": awards_skipped,
     }
