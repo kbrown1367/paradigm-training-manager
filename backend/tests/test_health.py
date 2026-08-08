@@ -18,4 +18,4 @@ def test_health():
 
     assert data["application"] == "Paradigm Training Manager"
     assert data["status"] == "ok"
-    assert data["version"] == "0.1.1"
+    assert data["version"] == "0.1.2"
