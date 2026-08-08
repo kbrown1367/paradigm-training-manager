@@ -96,9 +96,16 @@ class ImportJob(db.Model):
     status = db.Column(db.String(30), nullable=False, default="pending")
     awards_filename = db.Column(db.String(255), nullable=True)
     courses_filename = db.Column(db.String(255), nullable=True)
+    cycle_filename = db.Column(db.String(255), nullable=True)
     officer_count = db.Column(db.Integer, nullable=False, default=0)
     award_rows_processed = db.Column(db.Integer, nullable=False, default=0)
     course_rows_processed = db.Column(db.Integer, nullable=False, default=0)
+    cycle_rows_processed = db.Column(db.Integer, nullable=False, default=0)
+    training_records_with_hours = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
     award_count = db.Column(db.Integer, nullable=False, default=0)
     course_count = db.Column(db.Integer, nullable=False, default=0)
     warning_count = db.Column(db.Integer, nullable=False, default=0)

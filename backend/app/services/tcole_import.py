@@ -3,7 +3,8 @@ import uuid
 from app.extensions import db
 from app.importers.tcole_awards import import_awards_roster
 from app.importers.tcole_courses import import_training_records
-from app.models import Agency, ImportJob, Officer, utcnow
+from app.importers.tcole_cycle import import_cycle_hours
+from app.models import Agency, ImportJob, Officer, TrainingRecord, utcnow
 
 
 class TcoleImportError(ValueError):
@@ -16,9 +17,12 @@ def serialize_import_job(job):
         "status": job.status,
         "awards_filename": job.awards_filename,
         "courses_filename": job.courses_filename,
+        "cycle_filename": job.cycle_filename,
         "officer_count": job.officer_count,
         "award_rows_processed": job.award_rows_processed,
         "course_rows_processed": job.course_rows_processed,
+        "cycle_rows_processed": job.cycle_rows_processed,
+        "training_records_with_hours": job.training_records_with_hours,
         "awards_created": job.award_count,
         "training_records_created": job.course_count,
         "awards_skipped": job.skipped_award_count,
@@ -65,8 +69,10 @@ def run_tcole_import(
     agency_id,
     awards_content,
     courses_content,
+    cycle_content,
     awards_filename="rptAwards.csv",
     courses_filename="rptCourseTaken.csv",
+    cycle_filename="rptCycleT_All.csv",
 ):
     agency = db.session.get(Agency, agency_id)
 
@@ -78,6 +84,7 @@ def run_tcole_import(
         status="validating",
         awards_filename=awards_filename,
         courses_filename=courses_filename,
+        cycle_filename=cycle_filename,
         started_at=utcnow(),
     )
 
@@ -99,6 +106,14 @@ def run_tcole_import(
             commit=False,
         )
 
+        db.session.flush()
+
+        cycle_result = import_cycle_hours(
+            agency_id,
+            cycle_content,
+            commit=False,
+        )
+
         job.status = "completed"
 
         job.officer_count = Officer.query.filter_by(
@@ -112,6 +127,20 @@ def run_tcole_import(
         job.course_rows_processed = courses_result[
             "rows_processed"
         ]
+
+        job.cycle_rows_processed = cycle_result[
+            "rows_processed"
+        ]
+
+        job.training_records_with_hours = (
+            TrainingRecord.query.filter_by(
+                agency_id=agency_id
+            )
+            .filter(
+                TrainingRecord.credited_hours.isnot(None)
+            )
+            .count()
+        )
 
         job.award_count = awards_result[
             "awards_created"
@@ -129,11 +158,7 @@ def run_tcole_import(
             "training_records_skipped"
         ]
 
-        job.warning_count = (
-            job.skipped_award_count
-            + job.skipped_course_count
-        )
-
+        job.warning_count = 0
         job.error_count = 0
         job.failure_reason = None
         job.completed_at = utcnow()
@@ -155,7 +180,6 @@ def run_tcole_import(
             failed_job.error_count = 1
             failed_job.failure_reason = str(exc)
             failed_job.completed_at = utcnow()
-
             db.session.commit()
 
         raise

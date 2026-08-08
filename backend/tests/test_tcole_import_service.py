@@ -51,7 +51,13 @@ COURSES = """P_ID1,P_ID,STUDENT_NAME,PLUS_COURSE_ID,COURSE_ID,COURSE_DATE
 """
 
 
-def test_complete_two_file_import(app):
+CYCLE = """Textbox83,PeopleName,P_ID2,Textbox33,Course,COURSE_DATE,Hours
+Peace Officer,"ACOSTA, CELIA",484608,Sum Hrs: 4,1849,12/12/2019,4
+Peace Officer,"ARANZETA, JOE A.",556622,Sum Hrs: 4,3189,01/15/2026,4
+"""
+
+
+def test_complete_three_file_import(app):
     with app.app_context():
         agency = make_agency()
 
@@ -59,12 +65,15 @@ def test_complete_two_file_import(app):
             agency.id,
             AWARDS,
             COURSES,
+            CYCLE,
         )
 
         assert result["status"] == "completed"
         assert result["officer_count"] == 2
         assert result["awards_created"] == 3
         assert result["training_records_created"] == 2
+        assert result["cycle_rows_processed"] == 2
+        assert result["training_records_with_hours"] == 2
 
         assert Officer.query.count() == 2
         assert OfficerAward.query.count() == 3
@@ -75,6 +84,7 @@ def test_complete_two_file_import(app):
         assert job.status == "completed"
         assert job.awards_filename == "rptAwards.csv"
         assert job.courses_filename == "rptCourseTaken.csv"
+        assert job.cycle_filename == "rptCycleT_All.csv"
         assert job.completed_at is not None
 
 
@@ -91,6 +101,7 @@ def test_bad_course_file_rolls_back_awards_and_officers(app):
                 agency.id,
                 AWARDS,
                 bad_courses,
+                CYCLE,
             )
 
         assert Officer.query.count() == 0
@@ -118,6 +129,7 @@ def test_bad_awards_file_creates_no_operational_data(app):
                 agency.id,
                 bad_awards,
                 COURSES,
+                CYCLE,
             )
 
         assert Officer.query.count() == 0
@@ -137,12 +149,14 @@ def test_reimport_is_idempotent(app):
             agency.id,
             AWARDS,
             COURSES,
+            CYCLE,
         )
 
         second = run_tcole_import(
             agency.id,
             AWARDS,
             COURSES,
+            CYCLE,
         )
 
         assert first["awards_created"] == 3
@@ -171,12 +185,14 @@ def test_import_is_tenant_scoped(app):
             agency_one.id,
             AWARDS,
             COURSES,
+            CYCLE,
         )
 
         run_tcole_import(
             agency_two.id,
             AWARDS,
             COURSES,
+            CYCLE,
         )
 
         assert Officer.query.count() == 4
@@ -201,6 +217,7 @@ def test_unknown_agency_is_rejected(app):
                 uuid.uuid4(),
                 AWARDS,
                 COURSES,
+                CYCLE,
             )
 
         assert ImportJob.query.count() == 0

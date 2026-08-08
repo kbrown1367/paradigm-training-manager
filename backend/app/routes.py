@@ -1,8 +1,5 @@
-from uuid import UUID
-
 from flask import Blueprint, jsonify, request
 
-from app.models import Agency
 from app.services.tcole_import import (
     TcoleImportError,
     get_import_summary,
@@ -17,12 +14,20 @@ api = Blueprint("api", __name__)
 def import_tcole_records(agency_id):
     awards_file = request.files.get("awards_file")
     courses_file = request.files.get("courses_file")
+    cycle_file = request.files.get("cycle_file")
 
-    if awards_file is None or courses_file is None:
+    if (
+        awards_file is None
+        or courses_file is None
+        or cycle_file is None
+    ):
         return (
             jsonify(
                 {
-                    "error": "Both awards_file and courses_file are required."
+                    "error": (
+                        "awards_file, courses_file, "
+                        "and cycle_file are required."
+                    )
                 }
             ),
             400,
@@ -33,8 +38,12 @@ def import_tcole_records(agency_id):
             agency_id=agency_id,
             awards_content=awards_file.read(),
             courses_content=courses_file.read(),
+            cycle_content=cycle_file.read(),
             awards_filename=awards_file.filename or "rptAwards.csv",
-            courses_filename=courses_file.filename or "rptCourseTaken.csv",
+            courses_filename=(
+                courses_file.filename or "rptCourseTaken.csv"
+            ),
+            cycle_filename=cycle_file.filename or "rptCycleT_All.csv",
         )
     except TcoleImportError as exc:
         return jsonify({"error": str(exc)}), 400

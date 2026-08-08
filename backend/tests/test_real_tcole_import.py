@@ -11,6 +11,7 @@ from app.services.tcole_import import run_tcole_import
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 AWARDS_PATH = FIXTURE_DIR / "rptAwards.csv"
 COURSES_PATH = FIXTURE_DIR / "rptCourseTaken.csv"
+CYCLE_PATH = FIXTURE_DIR / "rptCycleT_All.csv"
 
 
 @pytest.fixture()
@@ -30,9 +31,6 @@ def app():
 
 
 def test_real_tcole_files_import_end_to_end(app):
-    awards_content = AWARDS_PATH.read_bytes()
-    courses_content = COURSES_PATH.read_bytes()
-
     with app.app_context():
         agency = Agency(
             name="Port of Galveston Police Department"
@@ -42,10 +40,12 @@ def test_real_tcole_files_import_end_to_end(app):
 
         result = run_tcole_import(
             agency.id,
-            awards_content,
-            courses_content,
+            AWARDS_PATH.read_bytes(),
+            COURSES_PATH.read_bytes(),
+            CYCLE_PATH.read_bytes(),
             awards_filename=AWARDS_PATH.name,
             courses_filename=COURSES_PATH.name,
+            cycle_filename=CYCLE_PATH.name,
         )
 
         assert result["status"] == "completed"
@@ -60,20 +60,28 @@ def test_real_tcole_files_import_end_to_end(app):
         assert job.status == "completed"
         assert job.awards_filename == "rptAwards.csv"
         assert job.courses_filename == "rptCourseTaken.csv"
+        assert job.cycle_filename == "rptCycleT_All.csv"
 
         assert job.officer_count == Officer.query.count()
         assert job.award_count == OfficerAward.query.count()
         assert job.course_count == TrainingRecord.query.count()
 
+        assert job.training_records_with_hours == TrainingRecord.query.filter(
+            TrainingRecord.credited_hours.isnot(None)
+        ).count()
+
         print()
-        print("REAL TCOLE IMPORT SUMMARY")
-        print("-------------------------")
+        print("REAL TCOLE THREE-FILE IMPORT SUMMARY")
+        print("------------------------------------")
         print(f"Officers: {Officer.query.count()}")
         print(f"Award rows processed: {job.award_rows_processed}")
         print(f"Awards created: {job.award_count}")
-        print(f"Awards skipped: {job.skipped_award_count}")
         print(f"Course rows processed: {job.course_rows_processed}")
         print(f"Training records created: {job.course_count}")
-        print(f"Training records skipped: {job.skipped_course_count}")
+        print(f"Cycle rows processed: {job.cycle_rows_processed}")
+        print(
+            "Training records with credited hours: "
+            f"{job.training_records_with_hours}"
+        )
         print(f"Warnings: {job.warning_count}")
         print(f"Errors: {job.error_count}")

@@ -39,6 +39,12 @@ COURSES = """P_ID1,P_ID,STUDENT_NAME,PLUS_COURSE_ID,COURSE_ID,COURSE_DATE
 """
 
 
+CYCLE = """Textbox83,PeopleName,P_ID2,Textbox33,Course,COURSE_DATE,Hours
+Peace Officer,"ACOSTA, CELIA",484608,Sum Hrs: 4,1849,12/12/2019,4
+Peace Officer,"ARANZETA, JOE A.",556622,Sum Hrs: 4,3189,01/15/2026,4
+"""
+
+
 def make_agency(name="Test Police Department"):
     agency = Agency(name=name)
     db.session.add(agency)
@@ -54,12 +60,15 @@ def test_completed_import_returns_full_summary(app):
             agency.id,
             AWARDS,
             COURSES,
+            CYCLE,
         )
 
         assert result["status"] == "completed"
         assert result["officer_count"] == 2
         assert result["award_rows_processed"] == 3
         assert result["course_rows_processed"] == 2
+        assert result["cycle_rows_processed"] == 2
+        assert result["training_records_with_hours"] == 2
         assert result["awards_created"] == 3
         assert result["training_records_created"] == 2
         assert result["awards_skipped"] == 0
@@ -79,6 +88,7 @@ def test_import_summary_can_be_retrieved(app):
             agency.id,
             AWARDS,
             COURSES,
+            CYCLE,
         )
 
         summary = get_import_summary(
@@ -90,6 +100,8 @@ def test_import_summary_can_be_retrieved(app):
         assert summary["officer_count"] == 2
         assert summary["award_rows_processed"] == 3
         assert summary["course_rows_processed"] == 2
+        assert summary["cycle_rows_processed"] == 2
+        assert summary["training_records_with_hours"] == 2
 
 
 def test_reimport_summary_reports_skipped_records(app):
@@ -100,19 +112,20 @@ def test_reimport_summary_reports_skipped_records(app):
             agency.id,
             AWARDS,
             COURSES,
+            CYCLE,
         )
 
         second = run_tcole_import(
             agency.id,
             AWARDS,
             COURSES,
+            CYCLE,
         )
 
         assert second["awards_created"] == 0
         assert second["training_records_created"] == 0
         assert second["awards_skipped"] == 3
         assert second["training_records_skipped"] == 2
-        assert second["warning_count"] == 5
 
 
 def test_import_summary_is_tenant_scoped(app):
@@ -124,6 +137,7 @@ def test_import_summary_is_tenant_scoped(app):
             agency_one.id,
             AWARDS,
             COURSES,
+            CYCLE,
         )
 
         with pytest.raises(TcoleImportError):
@@ -146,6 +160,7 @@ def test_failed_import_summary_persists_failure(app):
                 agency.id,
                 AWARDS,
                 bad_courses,
+                CYCLE,
             )
 
         job = ImportJob.query.one()

@@ -43,7 +43,30 @@ COURSES = b"""P_ID1,P_ID,STUDENT_NAME,PLUS_COURSE_ID,COURSE_ID,COURSE_DATE
 """
 
 
-def test_tcole_import_api_accepts_two_files(app):
+CYCLE = b"""Textbox83,PeopleName,P_ID2,Textbox33,Course,COURSE_DATE,Hours
+Peace Officer,"ACOSTA, CELIA",484608,Sum Hrs: 4,1849,12/12/2019,4
+Peace Officer,"ARANZETA, JOE A.",556622,Sum Hrs: 4,3189,01/15/2026,4
+"""
+
+
+def import_payload(awards=AWARDS, courses=COURSES, cycle=CYCLE):
+    return {
+        "awards_file": (
+            io.BytesIO(awards),
+            "rptAwards.csv",
+        ),
+        "courses_file": (
+            io.BytesIO(courses),
+            "rptCourseTaken.csv",
+        ),
+        "cycle_file": (
+            io.BytesIO(cycle),
+            "rptCycleT_All.csv",
+        ),
+    }
+
+
+def test_tcole_import_api_accepts_three_files(app):
     with app.app_context():
         agency_id = make_agency()
 
@@ -51,16 +74,7 @@ def test_tcole_import_api_accepts_two_files(app):
 
     response = client.post(
         f"/api/agencies/{agency_id}/imports/tcole",
-        data={
-            "awards_file": (
-                io.BytesIO(AWARDS),
-                "rptAwards.csv",
-            ),
-            "courses_file": (
-                io.BytesIO(COURSES),
-                "rptCourseTaken.csv",
-            ),
-        },
+        data=import_payload(),
         content_type="multipart/form-data",
     )
 
@@ -72,6 +86,8 @@ def test_tcole_import_api_accepts_two_files(app):
     assert data["officer_count"] == 2
     assert data["award_rows_processed"] == 3
     assert data["course_rows_processed"] == 2
+    assert data["cycle_rows_processed"] == 2
+    assert data["training_records_with_hours"] == 2
 
     with app.app_context():
         assert Officer.query.count() == 2
@@ -80,7 +96,7 @@ def test_tcole_import_api_accepts_two_files(app):
         assert ImportJob.query.count() == 1
 
 
-def test_tcole_import_api_requires_both_files(app):
+def test_tcole_import_api_requires_all_three_files(app):
     with app.app_context():
         agency_id = make_agency()
 
@@ -93,6 +109,10 @@ def test_tcole_import_api_requires_both_files(app):
                 io.BytesIO(AWARDS),
                 "rptAwards.csv",
             ),
+            "courses_file": (
+                io.BytesIO(COURSES),
+                "rptCourseTaken.csv",
+            ),
         },
         content_type="multipart/form-data",
     )
@@ -101,7 +121,10 @@ def test_tcole_import_api_requires_both_files(app):
 
     data = response.get_json()
 
-    assert "Both awards_file and courses_file are required." in data["error"]
+    assert (
+        "awards_file, courses_file, and cycle_file are required."
+        in data["error"]
+    )
 
 
 def test_tcole_import_api_rejects_bad_file(app):
@@ -112,16 +135,9 @@ def test_tcole_import_api_rejects_bad_file(app):
 
     response = client.post(
         f"/api/agencies/{agency_id}/imports/tcole",
-        data={
-            "awards_file": (
-                io.BytesIO(b"PID,NAME\n1,TEST\n"),
-                "rptAwards.csv",
-            ),
-            "courses_file": (
-                io.BytesIO(COURSES),
-                "rptCourseTaken.csv",
-            ),
-        },
+        data=import_payload(
+            awards=b"PID,NAME\n1,TEST\n",
+        ),
         content_type="multipart/form-data",
     )
 
@@ -143,18 +159,11 @@ def test_import_summary_api_returns_saved_result(app):
 
     import_response = client.post(
         f"/api/agencies/{agency_id}/imports/tcole",
-        data={
-            "awards_file": (
-                io.BytesIO(AWARDS),
-                "rptAwards.csv",
-            ),
-            "courses_file": (
-                io.BytesIO(COURSES),
-                "rptCourseTaken.csv",
-            ),
-        },
+        data=import_payload(),
         content_type="multipart/form-data",
     )
+
+    assert import_response.status_code == 201
 
     import_data = import_response.get_json()
 
@@ -168,6 +177,8 @@ def test_import_summary_api_returns_saved_result(app):
 
     assert summary["import_job_id"] == import_data["import_job_id"]
     assert summary["status"] == "completed"
+    assert summary["cycle_rows_processed"] == 2
+    assert summary["training_records_with_hours"] == 2
 
 
 def test_import_summary_api_is_tenant_scoped(app):
@@ -179,18 +190,11 @@ def test_import_summary_api_is_tenant_scoped(app):
 
     import_response = client.post(
         f"/api/agencies/{agency_one_id}/imports/tcole",
-        data={
-            "awards_file": (
-                io.BytesIO(AWARDS),
-                "rptAwards.csv",
-            ),
-            "courses_file": (
-                io.BytesIO(COURSES),
-                "rptCourseTaken.csv",
-            ),
-        },
+        data=import_payload(),
         content_type="multipart/form-data",
     )
+
+    assert import_response.status_code == 201
 
     import_data = import_response.get_json()
 
