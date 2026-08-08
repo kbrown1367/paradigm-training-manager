@@ -1,0 +1,51 @@
+{
+  "rule_set_id": "PUBLIC-INFORMATION-OFFICER",
+  "version": "1.0",
+  "assignment_type": "PUBLIC_INFORMATION_OFFICER",
+  "authority": "HB33 / TCOLE Published PIO Guidance",
+  "transition": {
+    "existing_pio_initial_due_date": "2026-09-01"
+  },
+  "recurrence": {
+    "type": "ANNUAL",
+    "first_due": "FIRST_ANNIVERSARY_OF_APPOINTMENT"
+  },
+  "approved_courses": [
+    {
+      "course_number": "666038",
+      "name": "Bill Blackwood LEMIT Public Information Officer"
+    },
+    {
+      "course_number": "666318",
+      "name": "TEEX MGT 318 Public Information in an All-Hazards Incident"
+    },
+    {
+      "course_number": "3763",
+      "name": "FBI LEEDA Media and Public Relations"
+    },
+    {
+      "course_number": "3775",
+      "name": "FBI LEEDA Master Public Information Officer"
+    },
+    {
+      "course_number": "667388",
+      "name": "FEMA/NIMS Advanced Public Information Officer"
+    },
+    {
+      "course_number": "667952",
+      "name": "FEMA/NIMS All-Hazard Public Information Officer"
+    },
+    {
+      "course_number": "664033",
+      "name": "TDEM Texas Public Information Officer Course"
+    }
+  ],
+  "tdem_certification": {
+    "required": true,
+    "automatic_verification": false
+  },
+  "source": {
+    "title": "Legislatively Mandated Training - Public Information Officer",
+    "authority": "TCOLE"
+  }
+}

@@ -82,6 +82,7 @@ function App() {
   const [officers, setOfficers] = useState([]);
   const [selectedOfficerId, setSelectedOfficerId] = useState("");
   const [assignmentSummary, setAssignmentSummary] = useState(null);
+  const [credentialVerifications, setCredentialVerifications] = useState([]);
 
   const [awardsFile, setAwardsFile] = useState(null);
   const [coursesFile, setCoursesFile] = useState(null);
@@ -90,10 +91,12 @@ function App() {
   const [loadingAgency, setLoadingAgency] = useState(true);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [assignmentBusy, setAssignmentBusy] = useState(false);
+  const [credentialBusy, setCredentialBusy] = useState(false);
   const [importing, setImporting] = useState(false);
 
   const [error, setError] = useState("");
   const [assignmentError, setAssignmentError] = useState("");
+  const [credentialError, setCredentialError] = useState("");
   const [result, setResult] = useState(null);
 
   async function loadOfficers(agencyId) {
@@ -142,6 +145,7 @@ function App() {
     async function loadAssignments() {
       if (!agency || !selectedOfficerId) {
         setAssignmentSummary(null);
+        setCredentialVerifications([]);
         return;
       }
 
@@ -164,6 +168,23 @@ function App() {
         }
 
         setAssignmentSummary(data);
+
+        const credentialResponse = await fetch(
+          `/api/agencies/${agency.id}` +
+            `/officers/${selectedOfficerId}` +
+            `/credential-verifications`
+        );
+
+        const credentialData = await credentialResponse.json();
+
+        if (!credentialResponse.ok) {
+          throw new Error(
+            credentialData.error ||
+              "Unable to load credential verifications."
+          );
+        }
+
+        setCredentialVerifications(credentialData);
       } catch (err) {
         setAssignmentError(err.message);
       } finally {
@@ -244,6 +265,133 @@ function App() {
     }
 
     setAssignmentSummary(data);
+  }
+
+  async function refreshCredentialVerifications() {
+    if (!agency || !selectedOfficerId) {
+      return;
+    }
+
+    const response = await fetch(
+      `/api/agencies/${agency.id}` +
+        `/officers/${selectedOfficerId}` +
+        `/credential-verifications`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+          "Unable to refresh credential verifications."
+      );
+    }
+
+    setCredentialVerifications(data);
+  }
+
+  async function handleVerifyTdem() {
+    const effectiveDate = window.prompt(
+      "TDEM PIO certification effective date (YYYY-MM-DD):"
+    );
+
+    if (!effectiveDate) {
+      return;
+    }
+
+    const verifiedBy = window.prompt(
+      "Verified by:"
+    );
+
+    if (verifiedBy === null) {
+      return;
+    }
+
+    const reference = window.prompt(
+      "Certificate number or reference (optional):"
+    );
+
+    if (reference === null) {
+      return;
+    }
+
+    setCredentialBusy(true);
+    setCredentialError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+          `/officers/${selectedOfficerId}` +
+          `/credential-verifications/` +
+          `TDEM_PIO_CERTIFICATION`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            effective_date: effectiveDate,
+            verified_by: verifiedBy,
+            reference,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to verify TDEM certification."
+        );
+      }
+
+      await refreshCredentialVerifications();
+    } catch (err) {
+      setCredentialError(err.message);
+    } finally {
+      setCredentialBusy(false);
+    }
+  }
+
+  async function handleRevokeTdem() {
+    const confirmed = window.confirm(
+      "Revoke this TDEM PIO certification verification?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setCredentialBusy(true);
+    setCredentialError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+          `/officers/${selectedOfficerId}` +
+          `/credential-verifications/` +
+          `TDEM_PIO_CERTIFICATION/revoke`,
+        {
+          method: "PATCH",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to revoke TDEM certification verification."
+        );
+      }
+
+      await refreshCredentialVerifications();
+    } catch (err) {
+      setCredentialError(err.message);
+    } finally {
+      setCredentialBusy(false);
+    }
   }
 
   async function handleActivate(assignment) {
@@ -343,6 +491,21 @@ function App() {
       ].includes(item.assignment_type)
     ) || [];
 
+  const pioAssignment =
+    assignmentSummary?.assignment_types.find(
+      (item) =>
+        item.assignment_type ===
+        "PUBLIC_INFORMATION_OFFICER"
+    );
+
+  const activeTdemVerification =
+    credentialVerifications.find(
+      (item) =>
+        item.credential_type ===
+          "TDEM_PIO_CERTIFICATION" &&
+        item.active
+    );
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -353,7 +516,7 @@ function App() {
           <h1>Paradigm Training Manager</h1>
         </div>
 
-        <div className="version">v0.2.4</div>
+        <div className="version">v0.2.6</div>
       </header>
 
       <main className="page">
@@ -531,6 +694,96 @@ function App() {
                     busy={assignmentBusy}
                   />
                 ))}
+              </div>
+            )}
+
+          {selectedOfficerId &&
+            pioAssignment?.active && (
+              <div className="credential-panel">
+                <div className="credential-heading">
+                  <div>
+                    <h3>TDEM PIO Certification</h3>
+                    <p>
+                      Agency verification of the separate TDEM
+                      certification requirement.
+                    </p>
+                  </div>
+
+                  <span
+                    className={
+                      activeTdemVerification
+                        ? "credential-status verified"
+                        : "credential-status unverified"
+                    }
+                  >
+                    {activeTdemVerification
+                      ? "Verified"
+                      : "Not Verified"}
+                  </span>
+                </div>
+
+                {credentialError && (
+                  <div className="message error-message">
+                    {credentialError}
+                  </div>
+                )}
+
+                {activeTdemVerification ? (
+                  <div className="credential-details">
+                    <div>
+                      <span>Effective Date</span>
+                      <strong>
+                        {activeTdemVerification.effective_date ||
+                          "Not recorded"}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Verified By</span>
+                      <strong>
+                        {activeTdemVerification.verified_by ||
+                          "Not recorded"}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Reference</span>
+                      <strong>
+                        {activeTdemVerification.reference ||
+                          "Not recorded"}
+                      </strong>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="credential-button revoke"
+                      disabled={credentialBusy}
+                      onClick={handleRevokeTdem}
+                    >
+                      {credentialBusy
+                        ? "Working..."
+                        : "Revoke Verification"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="credential-unverified">
+                    <p>
+                      PTM has no active agency verification of this
+                      officer's TDEM PIO certification.
+                    </p>
+
+                    <button
+                      type="button"
+                      className="credential-button verify"
+                      disabled={credentialBusy}
+                      onClick={handleVerifyTdem}
+                    >
+                      {credentialBusy
+                        ? "Working..."
+                        : "Verify Certification"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
         </section>

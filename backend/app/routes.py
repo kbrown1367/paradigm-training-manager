@@ -1,6 +1,14 @@
 from flask import Blueprint, jsonify, request
 
 from app.models import Agency, Officer
+from app.services.credential_verifications import (
+    CREDENTIAL_TYPES,
+    CredentialVerificationError,
+    list_verifications,
+    revoke_verification,
+    verify_credential,
+)
+
 from app.services.officer_assignments import (
     ASSIGNMENT_TYPES,
     AssignmentError,
@@ -14,6 +22,9 @@ from app.compliance.peace_officer_unit import (
 )
 from app.compliance.police_chief import (
     evaluate_police_chief,
+)
+from app.compliance.public_information_officer import (
+    evaluate_public_information_officer,
 )
 from app.services.tcole_import import (
     TcoleImportError,
@@ -319,5 +330,131 @@ def police_chief_compliance(
     result = evaluate_police_chief(
         officer
     )
+
+    return jsonify(result), 200
+
+
+@api.get(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/compliance/public-information-officer"
+)
+def public_information_officer_compliance(
+    agency_id,
+    officer_id,
+):
+    officer = Officer.query.filter_by(
+        id=officer_id,
+        agency_id=agency_id,
+    ).one_or_none()
+
+    if officer is None:
+        return jsonify(
+            {"error": "Officer not found."}
+        ), 404
+
+    result = evaluate_public_information_officer(
+        officer
+    )
+
+    return jsonify(result), 200
+
+
+@api.get("/credential-types")
+def credential_types():
+    return jsonify(
+        [
+            {
+                "credential_type": key,
+                "credential_name": value,
+            }
+            for key, value
+            in CREDENTIAL_TYPES.items()
+        ]
+    ), 200
+
+
+@api.get(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/credential-verifications"
+)
+def officer_credential_verifications(
+    agency_id,
+    officer_id,
+):
+    try:
+        result = list_verifications(
+            agency_id,
+            officer_id,
+        )
+    except CredentialVerificationError as exc:
+        return jsonify(
+            {"error": str(exc)}
+        ), 404
+
+    return jsonify(result), 200
+
+
+@api.post(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/credential-verifications/<credential_type>"
+)
+def create_credential_verification(
+    agency_id,
+    officer_id,
+    credential_type,
+):
+    payload = request.get_json(
+        silent=True
+    ) or {}
+
+    try:
+        result = verify_credential(
+            agency_id=agency_id,
+            officer_id=officer_id,
+            credential_type=credential_type,
+            effective_date=payload.get(
+                "effective_date"
+            ),
+            verified_by=payload.get(
+                "verified_by"
+            ),
+            reference=payload.get(
+                "reference"
+            ),
+            notes=payload.get(
+                "notes"
+            ),
+        )
+    except CredentialVerificationError as exc:
+        return jsonify(
+            {"error": str(exc)}
+        ), 400
+
+    return jsonify(result), 201
+
+
+@api.patch(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/credential-verifications/<credential_type>/revoke"
+)
+def revoke_officer_credential_verification(
+    agency_id,
+    officer_id,
+    credential_type,
+):
+    try:
+        result = revoke_verification(
+            agency_id,
+            officer_id,
+            credential_type,
+        )
+    except CredentialVerificationError as exc:
+        return jsonify(
+            {"error": str(exc)}
+        ), 400
 
     return jsonify(result), 200

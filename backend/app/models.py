@@ -42,6 +42,12 @@ class Agency(db.Model):
         cascade="save-update, merge",
     )
 
+    credential_verifications = db.relationship(
+        "OfficerCredentialVerification",
+        back_populates="agency",
+        cascade="save-update, merge",
+    )
+
 
 class Officer(db.Model):
     __tablename__ = "officers"
@@ -84,6 +90,12 @@ class Officer(db.Model):
 
     assignments = db.relationship(
         "OfficerAssignment",
+        back_populates="officer",
+        cascade="save-update, merge",
+    )
+
+    credential_verifications = db.relationship(
+        "OfficerCredentialVerification",
         back_populates="officer",
         cascade="save-update, merge",
     )
@@ -153,6 +165,88 @@ class OfficerAssignment(db.Model):
             "assignment_type",
             "effective_date",
             name="uq_officer_assignment",
+        ),
+    )
+
+
+class OfficerCredentialVerification(db.Model):
+    __tablename__ = "officer_credential_verifications"
+
+    id = db.Column(
+        db.Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    agency_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("agencies.id"),
+        nullable=False,
+        index=True,
+    )
+    officer_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("officers.id"),
+        nullable=False,
+        index=True,
+    )
+    credential_type = db.Column(
+        db.String(100),
+        nullable=False,
+        index=True,
+    )
+    status = db.Column(
+        db.String(30),
+        nullable=False,
+        default="VERIFIED",
+    )
+    effective_date = db.Column(
+        db.Date,
+        nullable=True,
+    )
+    verified_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=utcnow,
+    )
+    verified_by = db.Column(
+        db.String(255),
+        nullable=True,
+    )
+    reference = db.Column(
+        db.String(500),
+        nullable=True,
+    )
+    notes = db.Column(
+        db.Text,
+        nullable=True,
+    )
+    revoked_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=True,
+    )
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=utcnow,
+    )
+
+    agency = db.relationship(
+        "Agency",
+        back_populates="credential_verifications",
+    )
+
+    officer = db.relationship(
+        "Officer",
+        back_populates="credential_verifications",
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "agency_id",
+            "officer_id",
+            "credential_type",
+            "verified_at",
+            name="uq_officer_credential_verification",
         ),
     )
 
