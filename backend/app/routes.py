@@ -1,0 +1,57 @@
+from uuid import UUID
+
+from flask import Blueprint, jsonify, request
+
+from app.models import Agency
+from app.services.tcole_import import (
+    TcoleImportError,
+    get_import_summary,
+    run_tcole_import,
+)
+
+
+api = Blueprint("api", __name__)
+
+
+@api.post("/agencies/<uuid:agency_id>/imports/tcole")
+def import_tcole_records(agency_id):
+    awards_file = request.files.get("awards_file")
+    courses_file = request.files.get("courses_file")
+
+    if awards_file is None or courses_file is None:
+        return (
+            jsonify(
+                {
+                    "error": "Both awards_file and courses_file are required."
+                }
+            ),
+            400,
+        )
+
+    try:
+        result = run_tcole_import(
+            agency_id=agency_id,
+            awards_content=awards_file.read(),
+            courses_content=courses_file.read(),
+            awards_filename=awards_file.filename or "rptAwards.csv",
+            courses_filename=courses_file.filename or "rptCourseTaken.csv",
+        )
+    except TcoleImportError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify(result), 201
+
+
+@api.get("/agencies/<uuid:agency_id>/imports/<uuid:import_job_id>")
+def import_summary(agency_id, import_job_id):
+    try:
+        result = get_import_summary(
+            import_job_id=import_job_id,
+            agency_id=agency_id,
+        )
+    except TcoleImportError as exc:
+        return jsonify({"error": str(exc)}), 404
+
+    return jsonify(result), 200

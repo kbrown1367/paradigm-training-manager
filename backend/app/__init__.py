@@ -15,13 +15,16 @@ def create_app(config=None):
     migrate.init_app(app, db)
 
     from . import models
+    from .routes import api
+
+    app.register_blueprint(api, url_prefix="/api")
 
     @app.get("/api/health")
     def health():
         return {
             "application": "Paradigm Training Manager",
             "status": "ok",
-            "version": "0.1.6",
+            "version": "0.1.7",
         }
 
     return app
