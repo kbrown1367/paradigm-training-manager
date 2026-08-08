@@ -1,0 +1,56 @@
+{
+  "rule_set_id": "SUPERVISOR",
+  "version": "1.0",
+  "assignment_type": "SUPERVISOR",
+  "hb33": {
+    "due_date": "2027-08-31",
+    "eligible_courses": [
+      {
+        "course_number": "3366",
+        "name": "ALERRT Active Attack Incident Management"
+      },
+      {
+        "course_number": "3367",
+        "name": "Active Attack Incident Management Train the Trainer"
+      },
+      {
+        "course_number": "3607",
+        "name": "ALERRT Active Shooter Response Incident Management"
+      },
+      {
+        "course_number": "33111",
+        "name": "ALERRT Command and Control"
+      },
+      {
+        "course_number": "3740",
+        "name": "Chief Continuing Education"
+      },
+      {
+        "course_number": "3743",
+        "name": "Constable Continuing Education"
+      },
+      {
+        "course_number": "3608",
+        "name": "ALERRT Incident Response and Command"
+      },
+      {
+        "course_number": "3709",
+        "name": "Command Staff Leadership Series"
+      },
+      {
+        "course_number": "3369",
+        "name": "ALERRT Active Attack Incident Management"
+      }
+    ]
+  },
+  "first_time_supervisor": {
+    "course_number": "3737",
+    "name": "New Supervisor's Course",
+    "window_years_before": 1,
+    "window_years_after": 1
+  },
+  "source": {
+    "title": "TCOLE Supervisor Training Requirements",
+    "authority": "TCOLE Rule 218.3(d)(4) and HB33"
+  }
+}

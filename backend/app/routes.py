@@ -26,6 +26,9 @@ from app.compliance.police_chief import (
 from app.compliance.public_information_officer import (
     evaluate_public_information_officer,
 )
+from app.compliance.supervisor import (
+    evaluate_supervisor,
+)
 from app.services.tcole_import import (
     TcoleImportError,
     get_import_summary,
@@ -456,5 +459,31 @@ def revoke_officer_credential_verification(
         return jsonify(
             {"error": str(exc)}
         ), 400
+
+    return jsonify(result), 200
+
+
+@api.get(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/compliance/supervisor"
+)
+def supervisor_compliance(
+    agency_id,
+    officer_id,
+):
+    officer = Officer.query.filter_by(
+        id=officer_id,
+        agency_id=agency_id,
+    ).one_or_none()
+
+    if officer is None:
+        return jsonify(
+            {"error": "Officer not found."}
+        ), 404
+
+    result = evaluate_supervisor(
+        officer
+    )
 
     return jsonify(result), 200
