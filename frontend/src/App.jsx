@@ -268,6 +268,7 @@ function App() {
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
   const [dashboardFilter, setDashboardFilter] = useState("ALL");
+  const [certificateFilter, setCertificateFilter] = useState("ALL");
   const [dashboardSearch, setDashboardSearch] = useState("");
   const [assignmentSummary, setAssignmentSummary] = useState(null);
   const [credentialVerifications, setCredentialVerifications] = useState([]);
@@ -725,11 +726,55 @@ function App() {
         item.active
     );
 
+  function getPeaceOfficerCertificateLevel(employee) {
+    const certificate = employee.highest_certificate;
+
+    if (certificate === "Basic Peace Officer") {
+      return "BASIC";
+    }
+
+    if (certificate === "Intermediate Peace Officer") {
+      return "INTERMEDIATE";
+    }
+
+    if (certificate === "Advanced Peace Officer") {
+      return "ADVANCED";
+    }
+
+    if (certificate === "Master Peace Officer") {
+      return "MASTER";
+    }
+
+    return "NONE";
+  }
+
+  const certificateCounts = {
+    ALL: dashboard?.employees.length || 0,
+    NONE: 0,
+    BASIC: 0,
+    INTERMEDIATE: 0,
+    ADVANCED: 0,
+    MASTER: 0,
+  };
+
+  dashboard?.employees.forEach((employee) => {
+    const level = getPeaceOfficerCertificateLevel(employee);
+    certificateCounts[level] += 1;
+  });
+
   const filteredDashboardEmployees =
     dashboard?.employees.filter((employee) => {
       if (
         dashboardFilter !== "ALL" &&
         employee.overall_status !== dashboardFilter
+      ) {
+        return false;
+      }
+
+      if (
+        certificateFilter !== "ALL" &&
+        getPeaceOfficerCertificateLevel(employee) !==
+          certificateFilter
       ) {
         return false;
       }
@@ -767,7 +812,7 @@ function App() {
           <h1>Paradigm Training Manager</h1>
         </div>
 
-        <div className="version">v0.2.9</div>
+        <div className="version">v0.2.10</div>
       </header>
 
       <main className="page">
@@ -889,6 +934,48 @@ function App() {
                     setDashboardFilter("NOT_EVALUATED")
                   }
                 />
+              </div>
+
+              <div className="certificate-filter-section">
+                <div className="certificate-filter-label">
+                  Highest Peace Officer Certificate
+                </div>
+
+                <div
+                  className="certificate-tabs"
+                  role="group"
+                  aria-label="Filter by highest Peace Officer certificate"
+                >
+                  {[
+                    ["ALL", "All"],
+                    ["NONE", "No Certificate"],
+                    ["BASIC", "Basic"],
+                    ["INTERMEDIATE", "Intermediate"],
+                    ["ADVANCED", "Advanced"],
+                    ["MASTER", "Master"],
+                  ].map(([value, label]) => (
+                    <button
+                      type="button"
+                      key={value}
+                      className={
+                        "certificate-tab" +
+                        (
+                          certificateFilter === value
+                            ? " active"
+                            : ""
+                        )
+                      }
+                      onClick={() =>
+                        setCertificateFilter(value)
+                      }
+                    >
+                      <span>{label}</span>
+                      <strong>
+                        {certificateCounts[value]}
+                      </strong>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="dashboard-toolbar">

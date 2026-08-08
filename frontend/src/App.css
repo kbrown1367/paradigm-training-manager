@@ -819,3 +819,76 @@
   font-size: 0.86rem;
   font-weight: 600;
 }
+
+
+/* Highest Certificate Dashboard Filter */
+
+.certificate-filter-section {
+  margin-top: 20px;
+}
+
+.certificate-filter-label {
+  margin-bottom: 8px;
+  color: #667085;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.certificate-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.certificate-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #475467;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.certificate-tab:hover {
+  border-color: #98a2b3;
+  background: #f9fafb;
+}
+
+.certificate-tab.active {
+  border-color: #172033;
+  background: #172033;
+  color: #ffffff;
+}
+
+.certificate-tab strong {
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #f2f4f7;
+  color: #475467;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.certificate-tab.active strong {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+@media (max-width: 760px) {
+  .certificate-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .certificate-tab {
+    justify-content: space-between;
+  }
+}
