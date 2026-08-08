@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 
+from app.models import Agency
 from app.services.tcole_import import (
     TcoleImportError,
     get_import_summary,
@@ -8,6 +9,21 @@ from app.services.tcole_import import (
 
 
 api = Blueprint("api", __name__)
+
+
+@api.get("/agencies")
+def list_agencies():
+    agencies = Agency.query.order_by(Agency.name).all()
+
+    return jsonify(
+        [
+            {
+                "id": str(agency.id),
+                "name": agency.name,
+            }
+            for agency in agencies
+        ]
+    ), 200
 
 
 @api.post("/agencies/<uuid:agency_id>/imports/tcole")
