@@ -65,7 +65,7 @@ def parse_award_date(value, row_number):
         ) from exc
 
 
-def import_awards_roster(agency_id, csv_content):
+def import_awards_roster(agency_id, csv_content, commit=True):
     if isinstance(csv_content, bytes):
         csv_content = csv_content.decode("utf-8-sig")
 
@@ -197,10 +197,12 @@ def import_awards_roster(agency_id, csv_content):
 
             awards_created += 1
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
 
     except Exception:
-        db.session.rollback()
+        if commit:
+            db.session.rollback()
         raise
 
     return {
