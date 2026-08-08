@@ -1,0 +1,55 @@
+{
+  "rule_set_id": "PO-UNIT-2025-2027",
+  "version": "1.0",
+  "license_type": "Peace Officer",
+  "unit_start": "2025-09-01",
+  "unit_end": "2027-08-31",
+  "minimum_total_hours": 40,
+  "required_courses": [
+    {
+      "course_number": "3189",
+      "name": "State and Federal Law Update"
+    },
+    {
+      "course_number": "7006",
+      "name": "Protecting Your TCOLE License"
+    }
+  ],
+  "alerrt": {
+    "minimum_hours": 16,
+    "level_one_historical_courses": [
+      "3311",
+      "3313",
+      "3315"
+    ],
+    "current_level_one_course": "3311",
+    "approved_courses": [
+      "3311",
+      "3312",
+      "3315",
+      "3317",
+      "3318",
+      "3355",
+      "3356",
+      "3357",
+      "3366",
+      "3367",
+      "3368",
+      "3369",
+      "3376",
+      "3377",
+      "3380",
+      "3381",
+      "3382",
+      "3392",
+      "3393",
+      "3394",
+      "3606",
+      "3607",
+      "3608",
+      "33111",
+      "78052",
+      "667371"
+    ]
+  }
+}

@@ -1,0 +1,351 @@
+from datetime import date
+from decimal import Decimal
+
+import pytest
+
+from app import create_app
+from app.compliance.credentials import (
+    get_highest_peace_officer_certificate,
+)
+from app.compliance.peace_officer_unit import (
+    evaluate_agency_peace_officers,
+    evaluate_peace_officer_unit,
+)
+from app.extensions import db
+from app.models import (
+    Agency,
+    Officer,
+    OfficerAward,
+    TrainingRecord,
+)
+
+
+@pytest.fixture()
+def app():
+    app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        }
+    )
+
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+def make_officer():
+    agency = Agency(name="Test Police Department")
+    db.session.add(agency)
+    db.session.flush()
+
+    officer = Officer(
+        agency_id=agency.id,
+        tcole_pid="123456",
+        first_name="JOHN",
+        last_name="SMITH",
+    )
+    db.session.add(officer)
+    db.session.flush()
+
+    db.session.add(
+        OfficerAward(
+            agency_id=agency.id,
+            officer_id=officer.id,
+            award_type="License",
+            award_name="Peace Officer License",
+            award_date=date(2020, 1, 1),
+        )
+    )
+
+    db.session.commit()
+
+    return agency, officer
+
+
+def add_award(
+    agency,
+    officer,
+    name,
+    award_date,
+):
+    db.session.add(
+        OfficerAward(
+            agency_id=agency.id,
+            officer_id=officer.id,
+            award_type="Certificate",
+            award_name=name,
+            award_date=award_date,
+        )
+    )
+
+
+def add_training(
+    agency,
+    officer,
+    course_number,
+    course_date,
+    hours,
+):
+    db.session.add(
+        TrainingRecord(
+            agency_id=agency.id,
+            officer_id=officer.id,
+            course_number=course_number,
+            course_title=f"Course {course_number}",
+            course_date=course_date,
+            credited_hours=Decimal(str(hours)),
+            hours_source="TCOLE_CYCLE_REPORT",
+        )
+    )
+
+
+def add_complete_unit_training(agency, officer):
+    add_training(
+        agency, officer, "3311",
+        date(2024, 1, 1), 16
+    )
+    add_training(
+        agency, officer, "3189",
+        date(2026, 1, 10), 8
+    )
+    add_training(
+        agency, officer, "7006",
+        date(2026, 2, 10), 8
+    )
+    add_training(
+        agency, officer, "3369",
+        date(2026, 3, 10), 16
+    )
+    add_training(
+        agency, officer, "9999",
+        date(2026, 4, 10), 8
+    )
+
+
+def test_highest_certificate_uses_hierarchy(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_award(
+            agency,
+            officer,
+            "Basic Peace Officer",
+            date(2020, 1, 1),
+        )
+        add_award(
+            agency,
+            officer,
+            "Master Peace Officer",
+            date(2025, 1, 1),
+        )
+        add_award(
+            agency,
+            officer,
+            "Advanced Peace Officer",
+            date(2026, 1, 1),
+        )
+
+        db.session.commit()
+
+        result = get_highest_peace_officer_certificate(
+            officer
+        )
+
+        assert (
+            result["highest_certificate"]
+            == "Master Peace Officer"
+        )
+        assert result["certificate_level"] == "MASTER"
+        assert (
+            result["highest_certificate_date"]
+            == "2025-01-01"
+        )
+
+
+def test_complete_officer(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_award(
+            agency,
+            officer,
+            "Advanced Peace Officer",
+            date(2024, 1, 1),
+        )
+
+        add_complete_unit_training(
+            agency,
+            officer,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        assert result["unit_status"] == "COMPLETE"
+        assert result["requirement_status"] == "SATISFIED"
+        assert result["highest_certificate"] == (
+            "Advanced Peace Officer"
+        )
+        assert result["certificate_level"] == "ADVANCED"
+        assert result["total_hours"] == 40.0
+        assert result["alerrt_hours"] == 16.0
+        assert result["requirements"] == []
+
+
+def test_missing_requirements_are_outstanding_before_due_date(app):
+    with app.app_context():
+        _, officer = make_officer()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        assert result["unit_status"] == "OUTSTANDING"
+        assert result["requirement_status"] == "OUTSTANDING"
+        assert result["due_date"] == "2027-08-31"
+
+        assert all(
+            item["status"] == "OUTSTANDING"
+            for item in result["requirements"]
+        )
+
+
+def test_missing_requirements_fail_after_due_date(app):
+    with app.app_context():
+        _, officer = make_officer()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2027, 9, 1),
+        )
+
+        assert result["unit_status"] == "OVERDUE"
+        assert result["requirement_status"] == "FAILED"
+
+        assert all(
+            item["status"] == "FAILED"
+            for item in result["requirements"]
+        )
+
+
+def test_prior_3313_satisfies_level_one_history(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_training(
+            agency, officer, "3313",
+            date(2022, 5, 1), 16
+        )
+        add_training(
+            agency, officer, "3189",
+            date(2026, 1, 10), 8
+        )
+        add_training(
+            agency, officer, "7006",
+            date(2026, 2, 10), 8
+        )
+        add_training(
+            agency, officer, "3369",
+            date(2026, 3, 10), 16
+        )
+        add_training(
+            agency, officer, "9999",
+            date(2026, 4, 10), 8
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        assert result["prior_level_one_found"] is True
+        assert result["alerrt_level_one_satisfied"] is True
+        assert result["unit_status"] == "COMPLETE"
+
+
+def test_training_outside_unit_does_not_count(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_training(
+            agency, officer, "3311",
+            date(2024, 1, 1), 16
+        )
+        add_training(
+            agency, officer, "3189",
+            date(2026, 1, 10), 8
+        )
+        add_training(
+            agency, officer, "7006",
+            date(2026, 2, 10), 8
+        )
+        add_training(
+            agency, officer, "3369",
+            date(2026, 3, 10), 16
+        )
+        add_training(
+            agency, officer, "9999",
+            date(2024, 5, 1), 100
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        assert result["total_hours"] == 32.0
+        assert result["remaining_total_hours"] == 8.0
+        assert result["unit_status"] == "OUTSTANDING"
+
+
+def test_license_applicability_is_provisional(app):
+    with app.app_context():
+        _, officer = make_officer()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        assert (
+            result["applicability_status"]
+            == "PROVISIONAL"
+        )
+        assert result["license_status"] == "UNVERIFIED"
+
+
+def test_non_peace_officer_excluded_from_agency_results(app):
+    with app.app_context():
+        agency = Agency(name="Test Police Department")
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="999999",
+            first_name="JANE",
+            last_name="DOE",
+        )
+
+        db.session.add(officer)
+        db.session.commit()
+
+        result = evaluate_agency_peace_officers(
+            agency.id,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        assert result["officer_count"] == 0
+        assert result["officers"] == []

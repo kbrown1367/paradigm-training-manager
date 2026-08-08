@@ -1,6 +1,9 @@
 from flask import Blueprint, jsonify, request
 
 from app.models import Agency
+from app.compliance.peace_officer_unit import (
+    evaluate_agency_peace_officers,
+)
 from app.services.tcole_import import (
     TcoleImportError,
     get_import_summary,
@@ -78,5 +81,21 @@ def import_summary(agency_id, import_job_id):
         )
     except TcoleImportError as exc:
         return jsonify({"error": str(exc)}), 404
+
+    return jsonify(result), 200
+
+
+@api.get("/agencies/<uuid:agency_id>/compliance/peace-officer-unit")
+def peace_officer_unit_compliance(agency_id):
+    agency = Agency.query.filter_by(
+        id=agency_id
+    ).one_or_none()
+
+    if agency is None:
+        return jsonify({"error": "Agency not found."}), 404
+
+    result = evaluate_agency_peace_officers(
+        agency_id
+    )
 
     return jsonify(result), 200
