@@ -340,3 +340,117 @@ def test_agency_review_does_not_become_pending_review(app):
             "OVERDUE",
             "OUTSTANDING",
         }
+
+
+def test_non_peace_officer_does_not_receive_peace_officer_requirements(app):
+    with app.app_context():
+        agency = Agency(
+            name="Non Peace Officer Test"
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="888888",
+            first_name="ALEX",
+            last_name="DISPATCHER",
+        )
+        db.session.add(officer)
+        db.session.commit()
+
+        result = evaluate_officer_compliance_profile(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        component = result["components"][
+            "PEACE_OFFICER"
+        ]
+
+        assert component["applicable"] is False
+        assert (
+            component["status"]
+            == "NOT_APPLICABLE"
+        )
+        assert component["requirements"] == []
+
+
+def test_future_pio_requirement_makes_profile_due(app):
+    with app.app_context():
+        agency, officer = make_peace_officer()
+
+        db.session.add(
+            OfficerAssignment(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                assignment_type=
+                    "PUBLIC_INFORMATION_OFFICER",
+                effective_date=date(2026, 5, 1),
+            )
+        )
+
+        db.session.commit()
+
+        result = evaluate_officer_compliance_profile(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        component = result["components"][
+            "PUBLIC_INFORMATION_OFFICER"
+        ]
+
+        assert (
+            component["raw_status"]
+            == "FUTURE_REQUIREMENT"
+        )
+        assert component["status"] == "DUE"
+        assert result["overall_status"] == "DUE"
+        assert (
+            result["pending_review_count"]
+            == 0
+        )
+
+
+def test_employee_with_no_applicable_engine_is_not_evaluated(app):
+    with app.app_context():
+        agency = Agency(
+            name="Coverage Test Agency"
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="999001",
+            first_name="ALEX",
+            last_name="DISPATCHER",
+        )
+        db.session.add(officer)
+        db.session.commit()
+
+        result = evaluate_officer_compliance_profile(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        assert (
+            result["overall_status"]
+            == "NOT_EVALUATED"
+        )
+
+        coverage = result["evaluation_coverage"]
+
+        assert (
+            coverage["coverage_status"]
+            == "NOT_EVALUATED"
+        )
+        assert (
+            coverage["evaluated_component_count"]
+            == 0
+        )
+        assert (
+            coverage["applicable_components"]
+            == []
+        )

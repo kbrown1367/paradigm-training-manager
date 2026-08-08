@@ -176,7 +176,7 @@
 .results-grid {
   margin-top: 18px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 14px;
 }
 
@@ -433,4 +433,389 @@
   .credential-heading {
     flex-direction: column;
   }
+}
+
+
+/* Executive Compliance Dashboard */
+
+.dashboard-section {
+  margin-bottom: 56px;
+}
+
+.dashboard-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 28px;
+}
+
+.dashboard-kicker {
+  margin-bottom: 7px;
+  color: #667085;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-heading h2 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.dashboard-heading p {
+  margin: 8px 0 0;
+  color: #667085;
+}
+
+.dashboard-period {
+  min-width: 250px;
+  text-align: right;
+}
+
+.dashboard-period span,
+.dashboard-period strong {
+  display: block;
+}
+
+.dashboard-period span {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.dashboard-period strong {
+  margin-top: 4px;
+  font-size: 0.9rem;
+}
+
+.dashboard-loading {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid #d9dee7;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #667085;
+}
+
+.dashboard-summary-grid {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.dashboard-summary-card {
+  padding: 20px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.dashboard-summary-card:hover {
+  border-color: #98a2b3;
+}
+
+.dashboard-summary-card.active {
+  border-color: #172033;
+}
+
+.dashboard-summary-card.compliant {
+  border-left: 6px solid #247447;
+}
+
+.dashboard-summary-card.due {
+  border-left: 6px solid #d89b1d;
+}
+
+.dashboard-summary-card.noncompliant {
+  border-left: 6px solid #c43232;
+}
+
+.dashboard-summary-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.dashboard-summary-label {
+  margin-top: 8px;
+  color: #667085;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.dashboard-toolbar {
+  margin-top: 20px;
+  padding: 16px 18px;
+  border: 1px solid #d9dee7;
+  border-radius: 10px;
+  background: #ffffff;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.dashboard-search {
+  flex: 1;
+  max-width: 520px;
+}
+
+.dashboard-search label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.dashboard-search input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cfd5df;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.dashboard-result-count {
+  color: #667085;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.employee-compliance-list {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.employee-compliance-card {
+  padding: 20px 22px;
+  border: 1px solid #d9dee7;
+  border-left-width: 6px;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.employee-compliance-card.compliant {
+  border-left-color: #247447;
+}
+
+.employee-compliance-card.due {
+  border-left-color: #d89b1d;
+}
+
+.employee-compliance-card.noncompliant {
+  border-left-color: #c43232;
+}
+
+.employee-compliance-card.pending_review {
+  border-left-color: #667085;
+}
+
+.employee-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.employee-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.employee-name-row h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.review-flag {
+  padding: 4px 8px;
+  border: 1px solid #fedf89;
+  border-radius: 999px;
+  background: #fffaeb;
+  color: #93370d;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.employee-meta {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: #667085;
+  font-size: 0.82rem;
+}
+
+.employee-status {
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.employee-status.compliant {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.employee-status.due {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.employee-status.noncompliant {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.employee-status.pending_review {
+  background: #f2f4f7;
+  color: #344054;
+}
+
+.priority-findings {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #eaecf0;
+  display: grid;
+  gap: 9px;
+}
+
+.priority-finding {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.finding-status {
+  padding: 3px 6px;
+  border-radius: 5px;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.finding-status.overdue {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.finding-status.outstanding {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.finding-status.pending_review {
+  background: #f2f4f7;
+  color: #344054;
+}
+
+.finding-message {
+  color: #344054;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.no-findings {
+  margin-top: 15px;
+  padding-top: 14px;
+  border-top: 1px solid #eaecf0;
+  color: #247447;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.employee-card-footer {
+  margin-top: 15px;
+  padding-top: 12px;
+  border-top: 1px solid #eaecf0;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  color: #667085;
+  font-size: 0.78rem;
+}
+
+.employee-card-footer > div:first-child {
+  display: flex;
+  gap: 12px;
+}
+
+.dashboard-empty {
+  padding: 36px;
+  border: 1px dashed #cfd5df;
+  border-radius: 10px;
+  color: #667085;
+  text-align: center;
+}
+
+.admin-intro {
+  padding-top: 40px;
+  border-top: 2px solid #e4e7ec;
+}
+
+@media (max-width: 760px) {
+  .dashboard-heading,
+  .dashboard-toolbar,
+  .employee-card-header,
+  .employee-card-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dashboard-period {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .dashboard-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dashboard-search {
+    max-width: none;
+  }
+
+  .dashboard-result-count {
+    white-space: normal;
+  }
+
+  .priority-finding {
+    grid-template-columns: 70px 1fr;
+  }
+}
+
+
+.dashboard-summary-card.not-evaluated {
+  border-left: 6px solid #98a2b3;
+}
+
+.employee-compliance-card.not_evaluated {
+  border-left-color: #98a2b3;
+}
+
+.employee-status.not_evaluated {
+  background: #f2f4f7;
+  color: #475467;
+}
+
+.not-evaluated-message {
+  margin-top: 15px;
+  padding-top: 14px;
+  border-top: 1px solid #eaecf0;
+  color: #667085;
+  font-size: 0.86rem;
+  font-weight: 600;
 }

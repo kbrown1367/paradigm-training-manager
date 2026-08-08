@@ -5,6 +5,7 @@ from app.compliance.credentials import (
 )
 from app.compliance.peace_officer_unit import (
     evaluate_peace_officer_unit,
+    has_peace_officer_license,
 )
 from app.compliance.police_chief import (
     evaluate_police_chief,
@@ -58,6 +59,7 @@ def _component_status(component_name, result):
     if raw_status in {
         "OUTSTANDING",
         "DUE",
+        "FUTURE_REQUIREMENT",
     }:
         return "DUE"
 
@@ -159,10 +161,18 @@ def evaluate_officer_compliance_profile(
     if evaluation_date is None:
         evaluation_date = date.today()
 
-    peace_officer = evaluate_peace_officer_unit(
-        officer,
-        evaluation_date=evaluation_date,
-    )
+    if has_peace_officer_license(officer):
+        peace_officer = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=evaluation_date,
+        )
+    else:
+        peace_officer = {
+            "applicable": False,
+            "unit_status": "NOT_APPLICABLE",
+            "requirements": [],
+            "deficiencies": [],
+        }
 
     police_chief = evaluate_police_chief(
         officer,
@@ -245,7 +255,24 @@ def evaluate_officer_compliance_profile(
         for component in applicable_components
     }
 
-    if "NONCOMPLIANT" in component_statuses:
+    evaluated_component_count = len(
+        applicable_components
+    )
+
+    applicable_component_names = [
+        component["component"]
+        for component in applicable_components
+    ]
+
+    coverage_status = (
+        "EVALUATED"
+        if evaluated_component_count > 0
+        else "NOT_EVALUATED"
+    )
+
+    if evaluated_component_count == 0:
+        overall_status = "NOT_EVALUATED"
+    elif "NONCOMPLIANT" in component_statuses:
         overall_status = "NONCOMPLIANT"
     elif "PENDING_REVIEW" in component_statuses:
         overall_status = "PENDING_REVIEW"
@@ -299,6 +326,13 @@ def evaluate_officer_compliance_profile(
         "evaluation_date":
             evaluation_date.isoformat(),
         "overall_status": overall_status,
+        "evaluation_coverage": {
+            "coverage_status": coverage_status,
+            "evaluated_component_count":
+                evaluated_component_count,
+            "applicable_components":
+                applicable_component_names,
+        },
         "review_required": bool(agency_review),
         "overdue_count": len(overdue),
         "outstanding_count": len(outstanding),

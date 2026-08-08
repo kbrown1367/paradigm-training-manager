@@ -77,10 +77,198 @@ function AssignmentRow({
   );
 }
 
+function DashboardSummaryCard({
+  label,
+  value,
+  status,
+  active,
+  onClick,
+}) {
+  return (
+    <button
+      type="button"
+      className={
+        `dashboard-summary-card ${status || ""}` +
+        (active ? " active" : "")
+      }
+      onClick={onClick}
+    >
+      <div className="dashboard-summary-value">
+        {value ?? 0}
+      </div>
+      <div className="dashboard-summary-label">
+        {label}
+      </div>
+    </button>
+  );
+}
+
+function formatDashboardDate(value) {
+  if (!value) {
+    return "None";
+  }
+
+  const [year, month, day] = value.split("-");
+
+  if (!year || !month || !day) {
+    return value;
+  }
+
+  return `${Number(month)}/${Number(day)}/${year}`;
+}
+
+function formatAssignment(value) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map(
+      (word) =>
+        word.charAt(0).toUpperCase() + word.slice(1)
+    )
+    .join(" ");
+}
+
+function EmployeeComplianceCard({ employee }) {
+  const name = [
+    employee.first_name,
+    employee.middle_name,
+    employee.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const assignments = employee.assignments?.length
+    ? employee.assignments
+        .map(formatAssignment)
+        .join(" • ")
+    : "No additional assignments";
+
+  return (
+    <article
+      className={
+        `employee-compliance-card ` +
+        employee.overall_status.toLowerCase()
+      }
+    >
+      <div className="employee-card-header">
+        <div>
+          <div className="employee-name-row">
+            <h3>{name}</h3>
+
+            {employee.review_required && (
+              <span className="review-flag">
+                Agency Review
+              </span>
+            )}
+          </div>
+
+          <div className="employee-meta">
+            <span>PID {employee.tcole_pid}</span>
+            <span>•</span>
+            <span>
+              {employee.highest_certificate ||
+                "No proficiency certificate"}
+            </span>
+            <span>•</span>
+            <span>{assignments}</span>
+          </div>
+        </div>
+
+        <span
+          className={
+            `employee-status ` +
+            employee.overall_status.toLowerCase()
+          }
+        >
+          {employee.overall_status === "NONCOMPLIANT"
+            ? "NONCOMPLIANT"
+            : employee.overall_status === "DUE"
+              ? "TRAINING DUE"
+              : employee.overall_status === "NOT_EVALUATED"
+                ? "NOT EVALUATED"
+                : employee.overall_status.replaceAll("_", " ")}
+        </span>
+      </div>
+
+      {employee.priority_findings?.length > 0 ? (
+        <div className="priority-findings">
+          {employee.priority_findings.map(
+            (finding, index) => (
+              <div
+                className="priority-finding"
+                key={`${finding.type}-${index}`}
+              >
+                <span
+                  className={
+                    `finding-status ` +
+                    finding.normalized_status.toLowerCase()
+                  }
+                >
+                  {finding.normalized_status === "OUTSTANDING"
+                    ? "DUE"
+                    : finding.normalized_status.replaceAll(
+                        "_",
+                        " "
+                      )}
+                </span>
+
+                <span className="finding-message">
+                  {finding.message ||
+                    finding.type?.replaceAll("_", " ")}
+                </span>
+              </div>
+            )
+          )}
+        </div>
+      ) : employee.overall_status === "NOT_EVALUATED" ? (
+        <div className="not-evaluated-message">
+          PTM does not currently have an applicable
+          compliance rule set for this employee.
+        </div>
+      ) : (
+        <div className="no-findings">
+          No outstanding compliance requirements.
+        </div>
+      )}
+
+      <div className="employee-card-footer">
+        <div>
+          {employee.overdue_count > 0 && (
+            <span>
+              {employee.overdue_count} overdue
+            </span>
+          )}
+
+          {employee.outstanding_count > 0 && (
+            <span>
+              {employee.outstanding_count} outstanding
+            </span>
+          )}
+        </div>
+
+        <div>
+          Next due:{" "}
+          <strong>
+            {formatDashboardDate(
+              employee.next_due_date
+            )}
+          </strong>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function App() {
   const [agency, setAgency] = useState(null);
   const [officers, setOfficers] = useState([]);
   const [selectedOfficerId, setSelectedOfficerId] = useState("");
+
+  const [dashboard, setDashboard] = useState(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [dashboardError, setDashboardError] = useState("");
+  const [dashboardFilter, setDashboardFilter] = useState("ALL");
+  const [dashboardSearch, setDashboardSearch] = useState("");
   const [assignmentSummary, setAssignmentSummary] = useState(null);
   const [credentialVerifications, setCredentialVerifications] = useState([]);
 
@@ -98,6 +286,31 @@ function App() {
   const [assignmentError, setAssignmentError] = useState("");
   const [credentialError, setCredentialError] = useState("");
   const [result, setResult] = useState(null);
+
+  async function loadDashboard(agencyId) {
+    setLoadingDashboard(true);
+    setDashboardError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agencyId}/compliance/dashboard`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Unable to load compliance dashboard."
+        );
+      }
+
+      setDashboard(data);
+    } catch (err) {
+      setDashboardError(err.message);
+    } finally {
+      setLoadingDashboard(false);
+    }
+  }
 
   async function loadOfficers(agencyId) {
     const response = await fetch(
@@ -130,7 +343,10 @@ function App() {
         const selectedAgency = agencies[0];
         setAgency(selectedAgency);
 
-        await loadOfficers(selectedAgency.id);
+        await Promise.all([
+          loadOfficers(selectedAgency.id),
+          loadDashboard(selectedAgency.id),
+        ]);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -237,7 +453,10 @@ function App() {
 
       setResult(data);
 
-      await loadOfficers(agency.id);
+      await Promise.all([
+        loadOfficers(agency.id),
+        loadDashboard(agency.id),
+      ]);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -506,6 +725,38 @@ function App() {
         item.active
     );
 
+  const filteredDashboardEmployees =
+    dashboard?.employees.filter((employee) => {
+      if (
+        dashboardFilter !== "ALL" &&
+        employee.overall_status !== dashboardFilter
+      ) {
+        return false;
+      }
+
+      const search = dashboardSearch
+        .trim()
+        .toLowerCase();
+
+      if (!search) {
+        return true;
+      }
+
+      const searchable = [
+        employee.first_name,
+        employee.middle_name,
+        employee.last_name,
+        employee.tcole_pid,
+        employee.highest_certificate,
+        ...(employee.assignments || []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchable.includes(search);
+    }) || [];
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -516,11 +767,188 @@ function App() {
           <h1>Paradigm Training Manager</h1>
         </div>
 
-        <div className="version">v0.2.6</div>
+        <div className="version">v0.2.9</div>
       </header>
 
       <main className="page">
-        <section className="intro">
+        <section className="dashboard-section">
+          <div className="dashboard-heading">
+            <div>
+              <div className="dashboard-kicker">
+                Executive Compliance Dashboard
+              </div>
+
+              <h2>
+                {agency?.name ||
+                  "Agency Compliance"}
+              </h2>
+
+              <p>
+                Current TCOLE compliance posture and
+                prioritized training requirements.
+              </p>
+            </div>
+
+            {dashboard && (
+              <div className="dashboard-period">
+                <span>
+                  Training Unit{" "}
+                  {dashboard.training_unit.number}
+                </span>
+                <strong>
+                  {formatDashboardDate(
+                    dashboard.training_unit.start
+                  )}{" "}
+                  through{" "}
+                  {formatDashboardDate(
+                    dashboard.training_unit.end
+                  )}
+                </strong>
+              </div>
+            )}
+          </div>
+
+          {loadingDashboard && (
+            <div className="dashboard-loading">
+              Loading compliance dashboard...
+            </div>
+          )}
+
+          {dashboardError && (
+            <div className="message error-message">
+              <strong>
+                Compliance dashboard could not be loaded.
+              </strong>
+              <p>{dashboardError}</p>
+            </div>
+          )}
+
+          {dashboard && (
+            <>
+              <div className="dashboard-summary-grid">
+                <DashboardSummaryCard
+                  label="Active Employees"
+                  value={
+                    dashboard.summary.active_employee_count
+                  }
+                  status="all"
+                  active={dashboardFilter === "ALL"}
+                  onClick={() =>
+                    setDashboardFilter("ALL")
+                  }
+                />
+
+                <DashboardSummaryCard
+                  label="Compliant"
+                  value={
+                    dashboard.summary.compliant_count
+                  }
+                  status="compliant"
+                  active={
+                    dashboardFilter === "COMPLIANT"
+                  }
+                  onClick={() =>
+                    setDashboardFilter("COMPLIANT")
+                  }
+                />
+
+                <DashboardSummaryCard
+                  label="Training Due"
+                  value={dashboard.summary.due_count}
+                  status="due"
+                  active={dashboardFilter === "DUE"}
+                  onClick={() =>
+                    setDashboardFilter("DUE")
+                  }
+                />
+
+                <DashboardSummaryCard
+                  label="Noncompliant"
+                  value={
+                    dashboard.summary.noncompliant_count
+                  }
+                  status="noncompliant"
+                  active={
+                    dashboardFilter === "NONCOMPLIANT"
+                  }
+                  onClick={() =>
+                    setDashboardFilter("NONCOMPLIANT")
+                  }
+                />
+
+                <DashboardSummaryCard
+                  label="Not Evaluated"
+                  value={
+                    dashboard.summary.not_evaluated_count
+                  }
+                  status="not-evaluated"
+                  active={
+                    dashboardFilter === "NOT_EVALUATED"
+                  }
+                  onClick={() =>
+                    setDashboardFilter("NOT_EVALUATED")
+                  }
+                />
+              </div>
+
+              <div className="dashboard-toolbar">
+                <div className="dashboard-search">
+                  <label htmlFor="dashboard-search">
+                    Search employees
+                  </label>
+
+                  <input
+                    id="dashboard-search"
+                    type="search"
+                    placeholder="Name, PID, certificate, or assignment"
+                    value={dashboardSearch}
+                    onChange={(event) =>
+                      setDashboardSearch(
+                        event.target.value
+                      )
+                    }
+                  />
+                </div>
+
+                <div className="dashboard-result-count">
+                  Showing{" "}
+                  <strong>
+                    {filteredDashboardEmployees.length}
+                  </strong>{" "}
+                  of{" "}
+                  <strong>
+                    {
+                      dashboard.summary
+                        .active_employee_count
+                    }
+                  </strong>{" "}
+                  employees
+                </div>
+              </div>
+
+              <div className="employee-compliance-list">
+                {filteredDashboardEmployees.map(
+                  (employee) => (
+                    <EmployeeComplianceCard
+                      key={employee.id}
+                      employee={employee}
+                    />
+                  )
+                )}
+
+                {filteredDashboardEmployees.length ===
+                  0 && (
+                  <div className="dashboard-empty">
+                    No employees match the current
+                    dashboard filter.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </section>
+
+        <section className="intro admin-intro">
           <h2>TCOLE Compliance Data Import</h2>
 
           <p>

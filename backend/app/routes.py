@@ -32,6 +32,9 @@ from app.compliance.supervisor import (
 from app.compliance.officer_profile import (
     evaluate_officer_compliance_profile,
 )
+from app.compliance.agency_dashboard import (
+    evaluate_agency_compliance_dashboard,
+)
 from app.services.tcole_import import (
     TcoleImportError,
     get_import_summary,
@@ -514,5 +517,24 @@ def officer_compliance_profile(
     result = evaluate_officer_compliance_profile(
         officer
     )
+
+    return jsonify(result), 200
+
+
+@api.get(
+    "/agencies/<uuid:agency_id>"
+    "/compliance/dashboard"
+)
+def agency_compliance_dashboard(
+    agency_id,
+):
+    result = evaluate_agency_compliance_dashboard(
+        agency_id
+    )
+
+    if result is None:
+        return jsonify(
+            {"error": "Agency not found."}
+        ), 404
 
     return jsonify(result), 200
