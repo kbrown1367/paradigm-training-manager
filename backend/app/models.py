@@ -169,10 +169,18 @@ class TrainingRecord(db.Model):
     course_title = db.Column(db.String(500), nullable=False)
     course_date = db.Column(db.Date, nullable=False, index=True)
     plus_course_id = db.Column(db.String(50), nullable=True)
+    credited_hours = db.Column(db.Numeric(8, 2), nullable=True)
+    hours_source = db.Column(db.String(50), nullable=True)
     source = db.Column(db.String(50), nullable=False, default="TCOLE")
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
     officer = db.relationship("Officer", back_populates="training_records")
+
+    training_credits = db.relationship(
+        "TrainingCredit",
+        back_populates="training_record",
+        cascade="save-update, merge",
+    )
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -183,5 +191,62 @@ class TrainingRecord(db.Model):
             "course_date",
             "plus_course_id",
             name="uq_training_record",
+        ),
+    )
+
+
+
+class TrainingCredit(db.Model):
+    __tablename__ = "training_credits"
+
+    id = db.Column(db.Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    agency_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("agencies.id"),
+        nullable=False,
+        index=True,
+    )
+    officer_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("officers.id"),
+        nullable=False,
+        index=True,
+    )
+    training_record_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("training_records.id"),
+        nullable=False,
+        index=True,
+    )
+    course_number = db.Column(db.String(50), nullable=False)
+    course_date = db.Column(db.Date, nullable=False)
+    credited_hours = db.Column(db.Numeric(8, 2), nullable=False)
+    role_snapshot = db.Column(db.String(255), nullable=True)
+    reported_total_text = db.Column(db.String(255), nullable=True)
+    source = db.Column(
+        db.String(50),
+        nullable=False,
+        default="TCOLE_CYCLE_REPORT",
+    )
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=utcnow,
+    )
+
+    training_record = db.relationship(
+        "TrainingRecord",
+        back_populates="training_credits",
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "agency_id",
+            "training_record_id",
+            "course_number",
+            "course_date",
+            "credited_hours",
+            "role_snapshot",
+            name="uq_training_credit",
         ),
     )
