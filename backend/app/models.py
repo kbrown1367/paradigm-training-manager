@@ -97,6 +97,8 @@ class ImportJob(db.Model):
     awards_filename = db.Column(db.String(255), nullable=True)
     courses_filename = db.Column(db.String(255), nullable=True)
     officer_count = db.Column(db.Integer, nullable=False, default=0)
+    award_rows_processed = db.Column(db.Integer, nullable=False, default=0)
+    course_rows_processed = db.Column(db.Integer, nullable=False, default=0)
     award_count = db.Column(db.Integer, nullable=False, default=0)
     course_count = db.Column(db.Integer, nullable=False, default=0)
     warning_count = db.Column(db.Integer, nullable=False, default=0)

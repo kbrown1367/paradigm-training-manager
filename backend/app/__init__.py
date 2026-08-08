@@ -21,7 +21,7 @@ def create_app(config=None):
         return {
             "application": "Paradigm Training Manager",
             "status": "ok",
-            "version": "0.1.5",
+            "version": "0.1.6",
         }
 
     return app
