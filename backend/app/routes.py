@@ -29,6 +29,9 @@ from app.compliance.public_information_officer import (
 from app.compliance.supervisor import (
     evaluate_supervisor,
 )
+from app.compliance.officer_profile import (
+    evaluate_officer_compliance_profile,
+)
 from app.services.tcole_import import (
     TcoleImportError,
     get_import_summary,
@@ -483,6 +486,32 @@ def supervisor_compliance(
         ), 404
 
     result = evaluate_supervisor(
+        officer
+    )
+
+    return jsonify(result), 200
+
+
+@api.get(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/compliance/profile"
+)
+def officer_compliance_profile(
+    agency_id,
+    officer_id,
+):
+    officer = Officer.query.filter_by(
+        id=officer_id,
+        agency_id=agency_id,
+    ).one_or_none()
+
+    if officer is None:
+        return jsonify(
+            {"error": "Officer not found."}
+        ), 404
+
+    result = evaluate_officer_compliance_profile(
         officer
     )
 
