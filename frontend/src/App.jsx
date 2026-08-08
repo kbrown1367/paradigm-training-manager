@@ -37,16 +37,77 @@ function ResultCard({ label, value }) {
   );
 }
 
+function AssignmentRow({
+  assignment,
+  onActivate,
+  onEnd,
+  busy,
+}) {
+  return (
+    <div className="assignment-row">
+      <div>
+        <div className="assignment-name">
+          {assignment.assignment_name}
+        </div>
+
+        <div className="assignment-meta">
+          {assignment.active
+            ? `Active since ${assignment.effective_date}`
+            : "Not active"}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className={
+          assignment.active
+            ? "assignment-button end"
+            : "assignment-button activate"
+        }
+        disabled={busy}
+        onClick={() =>
+          assignment.active
+            ? onEnd(assignment)
+            : onActivate(assignment)
+        }
+      >
+        {assignment.active ? "Turn Off" : "Turn On"}
+      </button>
+    </div>
+  );
+}
+
 function App() {
   const [agency, setAgency] = useState(null);
+  const [officers, setOfficers] = useState([]);
+  const [selectedOfficerId, setSelectedOfficerId] = useState("");
+  const [assignmentSummary, setAssignmentSummary] = useState(null);
+
   const [awardsFile, setAwardsFile] = useState(null);
   const [coursesFile, setCoursesFile] = useState(null);
   const [cycleFile, setCycleFile] = useState(null);
 
   const [loadingAgency, setLoadingAgency] = useState(true);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [assignmentBusy, setAssignmentBusy] = useState(false);
   const [importing, setImporting] = useState(false);
+
   const [error, setError] = useState("");
+  const [assignmentError, setAssignmentError] = useState("");
   const [result, setResult] = useState(null);
+
+  async function loadOfficers(agencyId) {
+    const response = await fetch(
+      `/api/agencies/${agencyId}/officers`
+    );
+
+    if (!response.ok) {
+      throw new Error("Unable to load officers.");
+    }
+
+    const data = await response.json();
+    setOfficers(data);
+  }
 
   useEffect(() => {
     async function loadAgency() {
@@ -63,7 +124,10 @@ function App() {
           throw new Error("No agency has been configured.");
         }
 
-        setAgency(agencies[0]);
+        const selectedAgency = agencies[0];
+        setAgency(selectedAgency);
+
+        await loadOfficers(selectedAgency.id);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -73,6 +137,42 @@ function App() {
 
     loadAgency();
   }, []);
+
+  useEffect(() => {
+    async function loadAssignments() {
+      if (!agency || !selectedOfficerId) {
+        setAssignmentSummary(null);
+        return;
+      }
+
+      setLoadingAssignments(true);
+      setAssignmentError("");
+
+      try {
+        const response = await fetch(
+          `/api/agencies/${agency.id}` +
+            `/officers/${selectedOfficerId}` +
+            `/assignment-summary`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || "Unable to load assignments."
+          );
+        }
+
+        setAssignmentSummary(data);
+      } catch (err) {
+        setAssignmentError(err.message);
+      } finally {
+        setLoadingAssignments(false);
+      }
+    }
+
+    loadAssignments();
+  }, [agency, selectedOfficerId]);
 
   const ready =
     Boolean(agency) &&
@@ -115,12 +215,133 @@ function App() {
       }
 
       setResult(data);
+
+      await loadOfficers(agency.id);
     } catch (err) {
       setError(err.message);
     } finally {
       setImporting(false);
     }
   }
+
+  async function refreshAssignments() {
+    if (!agency || !selectedOfficerId) {
+      return;
+    }
+
+    const response = await fetch(
+      `/api/agencies/${agency.id}` +
+        `/officers/${selectedOfficerId}` +
+        `/assignment-summary`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || "Unable to refresh assignments."
+      );
+    }
+
+    setAssignmentSummary(data);
+  }
+
+  async function handleActivate(assignment) {
+    const effectiveDate = window.prompt(
+      `Effective date for ${assignment.assignment_name} (YYYY-MM-DD):`
+    );
+
+    if (!effectiveDate) {
+      return;
+    }
+
+    setAssignmentBusy(true);
+    setAssignmentError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+          `/officers/${selectedOfficerId}` +
+          `/assignments/${assignment.assignment_type}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            effective_date: effectiveDate,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Unable to activate assignment."
+        );
+      }
+
+      await refreshAssignments();
+    } catch (err) {
+      setAssignmentError(err.message);
+    } finally {
+      setAssignmentBusy(false);
+    }
+  }
+
+  async function handleEnd(assignment) {
+    const endDate = window.prompt(
+      `End date for ${assignment.assignment_name} (YYYY-MM-DD):`
+    );
+
+    if (!endDate) {
+      return;
+    }
+
+    setAssignmentBusy(true);
+    setAssignmentError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+          `/officers/${selectedOfficerId}` +
+          `/assignments/${assignment.assignment_type}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            end_date: endDate,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Unable to end assignment."
+        );
+      }
+
+      await refreshAssignments();
+    } catch (err) {
+      setAssignmentError(err.message);
+    } finally {
+      setAssignmentBusy(false);
+    }
+  }
+
+  const primaryAssignmentTypes =
+    assignmentSummary?.assignment_types.filter((item) =>
+      [
+        "POLICE_CHIEF",
+        "SUPERVISOR",
+        "PUBLIC_INFORMATION_OFFICER",
+      ].includes(item.assignment_type)
+    ) || [];
 
   return (
     <div className="app-shell">
@@ -132,7 +353,7 @@ function App() {
           <h1>Paradigm Training Manager</h1>
         </div>
 
-        <div className="version">v0.2.1</div>
+        <div className="version">v0.2.4</div>
       </header>
 
       <main className="page">
@@ -244,12 +465,75 @@ function App() {
                 value={result.error_count}
               />
             </div>
-
-            <div className="import-id">
-              Import ID: {result.import_job_id}
-            </div>
           </section>
         )}
+
+        <section className="assignments-panel">
+          <div className="section-heading">
+            <div>
+              <h2>Officer Assignments</h2>
+              <p>
+                Agency-managed assignments control additional
+                TCOLE compliance rules.
+              </p>
+            </div>
+          </div>
+
+          <div className="officer-selector">
+            <label htmlFor="officer-select">
+              Officer
+            </label>
+
+            <select
+              id="officer-select"
+              value={selectedOfficerId}
+              onChange={(event) =>
+                setSelectedOfficerId(event.target.value)
+              }
+            >
+              <option value="">
+                Select an officer
+              </option>
+
+              {officers.map((officer) => (
+                <option
+                  key={officer.id}
+                  value={officer.id}
+                >
+                  {officer.name} | PID {officer.tcole_pid}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {assignmentError && (
+            <div className="message error-message">
+              {assignmentError}
+            </div>
+          )}
+
+          {selectedOfficerId && loadingAssignments && (
+            <div className="assignment-loading">
+              Loading assignments...
+            </div>
+          )}
+
+          {selectedOfficerId &&
+            !loadingAssignments &&
+            assignmentSummary && (
+              <div className="assignment-list">
+                {primaryAssignmentTypes.map((assignment) => (
+                  <AssignmentRow
+                    key={assignment.assignment_type}
+                    assignment={assignment}
+                    onActivate={handleActivate}
+                    onEnd={handleEnd}
+                    busy={assignmentBusy}
+                  />
+                ))}
+              </div>
+            )}
+        </section>
       </main>
     </div>
   );

@@ -222,3 +222,93 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.assignments-panel {
+  margin-top: 40px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #d9dee7;
+  border-radius: 12px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.section-heading p {
+  margin: 6px 0 0;
+  color: #667085;
+}
+
+.officer-selector {
+  margin-top: 22px;
+}
+
+.officer-selector label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.officer-selector select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #cfd5df;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.assignment-list {
+  margin-top: 22px;
+  border-top: 1px solid #e8ebf0;
+}
+
+.assignment-row {
+  padding: 18px 0;
+  border-bottom: 1px solid #e8ebf0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.assignment-name {
+  font-weight: 700;
+}
+
+.assignment-meta {
+  margin-top: 4px;
+  color: #667085;
+  font-size: 0.88rem;
+}
+
+.assignment-button {
+  min-width: 110px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.assignment-button.activate {
+  border: 1px solid #172033;
+  background: #172033;
+  color: #ffffff;
+}
+
+.assignment-button.end {
+  border: 1px solid #cfd5df;
+  background: #ffffff;
+  color: #344054;
+}
+
+.assignment-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.assignment-loading {
+  margin-top: 20px;
+  color: #667085;
+}
