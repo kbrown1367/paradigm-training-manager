@@ -12,6 +12,9 @@ from app.services.officer_assignments import (
 from app.compliance.peace_officer_unit import (
     evaluate_agency_peace_officers,
 )
+from app.compliance.police_chief import (
+    evaluate_police_chief,
+)
 from app.services.tcole_import import (
     TcoleImportError,
     get_import_summary,
@@ -292,3 +295,29 @@ def assignment_types():
             in ASSIGNMENT_TYPES.items()
         ]
     ), 200
+
+
+@api.get(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/compliance/police-chief"
+)
+def police_chief_compliance(
+    agency_id,
+    officer_id,
+):
+    officer = Officer.query.filter_by(
+        id=officer_id,
+        agency_id=agency_id,
+    ).one_or_none()
+
+    if officer is None:
+        return jsonify(
+            {"error": "Officer not found."}
+        ), 404
+
+    result = evaluate_police_chief(
+        officer
+    )
+
+    return jsonify(result), 200

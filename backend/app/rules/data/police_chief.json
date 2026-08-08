@@ -1,0 +1,36 @@
+{
+  "rule_set_id": "POLICE-CHIEF",
+  "version": "1.1",
+  "assignment_type": "POLICE_CHIEF",
+  "initial_training": {
+    "deadline_years_after_first_appointment": 2,
+    "required_courses": [
+      {
+        "course_number": "3780",
+        "name": "New Chief Development Program"
+      },
+      {
+        "course_number": "3740",
+        "name": "Texas Police Chief Leadership Series"
+      }
+    ]
+  },
+  "continuing_education": {
+    "evaluation_window": "CURRENT_UNIT",
+    "required_course": {
+      "course_number": "3740",
+      "name": "Texas Police Chief Leadership Series"
+    },
+    "satisfies_supervisor_requirement": true,
+    "course_equivalencies": [
+      {
+        "satisfies_course_number": "3189",
+        "satisfies_requirement": "State and Federal Law Update"
+      }
+    ]
+  },
+  "source": {
+    "title": "TCOLE Chief Administrator Training Requirements",
+    "authority": "TCOLE"
+  }
+}

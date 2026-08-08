@@ -34,6 +34,7 @@ def has_peace_officer_license(officer):
 def evaluate_peace_officer_unit(
     officer,
     evaluation_date=None,
+    satisfied_course_overrides=None,
 ):
     if evaluation_date is None:
         evaluation_date = date.today()
@@ -68,24 +69,49 @@ def evaluate_peace_officer_unit(
         for record in training
     }
 
+    satisfied_course_overrides = set(
+        satisfied_course_overrides or []
+    )
+
     required_course_results = []
 
     for required in rule["required_courses"]:
+        course_number = required["course_number"]
+
+        directly_completed = (
+            course_number in completed_course_numbers
+        )
+
+        equivalency_completed = (
+            course_number in satisfied_course_overrides
+        )
+
         completed = (
-            required["course_number"]
-            in completed_course_numbers
+            directly_completed
+            or equivalency_completed
+        )
+
+        satisfaction_basis = (
+            "DIRECT"
+            if directly_completed
+            else (
+                "EQUIVALENCY"
+                if equivalency_completed
+                else None
+            )
         )
 
         required_course_results.append(
             {
-                "course_number": required["course_number"],
+                "course_number": course_number,
                 "name": required["name"],
                 "completed": completed,
                 "status": (
-                    "SATISFIED"
+                    "COMPLETE"
                     if completed
                     else "OUTSTANDING"
                 ),
+                "satisfaction_basis": satisfaction_basis,
             }
         )
 
