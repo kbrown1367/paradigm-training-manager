@@ -6,6 +6,7 @@ from pathlib import Path
 from app.compliance.credentials import (
     get_highest_peace_officer_certificate,
 )
+from app.compliance.training_calendar import get_unit
 from app.models import Officer
 
 
@@ -39,8 +40,9 @@ def evaluate_peace_officer_unit(
 
     rule = load_rule()
 
-    unit_start = date.fromisoformat(rule["unit_start"])
-    unit_end = date.fromisoformat(rule["unit_end"])
+    unit = get_unit(evaluation_date)
+    unit_start = unit["start"]
+    unit_end = unit["end"]
 
     credential = get_highest_peace_officer_certificate(
         officer
@@ -156,7 +158,7 @@ def evaluate_peace_officer_unit(
             {
                 "type": "TOTAL_HOURS",
                 "status": "OUTSTANDING",
-                "due_date": rule["unit_end"],
+                "due_date": unit_end.isoformat(),
                 "message": (
                     f"{remaining_total_hours} additional "
                     "training hours required."
@@ -173,7 +175,7 @@ def evaluate_peace_officer_unit(
                     "course_number": course[
                         "course_number"
                     ],
-                    "due_date": rule["unit_end"],
+                    "due_date": unit_end.isoformat(),
                     "message": (
                         f"{course['name']} "
                         f"(#{course['course_number']}) "
@@ -187,7 +189,7 @@ def evaluate_peace_officer_unit(
             {
                 "type": "ALERRT_HOURS",
                 "status": "OUTSTANDING",
-                "due_date": rule["unit_end"],
+                "due_date": unit_end.isoformat(),
                 "message": (
                     f"{remaining_alerrt_hours} additional "
                     "approved ALERRT hours required."
@@ -201,7 +203,7 @@ def evaluate_peace_officer_unit(
                 "type": "ALERRT_LEVEL_ONE",
                 "status": "OUTSTANDING",
                 "course_number": current_level_one_course,
-                "due_date": rule["unit_end"],
+                "due_date": unit_end.isoformat(),
                 "message": (
                     "ALERRT Level I (#3311) remains "
                     "outstanding because no qualifying prior "
@@ -263,9 +265,13 @@ def evaluate_peace_officer_unit(
         "rule_set_id": rule["rule_set_id"],
         "rule_version": rule["version"],
         "evaluation_date": evaluation_date.isoformat(),
-        "unit_start": rule["unit_start"],
-        "unit_end": rule["unit_end"],
-        "due_date": rule["unit_end"],
+        "cycle_start": unit["cycle_start"].isoformat(),
+        "cycle_end": unit["cycle_end"].isoformat(),
+        "cycle_number": unit["cycle_number"],
+        "unit_number": unit["unit_number"],
+        "unit_start": unit_start.isoformat(),
+        "unit_end": unit_end.isoformat(),
+        "due_date": unit_end.isoformat(),
         "unit_status": unit_status,
         "requirement_status": requirement_status,
         "total_hours": float(total_hours),
@@ -332,12 +338,18 @@ def evaluate_agency_peace_officers(
         for result in results
     )
 
+    unit = get_unit(evaluation_date)
+
     return {
-        "rule_set_id": "PO-UNIT-2025-2027",
+        "rule_set_id": "PO-UNIT",
         "evaluation_date": evaluation_date.isoformat(),
-        "unit_start": "2025-09-01",
-        "unit_end": "2027-08-31",
-        "due_date": "2027-08-31",
+        "cycle_start": unit["cycle_start"].isoformat(),
+        "cycle_end": unit["cycle_end"].isoformat(),
+        "cycle_number": unit["cycle_number"],
+        "unit_number": unit["unit_number"],
+        "unit_start": unit["start"].isoformat(),
+        "unit_end": unit["end"].isoformat(),
+        "due_date": unit["end"].isoformat(),
         "applicability_status": "PROVISIONAL",
         "officer_count": len(results),
         "complete_count": complete_count,

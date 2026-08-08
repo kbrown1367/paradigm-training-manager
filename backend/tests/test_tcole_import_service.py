@@ -221,3 +221,114 @@ def test_unknown_agency_is_rejected(app):
             )
 
         assert ImportJob.query.count() == 0
+
+
+def test_reimport_preserves_agency_managed_officer_data(app):
+    from datetime import date
+
+    from app.models import OfficerAssignment
+
+    with app.app_context():
+        agency = make_agency()
+
+        run_tcole_import(
+            agency.id,
+            AWARDS,
+            COURSES,
+            CYCLE,
+        )
+
+        officer = Officer.query.filter_by(
+            agency_id=agency.id,
+            tcole_pid="484608",
+        ).one()
+
+        officer.employment_status = "active"
+
+        assignment = OfficerAssignment(
+            agency_id=agency.id,
+            officer_id=officer.id,
+            assignment_type="PUBLIC_INFORMATION_OFFICER",
+            effective_date=date(2026, 1, 1),
+        )
+
+        db.session.add(assignment)
+        db.session.commit()
+
+        officer_id = officer.id
+        assignment_id = assignment.id
+
+        run_tcole_import(
+            agency.id,
+            AWARDS,
+            COURSES,
+            CYCLE,
+        )
+
+        refreshed = db.session.get(
+            Officer,
+            officer_id,
+        )
+
+        preserved_assignment = db.session.get(
+            OfficerAssignment,
+            assignment_id,
+        )
+
+        assert refreshed is not None
+        assert refreshed.employment_status == "active"
+
+        assert preserved_assignment is not None
+        assert (
+            preserved_assignment.assignment_type
+            == "PUBLIC_INFORMATION_OFFICER"
+        )
+        assert preserved_assignment.end_date is None
+
+
+def test_missing_from_later_import_does_not_archive_officer(app):
+    with app.app_context():
+        agency = make_agency()
+
+        run_tcole_import(
+            agency.id,
+            AWARDS,
+            COURSES,
+            CYCLE,
+        )
+
+        officer = Officer.query.filter_by(
+            agency_id=agency.id,
+            tcole_pid="556622",
+        ).one()
+
+        officer_id = officer.id
+
+        reduced_awards = """P_ID1,OFFICER_NAME1,Type1,Award,Date
+484608,"ACOSTA, CELIA",Certificate,Basic Peace Officer,07/29/2022
+484608,"ACOSTA, CELIA",License,Peace Officer License,07/30/2020
+"""
+
+        reduced_courses = """P_ID1,P_ID,STUDENT_NAME,PLUS_COURSE_ID,COURSE_ID,COURSE_DATE
+1,484608,"ACOSTA, CELIA",,"1849 - De-escalation Tech (SB 1849)",12/12/2019
+"""
+
+        reduced_cycle = """Textbox83,PeopleName,P_ID2,Textbox33,Course,COURSE_DATE,Hours
+Peace Officer,"ACOSTA, CELIA",484608,Sum Hrs: 4,1849,12/12/2019,4
+"""
+
+        run_tcole_import(
+            agency.id,
+            reduced_awards,
+            reduced_courses,
+            reduced_cycle,
+        )
+
+        preserved = db.session.get(
+            Officer,
+            officer_id,
+        )
+
+        assert preserved is not None
+        assert preserved.employment_status == "active"
+        assert preserved.archived_at is None

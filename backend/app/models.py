@@ -36,6 +36,12 @@ class Agency(db.Model):
         cascade="save-update, merge",
     )
 
+    officer_assignments = db.relationship(
+        "OfficerAssignment",
+        back_populates="agency",
+        cascade="save-update, merge",
+    )
+
 
 class Officer(db.Model):
     __tablename__ = "officers"
@@ -52,6 +58,8 @@ class Officer(db.Model):
     middle_name = db.Column(db.String(100), nullable=True)
     last_name = db.Column(db.String(100), nullable=False)
     employment_status = db.Column(db.String(30), nullable=False, default="active")
+    archived_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    archived_reason = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = db.Column(
         db.DateTime(timezone=True),
@@ -74,11 +82,77 @@ class Officer(db.Model):
         cascade="save-update, merge",
     )
 
+    assignments = db.relationship(
+        "OfficerAssignment",
+        back_populates="officer",
+        cascade="save-update, merge",
+    )
+
     __table_args__ = (
         db.UniqueConstraint(
             "agency_id",
             "tcole_pid",
             name="uq_officers_agency_tcole_pid",
+        ),
+    )
+
+
+class OfficerAssignment(db.Model):
+    __tablename__ = "officer_assignments"
+
+    id = db.Column(
+        db.Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    agency_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("agencies.id"),
+        nullable=False,
+        index=True,
+    )
+    officer_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("officers.id"),
+        nullable=False,
+        index=True,
+    )
+    assignment_type = db.Column(
+        db.String(50),
+        nullable=False,
+        index=True,
+    )
+    effective_date = db.Column(
+        db.Date,
+        nullable=False,
+    )
+    end_date = db.Column(
+        db.Date,
+        nullable=True,
+    )
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=utcnow,
+    )
+
+    agency = db.relationship(
+        "Agency",
+        back_populates="officer_assignments",
+    )
+
+    officer = db.relationship(
+        "Officer",
+        back_populates="assignments",
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "agency_id",
+            "officer_id",
+            "assignment_type",
+            "effective_date",
+            name="uq_officer_assignment",
         ),
     )
 

@@ -218,7 +218,7 @@ def test_missing_requirements_are_outstanding_before_due_date(app):
         )
 
 
-def test_missing_requirements_fail_after_due_date(app):
+def test_requirements_reset_into_new_unit_after_prior_due_date(app):
     with app.app_context():
         _, officer = make_officer()
 
@@ -227,11 +227,14 @@ def test_missing_requirements_fail_after_due_date(app):
             evaluation_date=date(2027, 9, 1),
         )
 
-        assert result["unit_status"] == "OVERDUE"
-        assert result["requirement_status"] == "FAILED"
+        assert result["unit_number"] == 2
+        assert result["unit_start"] == "2027-09-01"
+        assert result["unit_end"] == "2029-08-31"
+        assert result["unit_status"] == "OUTSTANDING"
+        assert result["requirement_status"] == "OUTSTANDING"
 
         assert all(
-            item["status"] == "FAILED"
+            item["status"] == "OUTSTANDING"
             for item in result["requirements"]
         )
 
@@ -349,3 +352,72 @@ def test_non_peace_officer_excluded_from_agency_results(app):
 
         assert result["officer_count"] == 0
         assert result["officers"] == []
+
+
+def test_unit_requirements_reset_when_second_unit_begins(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_training(
+            agency, officer, "3311",
+            date(2024, 1, 1), 16
+        )
+        add_training(
+            agency, officer, "3189",
+            date(2026, 1, 10), 8
+        )
+        add_training(
+            agency, officer, "7006",
+            date(2026, 2, 10), 8
+        )
+        add_training(
+            agency, officer, "3369",
+            date(2026, 3, 10), 16
+        )
+        add_training(
+            agency, officer, "9999",
+            date(2026, 4, 10), 8
+        )
+
+        db.session.commit()
+
+        first_unit = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        second_unit = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2027, 9, 1),
+        )
+
+        assert first_unit["unit_status"] == "COMPLETE"
+
+        assert second_unit["unit_number"] == 2
+        assert second_unit["unit_start"] == "2027-09-01"
+        assert second_unit["unit_end"] == "2029-08-31"
+
+        assert second_unit["total_hours"] == 0.0
+        assert second_unit["remaining_total_hours"] == 40.0
+
+        assert second_unit["required_courses"][0]["status"] == "OUTSTANDING"
+        assert second_unit["required_courses"][1]["status"] == "OUTSTANDING"
+
+        assert second_unit["alerrt_hours"] == 0.0
+        assert second_unit["remaining_alerrt_hours"] == 16.0
+
+
+def test_compliance_engine_moves_into_next_four_year_cycle(app):
+    with app.app_context():
+        _, officer = make_officer()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2030, 1, 1),
+        )
+
+        assert result["cycle_start"] == "2029-09-01"
+        assert result["cycle_end"] == "2033-08-31"
+        assert result["unit_number"] == 1
+        assert result["unit_start"] == "2029-09-01"
+        assert result["unit_end"] == "2031-08-31"

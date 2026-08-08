@@ -1,9 +1,8 @@
 {
-  "rule_set_id": "PO-UNIT-2025-2027",
-  "version": "1.0",
+  "rule_set_id": "PO-UNIT",
+  "version": "2.0",
   "license_type": "Peace Officer",
-  "unit_start": "2025-09-01",
-  "unit_end": "2027-08-31",
+  "evaluation_window": "CURRENT_UNIT",
   "minimum_total_hours": 40,
   "required_courses": [
     {

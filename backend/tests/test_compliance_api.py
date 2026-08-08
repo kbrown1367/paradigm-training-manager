@@ -52,7 +52,13 @@ def test_peace_officer_compliance_endpoint():
 
     data = response.get_json()
 
-    assert data["rule_set_id"] == "PO-UNIT-2025-2027"
+    assert data["rule_set_id"] == "PO-UNIT"
+    assert data["cycle_start"] == "2025-09-01"
+    assert data["cycle_end"] == "2029-08-31"
+    assert data["unit_number"] == 1
+    assert data["unit_start"] == "2025-09-01"
+    assert data["unit_end"] == "2027-08-31"
+    assert data["due_date"] == "2027-08-31"
     assert data["officer_count"] == 1
     assert data["complete_count"] == 0
     assert data["outstanding_count"] == 1
