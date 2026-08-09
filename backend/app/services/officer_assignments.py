@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from app.extensions import db
 from app.models import Agency, Officer, OfficerAssignment
@@ -154,6 +154,44 @@ def activate_assignment(
             "is already active for this officer."
         )
 
+    # An agency may have only one active Police Chief.
+    # This rule is enforced here so it cannot be bypassed
+    # by calling the API directly.
+    if assignment_type == "POLICE_CHIEF":
+        existing_chief = (
+            OfficerAssignment.query
+            .filter_by(
+                agency_id=agency_id,
+                assignment_type="POLICE_CHIEF",
+                end_date=None,
+            )
+            .one_or_none()
+        )
+
+        if existing_chief is not None:
+            chief_officer = db.session.get(
+                Officer,
+                existing_chief.officer_id,
+            )
+
+            chief_name = "another officer"
+
+            if chief_officer is not None:
+                chief_name = " ".join(
+                    part
+                    for part in [
+                        chief_officer.first_name,
+                        chief_officer.middle_name,
+                        chief_officer.last_name,
+                    ]
+                    if part
+                )
+
+            raise AssignmentError(
+                "Police Chief is already assigned to "
+                f"{chief_name}."
+            )
+
     assignment = OfficerAssignment(
         agency_id=agency_id,
         officer_id=officer.id,
@@ -171,7 +209,7 @@ def end_assignment(
     agency_id,
     officer_id,
     assignment_type,
-    end_date,
+    inactive_date,
 ):
     officer = get_officer_for_agency(
         agency_id,
@@ -187,9 +225,9 @@ def end_assignment(
             "Assignment type is invalid."
         )
 
-    end_date = parse_assignment_date(
-        end_date,
-        "end_date",
+    inactive_date = parse_assignment_date(
+        inactive_date,
+        "inactive_date",
     )
 
     assignment = (
@@ -209,12 +247,38 @@ def end_assignment(
             "is not currently active for this officer."
         )
 
-    if end_date < assignment.effective_date:
+    # inactive_date is the first date on which the
+    # assignment no longer applies. OfficerAssignment.end_date
+    # remains the final date on which it did apply.
+    last_active_date = (
+        inactive_date - timedelta(days=1)
+    )
+
+    if inactive_date < assignment.effective_date:
         raise AssignmentError(
-            "end_date cannot be before effective_date."
+            "inactive_date cannot be before "
+            "effective_date."
         )
 
-    assignment.end_date = end_date
+    # A same-day ON/OFF action has no complete calendar
+    # day of applicability in PTM's date-based model.
+    # Remove that newly created assignment rather than
+    # create an impossible end date before its start date.
+    if inactive_date == assignment.effective_date:
+        db.session.delete(assignment)
+        db.session.commit()
+
+        return {
+            "assignment_type": assignment_type,
+            "assignment_name":
+                ASSIGNMENT_TYPES[assignment_type],
+            "active": False,
+            "effective_date": None,
+            "end_date": None,
+            "removed_same_day": True,
+        }
+
+    assignment.end_date = last_active_date
 
     db.session.commit()
 
@@ -239,8 +303,41 @@ def get_assignment_summary(
         ).all()
     }
 
+    active_chief = (
+        OfficerAssignment.query
+        .filter_by(
+            agency_id=agency_id,
+            assignment_type="POLICE_CHIEF",
+            end_date=None,
+        )
+        .one_or_none()
+    )
+
+    chief_holder = None
+
+    if active_chief is not None:
+        chief_officer = db.session.get(
+            Officer,
+            active_chief.officer_id,
+        )
+
+        if chief_officer is not None:
+            chief_holder = {
+                "officer_id": str(chief_officer.id),
+                "name": " ".join(
+                    part
+                    for part in [
+                        chief_officer.first_name,
+                        chief_officer.middle_name,
+                        chief_officer.last_name,
+                    ]
+                    if part
+                ),
+            }
+
     return {
         "officer_id": str(officer.id),
+        "chief_holder": chief_holder,
         "assignment_types": [
             {
                 "assignment_type": assignment_type,

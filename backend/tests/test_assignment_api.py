@@ -257,7 +257,7 @@ def test_assignment_can_be_ended():
         f"/officers/{officer_id}"
         "/assignments/PUBLIC_INFORMATION_OFFICER",
         json={
-            "end_date": "2026-08-08"
+            "inactive_date": "2026-08-08"
         },
     )
 
@@ -266,7 +266,7 @@ def test_assignment_can_be_ended():
     data = response.get_json()
 
     assert data["active"] is False
-    assert data["end_date"] == "2026-08-08"
+    assert data["end_date"] == "2026-08-07"
 
 
 def test_assignment_history_is_preserved():
@@ -291,7 +291,7 @@ def test_assignment_history_is_preserved():
         f"/officers/{officer_id}"
         "/assignments/SUPERVISOR",
         json={
-            "end_date": "2022-01-01"
+            "inactive_date": "2022-01-01"
         },
     )
 
@@ -368,3 +368,274 @@ def test_assignment_summary_returns_switch_states():
         == "2020-10-01"
     )
     assert pio["active"] is False
+
+
+def test_only_one_active_police_chief_per_agency():
+    app = make_app()
+
+    with app.app_context():
+        db.create_all()
+
+        agency = Agency(
+            name="Test Police Department"
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        first = Officer(
+            agency_id=agency.id,
+            tcole_pid="111111",
+            first_name="FIRST",
+            last_name="CHIEF",
+        )
+        second = Officer(
+            agency_id=agency.id,
+            tcole_pid="222222",
+            first_name="SECOND",
+            last_name="OFFICER",
+        )
+
+        db.session.add_all([first, second])
+        db.session.commit()
+
+        agency_id = agency.id
+        first_id = first.id
+        second_id = second.id
+
+    client = app.test_client()
+
+    response = client.post(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{first_id}"
+        "/assignments/POLICE_CHIEF",
+        json={
+            "effective_date": "2020-10-01"
+        },
+    )
+
+    assert response.status_code == 201
+
+    response = client.post(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{second_id}"
+        "/assignments/POLICE_CHIEF",
+        json={
+            "effective_date": "2026-01-01"
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        "already assigned"
+        in response.get_json()["error"]
+    )
+
+    with app.app_context():
+        active_chiefs = (
+            OfficerAssignment.query
+            .filter_by(
+                agency_id=agency_id,
+                assignment_type="POLICE_CHIEF",
+                end_date=None,
+            )
+            .count()
+        )
+
+        assert active_chiefs == 1
+
+
+def test_police_chief_slot_reopens_after_assignment_ends():
+    app = make_app()
+
+    with app.app_context():
+        db.create_all()
+
+        agency = Agency(
+            name="Test Police Department"
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        first = Officer(
+            agency_id=agency.id,
+            tcole_pid="111111",
+            first_name="FIRST",
+            last_name="CHIEF",
+        )
+        second = Officer(
+            agency_id=agency.id,
+            tcole_pid="222222",
+            first_name="SECOND",
+            last_name="CHIEF",
+        )
+
+        db.session.add_all([first, second])
+        db.session.commit()
+
+        agency_id = agency.id
+        first_id = first.id
+        second_id = second.id
+
+    client = app.test_client()
+
+    client.post(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{first_id}"
+        "/assignments/POLICE_CHIEF",
+        json={
+            "effective_date": "2020-10-01"
+        },
+    )
+
+    ended = client.patch(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{first_id}"
+        "/assignments/POLICE_CHIEF",
+        json={
+            "inactive_date": "2026-07-31"
+        },
+    )
+
+    assert ended.status_code == 200
+
+    response = client.post(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{second_id}"
+        "/assignments/POLICE_CHIEF",
+        json={
+            "effective_date": "2026-08-01"
+        },
+    )
+
+    assert response.status_code == 201
+
+
+def test_assignment_summary_identifies_current_chief():
+    app = make_app()
+    agency_id, officer_id = seed_officer(app)
+
+    client = app.test_client()
+
+    client.post(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/assignments/POLICE_CHIEF",
+        json={
+            "effective_date": "2020-10-01"
+        },
+    )
+
+    response = client.get(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/assignment-summary"
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["chief_holder"] is not None
+    assert (
+        data["chief_holder"]["officer_id"]
+        == str(officer_id)
+    )
+    assert data["chief_holder"]["name"] == "JOHN SMITH"
+
+
+def test_ended_assignment_is_not_active_on_inactive_date():
+    app = make_app()
+    agency_id, officer_id = seed_officer(app)
+
+    client = app.test_client()
+
+    activated = client.post(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/assignments/PUBLIC_INFORMATION_OFFICER",
+        json={
+            "effective_date": "2026-05-01"
+        },
+    )
+
+    assert activated.status_code == 201
+
+    ended = client.patch(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/assignments/PUBLIC_INFORMATION_OFFICER",
+        json={
+            "inactive_date": "2026-08-09"
+        },
+    )
+
+    assert ended.status_code == 200
+    assert (
+        ended.get_json()["end_date"]
+        == "2026-08-08"
+    )
+
+    with app.app_context():
+        from app.compliance.public_information_officer import (
+            evaluate_public_information_officer,
+        )
+
+        officer = db.session.get(
+            Officer,
+            officer_id,
+        )
+
+        result = evaluate_public_information_officer(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        assert result["applicable"] is False
+        assert result["status"] == "NOT_APPLICABLE"
+
+
+def test_same_day_assignment_toggle_removes_assignment():
+    app = make_app()
+    agency_id, officer_id = seed_officer(app)
+
+    client = app.test_client()
+
+    activated = client.post(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/assignments/PUBLIC_INFORMATION_OFFICER",
+        json={
+            "effective_date": "2026-08-09"
+        },
+    )
+
+    assert activated.status_code == 201
+
+    ended = client.patch(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/assignments/PUBLIC_INFORMATION_OFFICER",
+        json={
+            "inactive_date": "2026-08-09"
+        },
+    )
+
+    assert ended.status_code == 200
+    assert (
+        ended.get_json()["removed_same_day"]
+        is True
+    )
+
+    with app.app_context():
+        assert (
+            OfficerAssignment.query
+            .filter_by(
+                agency_id=agency_id,
+                officer_id=officer_id,
+                assignment_type=(
+                    "PUBLIC_INFORMATION_OFFICER"
+                ),
+            )
+            .count()
+            == 0
+        )

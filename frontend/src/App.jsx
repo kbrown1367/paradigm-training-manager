@@ -37,46 +37,6 @@ function ResultCard({ label, value }) {
   );
 }
 
-function AssignmentRow({
-  assignment,
-  onActivate,
-  onEnd,
-  busy,
-}) {
-  return (
-    <div className="assignment-row">
-      <div>
-        <div className="assignment-name">
-          {assignment.assignment_name}
-        </div>
-
-        <div className="assignment-meta">
-          {assignment.active
-            ? `Active since ${assignment.effective_date}`
-            : "Not active"}
-        </div>
-      </div>
-
-      <button
-        type="button"
-        className={
-          assignment.active
-            ? "assignment-button end"
-            : "assignment-button activate"
-        }
-        disabled={busy}
-        onClick={() =>
-          assignment.active
-            ? onEnd(assignment)
-            : onActivate(assignment)
-        }
-      >
-        {assignment.active ? "Turn Off" : "Turn On"}
-      </button>
-    </div>
-  );
-}
-
 function DashboardSummaryCard({
   label,
   value,
@@ -128,7 +88,10 @@ function formatAssignment(value) {
     .join(" ");
 }
 
-function EmployeeComplianceCard({ employee }) {
+function EmployeeComplianceCard({
+  employee,
+  onOpen,
+}) {
   const name = [
     employee.first_name,
     employee.middle_name,
@@ -149,6 +112,18 @@ function EmployeeComplianceCard({ employee }) {
         `employee-compliance-card ` +
         employee.overall_status.toLowerCase()
       }
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(employee)}
+      onKeyDown={(event) => {
+        if (
+          event.key === "Enter" ||
+          event.key === " "
+        ) {
+          event.preventDefault();
+          onOpen(employee);
+        }
+      }}
     >
       <div className="employee-card-header">
         <div>
@@ -259,10 +234,723 @@ function EmployeeComplianceCard({ employee }) {
   );
 }
 
+function WorkspaceStatus({ status }) {
+  const label =
+    status === "DUE"
+      ? "TRAINING DUE"
+      : status === "NOT_EVALUATED"
+        ? "NOT EVALUATED"
+        : status?.replaceAll("_", " ");
+
+  return (
+    <span
+      className={
+        `employee-status ` +
+        (status || "pending_review").toLowerCase()
+      }
+    >
+      {label}
+    </span>
+  );
+}
+
+function RequirementList({
+  title,
+  items,
+  emptyMessage,
+}) {
+  return (
+    <section className="workspace-panel">
+      <div className="workspace-panel-heading">
+        <h3>{title}</h3>
+        <span>{items?.length || 0}</span>
+      </div>
+
+      {items?.length ? (
+        <div className="workspace-requirements">
+          {items.map((item, index) => (
+            <div
+              className="workspace-requirement"
+              key={`${item.type || "requirement"}-${index}`}
+            >
+              <div>
+                <strong>
+                  {item.message ||
+                    item.type?.replaceAll("_", " ") ||
+                    "Compliance requirement"}
+                </strong>
+
+                {item.due_date && (
+                  <span>
+                    Due{" "}
+                    {formatDashboardDate(
+                      item.due_date
+                    )}
+                  </span>
+                )}
+              </div>
+
+              <span
+                className={
+                  `finding-status ` +
+                  (
+                    item.normalized_status ||
+                    item.status ||
+                    "pending_review"
+                  ).toLowerCase()
+                }
+              >
+                {(
+                  item.normalized_status ||
+                  item.status ||
+                  "REVIEW"
+                )
+                  .replaceAll("_", " ")}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="workspace-empty">
+          {emptyMessage}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function EmployeeWorkspace({
+  workspace,
+  loading,
+  error,
+  onBack,
+  assignmentSummary,
+  assignmentBusy,
+  assignmentError,
+  credentialVerifications,
+  credentialBusy,
+  credentialError,
+  onActivateAssignment,
+  onEndAssignment,
+  onVerifyTdem,
+  onRevokeTdem,
+  onEditEmail,
+  onEmailEmployee,
+}) {
+  if (loading) {
+    return (
+      <section className="employee-workspace">
+        <button
+          type="button"
+          className="workspace-back"
+          onClick={onBack}
+        >
+          ← Back to Dashboard
+        </button>
+
+        <div className="dashboard-loading">
+          Loading employee compliance workspace...
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="employee-workspace">
+        <button
+          type="button"
+          className="workspace-back"
+          onClick={onBack}
+        >
+          ← Back to Dashboard
+        </button>
+
+        <div className="message error-message">
+          <strong>
+            Employee workspace could not be loaded.
+          </strong>
+          <p>{error}</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!workspace) {
+    return null;
+  }
+
+  const officer = workspace.officer;
+
+  const name = [
+    officer.first_name,
+    officer.middle_name,
+    officer.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const activeAssignments =
+    workspace.assignments?.filter(
+      (assignment) => assignment.active
+    ) || [];
+
+  return (
+    <section className="employee-workspace">
+      <div className="workspace-top-actions">
+        <button
+          type="button"
+          className="workspace-back"
+          onClick={onBack}
+        >
+          ← Back to Dashboard
+        </button>
+
+        <button
+          type="button"
+          className="workspace-email-button"
+          disabled={!workspace.resolved_email?.email}
+          title={
+            workspace.resolved_email?.email
+              ? "Open a compliance email in your default email application."
+              : "Configure an employee email address first."
+          }
+          onClick={onEmailEmployee}
+        >
+          Email Employee
+        </button>
+      </div>
+
+      <div className="workspace-hero">
+        <div>
+          <div className="dashboard-kicker">
+            Employee Compliance & Training Detail
+          </div>
+
+          <div className="workspace-name-row">
+            <h2>{name}</h2>
+            <WorkspaceStatus
+              status={workspace.overall_status}
+            />
+          </div>
+
+          <div className="workspace-identity">
+            <span>PID {officer.tcole_pid}</span>
+            <span>•</span>
+            <span>
+              {officer.highest_certificate ||
+                "No proficiency certificate"}
+            </span>
+
+            {activeAssignments.map(
+              (assignment) => (
+                <span key={assignment.id}>
+                  •{" "}
+                  {formatAssignment(
+                    assignment.assignment_type
+                  )}
+                </span>
+              )
+            )}
+          </div>
+
+          <div className="workspace-email">
+            <span>
+              Email:{" "}
+              <strong>
+                {workspace.resolved_email?.email ||
+                  "Not configured"}
+              </strong>
+
+              {workspace.resolved_email?.source && (
+                <>
+                  {" "}
+                  ({workspace.resolved_email.source
+                    .replaceAll("_", " ")
+                    .toLowerCase()})
+                </>
+              )}
+            </span>
+
+            <button
+              type="button"
+              className="workspace-email-edit"
+              onClick={onEditEmail}
+            >
+              Edit Email
+            </button>
+          </div>
+        </div>
+
+        <div className="workspace-next-due">
+          <span>Next Due</span>
+          <strong>
+            {formatDashboardDate(
+              workspace.next_due_date
+            )}
+          </strong>
+        </div>
+      </div>
+
+      <div className="workspace-summary-grid">
+        <div className="workspace-summary-card">
+          <span>Current Unit Hours</span>
+          <strong>
+            {workspace.training_summary
+              ?.current_unit_hours ?? 0}
+          </strong>
+        </div>
+
+        <div className="workspace-summary-card">
+          <span>Minimum Hours</span>
+          <strong>
+            {workspace.training_summary
+              ?.minimum_total_hours ?? "N/A"}
+          </strong>
+        </div>
+
+        <div className="workspace-summary-card">
+          <span>Hours Remaining</span>
+          <strong>
+            {workspace.training_summary
+              ?.remaining_total_hours ?? "N/A"}
+          </strong>
+        </div>
+
+        <div className="workspace-summary-card">
+          <span>Training Records</span>
+          <strong>
+            {workspace.training_summary
+              ?.training_record_count ?? 0}
+          </strong>
+        </div>
+      </div>
+
+      <section className="workspace-unit-banner">
+        <div>
+          <span>Current TCOLE Training Unit</span>
+          <strong>
+            Unit {workspace.training_unit.unit_number}
+          </strong>
+        </div>
+
+        <div>
+          {formatDashboardDate(
+            workspace.training_unit.unit_start
+          )}{" "}
+          through{" "}
+          {formatDashboardDate(
+            workspace.training_unit.unit_end
+          )}
+        </div>
+      </section>
+
+      <div className="workspace-two-column">
+        <RequirementList
+          title="Overdue Requirements"
+          items={workspace.overdue_requirements}
+          emptyMessage="No overdue requirements."
+        />
+
+        <RequirementList
+          title="Outstanding Requirements"
+          items={workspace.outstanding_requirements}
+          emptyMessage="No outstanding requirements."
+        />
+      </div>
+
+      {workspace.agency_review_requirements?.length >
+        0 && (
+        <RequirementList
+          title="Agency Review Required"
+          items={workspace.agency_review_requirements}
+          emptyMessage="No agency review items."
+        />
+      )}
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-heading">
+          <div>
+            <h3>Compliance Assignments</h3>
+            <p>
+              Agency-managed assignments that activate
+              additional TCOLE compliance requirements.
+            </p>
+          </div>
+        </div>
+
+        {assignmentError && (
+          <div className="message error-message">
+            {assignmentError}
+          </div>
+        )}
+
+        {assignmentSummary ? (
+          <div className="workspace-assignment-controls">
+            {assignmentSummary.assignment_types
+              .filter((assignment) =>
+                [
+                  "POLICE_CHIEF",
+                  "SUPERVISOR",
+                  "PUBLIC_INFORMATION_OFFICER",
+                ].includes(assignment.assignment_type)
+              )
+              .map((assignment) => {
+                const chiefHolder =
+                  assignmentSummary.chief_holder;
+
+                const chiefHeldByOther =
+                  assignment.assignment_type ===
+                    "POLICE_CHIEF" &&
+                  !assignment.active &&
+                  chiefHolder &&
+                  chiefHolder.officer_id !==
+                    workspace.officer.id;
+
+                return (
+                  <div
+                    className={
+                      "workspace-assignment-control" +
+                      (chiefHeldByOther
+                        ? " unavailable"
+                        : "")
+                    }
+                    key={assignment.assignment_type}
+                  >
+                    <div className="workspace-assignment-copy">
+                      <strong>
+                        {assignment.assignment_name}
+                      </strong>
+
+                      <span>
+                        {assignment.active
+                          ? `Effective ${formatDashboardDate(
+                              assignment.effective_date
+                            )}`
+                          : chiefHeldByOther
+                            ? `Currently assigned to ${chiefHolder.name}`
+                            : "Not assigned"}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={assignment.active}
+                      className={
+                        "assignment-toggle" +
+                        (assignment.active
+                          ? " active"
+                          : "")
+                      }
+                      disabled={
+                        assignmentBusy ||
+                        chiefHeldByOther
+                      }
+                      title={
+                        chiefHeldByOther
+                          ? `Police Chief is currently assigned to ${chiefHolder.name}.`
+                          : assignment.active
+                            ? `End ${assignment.assignment_name} assignment`
+                            : `Activate ${assignment.assignment_name} assignment`
+                      }
+                      onClick={() =>
+                        assignment.active
+                          ? onEndAssignment(assignment)
+                          : onActivateAssignment(
+                              assignment
+                            )
+                      }
+                    >
+                      <span className="assignment-toggle-knob" />
+                      <span className="assignment-toggle-label">
+                        {assignment.active
+                          ? "On"
+                          : "Off"}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
+          </div>
+        ) : (
+          <div className="workspace-empty">
+            Loading compliance assignments...
+          </div>
+        )}
+
+        {assignmentSummary?.assignment_types.find(
+          (assignment) =>
+            assignment.assignment_type ===
+              "PUBLIC_INFORMATION_OFFICER" &&
+            assignment.active
+        ) && (
+          <div className="workspace-tdem-panel">
+            <div className="credential-heading">
+              <div>
+                <h3>TDEM PIO Certification</h3>
+                <p>
+                  Agency verification of the separate TDEM
+                  certification requirement.
+                </p>
+              </div>
+
+              <span
+                className={
+                  credentialVerifications.some(
+                    (item) =>
+                      item.credential_type ===
+                        "TDEM_PIO_CERTIFICATION" &&
+                      item.active
+                  )
+                    ? "credential-status verified"
+                    : "credential-status unverified"
+                }
+              >
+                {credentialVerifications.some(
+                  (item) =>
+                    item.credential_type ===
+                      "TDEM_PIO_CERTIFICATION" &&
+                    item.active
+                )
+                  ? "Verified"
+                  : "Not Verified"}
+              </span>
+            </div>
+
+            {credentialError && (
+              <div className="message error-message">
+                {credentialError}
+              </div>
+            )}
+
+            {(() => {
+              const verification =
+                credentialVerifications.find(
+                  (item) =>
+                    item.credential_type ===
+                      "TDEM_PIO_CERTIFICATION" &&
+                    item.active
+                );
+
+              if (verification) {
+                return (
+                  <div className="credential-details">
+                    <div>
+                      <span>Effective Date</span>
+                      <strong>
+                        {formatDashboardDate(
+                          verification.effective_date
+                        )}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Verified By</span>
+                      <strong>
+                        {verification.verified_by ||
+                          "Not recorded"}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Reference</span>
+                      <strong>
+                        {verification.reference ||
+                          "Not recorded"}
+                      </strong>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="credential-button revoke"
+                      disabled={credentialBusy}
+                      onClick={onRevokeTdem}
+                    >
+                      {credentialBusy
+                        ? "Working..."
+                        : "Revoke Verification"}
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="credential-unverified">
+                  <p>
+                    PTM has no active agency verification
+                    of this officer's TDEM PIO
+                    certification.
+                  </p>
+
+                  <button
+                    type="button"
+                    className="credential-button verify"
+                    disabled={credentialBusy}
+                    onClick={onVerifyTdem}
+                  >
+                    {credentialBusy
+                      ? "Working..."
+                      : "Verify Certification"}
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </section>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-heading">
+          <h3>Assignment History</h3>
+          <span>
+            {workspace.assignments?.length || 0}
+          </span>
+        </div>
+
+        {workspace.assignments?.length ? (
+          <div className="workspace-assignment-list">
+            {workspace.assignments.map(
+              (assignment) => (
+                <div
+                  className="workspace-assignment"
+                  key={assignment.id}
+                >
+                  <strong>
+                    {formatAssignment(
+                      assignment.assignment_type
+                    )}
+                  </strong>
+
+                  <span>
+                    {formatDashboardDate(
+                      assignment.effective_date
+                    )}
+                    {" through "}
+                    {assignment.end_date
+                      ? formatDashboardDate(
+                          assignment.end_date
+                        )
+                      : "Present"}
+                  </span>
+                </div>
+              )
+            )}
+          </div>
+        ) : (
+          <div className="workspace-empty">
+            No additional assignments.
+          </div>
+        )}
+      </section>
+
+      <section className="workspace-panel">
+        <div className="workspace-panel-heading">
+          <h3>Current Unit Training</h3>
+          <span>
+            {workspace.current_unit_training?.length ||
+              0}
+          </span>
+        </div>
+
+        {workspace.current_unit_training?.length ? (
+          <div className="training-table-wrap">
+            <table className="training-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Course</th>
+                  <th>Course Number</th>
+                  <th>Hours</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {workspace.current_unit_training.map(
+                  (record) => (
+                    <tr key={record.id}>
+                      <td>
+                        {formatDashboardDate(
+                          record.course_date
+                        )}
+                      </td>
+                      <td>{record.course_title}</td>
+                      <td>{record.course_number}</td>
+                      <td>
+                        {record.credited_hours ?? 0}
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="workspace-empty">
+            No training records found in the current
+            unit.
+          </div>
+        )}
+      </section>
+
+      <section className="workspace-panel proficiency-preview">
+        <div className="workspace-panel-heading">
+          <h3>Next Proficiency Certificate</h3>
+        </div>
+
+        <div className="workspace-empty">
+          Current certificate:{" "}
+          <strong>
+            {workspace.proficiency_advancement
+              ?.current_certificate ||
+              "No proficiency certificate"}
+          </strong>
+          . Detailed next-certificate eligibility will
+          be added in v0.2.12.
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function buildEmailConventionExample(
+  pattern,
+  domain,
+) {
+  if (!pattern || !domain) {
+    return "Configure both fields to preview an address.";
+  }
+
+  const cleanDomain = domain
+    .trim()
+    .replace(/^@/, "")
+    .toLowerCase();
+
+  let localPart = "";
+
+  if (pattern === "FIRST_INITIAL_LAST") {
+    localPart = "jsmith";
+  } else if (pattern === "FIRST_DOT_LAST") {
+    localPart = "jane.smith";
+  } else if (pattern === "FIRST_LAST") {
+    localPart = "janesmith";
+  } else if (pattern === "LAST_FIRST_INITIAL") {
+    localPart = "smithj";
+  } else {
+    return "Select a supported email format.";
+  }
+
+  return `Jane Smith → ${localPart}@${cleanDomain}`;
+}
+
 function App() {
   const [agency, setAgency] = useState(null);
-  const [officers, setOfficers] = useState([]);
   const [selectedOfficerId, setSelectedOfficerId] = useState("");
+  const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
+  const [emailDomain, setEmailDomain] = useState("");
+  const [emailPattern, setEmailPattern] = useState("");
+  const [emailSettingsBusy, setEmailSettingsBusy] = useState(false);
+  const [emailSettingsError, setEmailSettingsError] = useState("");
 
   const [dashboard, setDashboard] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
@@ -270,6 +958,10 @@ function App() {
   const [dashboardFilter, setDashboardFilter] = useState("ALL");
   const [certificateFilter, setCertificateFilter] = useState("ALL");
   const [dashboardSearch, setDashboardSearch] = useState("");
+  const [employeeWorkspace, setEmployeeWorkspace] = useState(null);
+  const [loadingWorkspace, setLoadingWorkspace] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState("");
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [assignmentSummary, setAssignmentSummary] = useState(null);
   const [credentialVerifications, setCredentialVerifications] = useState([]);
 
@@ -278,7 +970,6 @@ function App() {
   const [cycleFile, setCycleFile] = useState(null);
 
   const [loadingAgency, setLoadingAgency] = useState(true);
-  const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [assignmentBusy, setAssignmentBusy] = useState(false);
   const [credentialBusy, setCredentialBusy] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -313,17 +1004,57 @@ function App() {
     }
   }
 
-  async function loadOfficers(agencyId) {
-    const response = await fetch(
-      `/api/agencies/${agencyId}/officers`
-    );
-
-    if (!response.ok) {
-      throw new Error("Unable to load officers.");
+  async function openEmployeeWorkspace(employee) {
+    if (!agency?.id || !employee?.id) {
+      return;
     }
 
-    const data = await response.json();
-    setOfficers(data);
+    setSelectedOfficerId(employee.id);
+    setWorkspaceOpen(true);
+    setLoadingWorkspace(true);
+    setWorkspaceError("");
+    setEmployeeWorkspace(null);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+        `/officers/${employee.id}/workspace`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to load employee workspace."
+        );
+      }
+
+      setEmployeeWorkspace(data);
+    } catch (err) {
+      setWorkspaceError(err.message);
+    } finally {
+      setLoadingWorkspace(false);
+    }
+  }
+
+  function closeEmployeeWorkspace() {
+    setWorkspaceOpen(false);
+    setEmployeeWorkspace(null);
+    setWorkspaceError("");
+    setSelectedOfficerId("");
+    setAssignmentSummary(null);
+    setCredentialVerifications([]);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }
 
   useEffect(() => {
@@ -343,9 +1074,14 @@ function App() {
 
         const selectedAgency = agencies[0];
         setAgency(selectedAgency);
+        setEmailDomain(
+          selectedAgency.email_domain || ""
+        );
+        setEmailPattern(
+          selectedAgency.email_pattern || ""
+        );
 
         await Promise.all([
-          loadOfficers(selectedAgency.id),
           loadDashboard(selectedAgency.id),
         ]);
       } catch (err) {
@@ -366,7 +1102,6 @@ function App() {
         return;
       }
 
-      setLoadingAssignments(true);
       setAssignmentError("");
 
       try {
@@ -404,8 +1139,6 @@ function App() {
         setCredentialVerifications(credentialData);
       } catch (err) {
         setAssignmentError(err.message);
-      } finally {
-        setLoadingAssignments(false);
       }
     }
 
@@ -418,6 +1151,157 @@ function App() {
     Boolean(coursesFile) &&
     Boolean(cycleFile) &&
     !importing;
+
+  async function handleSaveEmailSettings(event) {
+    event.preventDefault();
+
+    if (!agency?.id) {
+      return;
+    }
+
+    setEmailSettingsBusy(true);
+    setEmailSettingsError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}/email-configuration`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email_domain: emailDomain,
+            email_pattern: emailPattern,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to save email configuration."
+        );
+      }
+
+      setAgency((current) => ({
+        ...current,
+        email_domain: data.email_domain,
+        email_pattern: data.email_pattern,
+      }));
+
+      setEmailDomain(data.email_domain || "");
+      setEmailPattern(data.email_pattern || "");
+      setEmailSettingsOpen(false);
+
+      if (workspaceOpen) {
+        await refreshEmployeeWorkspace();
+      }
+    } catch (err) {
+      setEmailSettingsError(err.message);
+    } finally {
+      setEmailSettingsBusy(false);
+    }
+  }
+
+  async function handleEditEmployeeEmail() {
+    if (
+      !agency?.id ||
+      !selectedOfficerId ||
+      !employeeWorkspace
+    ) {
+      return;
+    }
+
+    const currentOverride =
+      employeeWorkspace.officer.email_override || "";
+
+    const value = window.prompt(
+      "Employee email override. Leave blank to use the agency email convention:",
+      currentOverride
+    );
+
+    if (value === null) {
+      return;
+    }
+
+    setWorkspaceError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+          `/officers/${selectedOfficerId}/email`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email_override: value,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to update employee email."
+        );
+      }
+
+      await refreshEmployeeWorkspace();
+    } catch (err) {
+      setWorkspaceError(err.message);
+    }
+  }
+
+  async function handleEmailEmployee() {
+    if (
+      !agency?.id ||
+      !selectedOfficerId ||
+      !employeeWorkspace
+    ) {
+      return;
+    }
+
+    setWorkspaceError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+          `/officers/${selectedOfficerId}` +
+          `/compliance-email`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to prepare compliance email."
+        );
+      }
+
+      if (!data.can_email || !data.recipient) {
+        throw new Error(
+          "No employee email address is configured."
+        );
+      }
+
+      const mailto =
+        `mailto:${encodeURIComponent(data.recipient)}` +
+        `?subject=${encodeURIComponent(data.subject)}` +
+        `&body=${encodeURIComponent(data.body)}`;
+
+      window.location.href = mailto;
+    } catch (err) {
+      setWorkspaceError(err.message);
+    }
+  }
 
   async function handleImport(event) {
     event.preventDefault();
@@ -455,7 +1339,6 @@ function App() {
       setResult(data);
 
       await Promise.all([
-        loadOfficers(agency.id),
         loadDashboard(agency.id),
       ]);
     } catch (err) {
@@ -463,6 +1346,32 @@ function App() {
     } finally {
       setImporting(false);
     }
+  }
+
+  async function refreshEmployeeWorkspace() {
+    if (
+      !agency ||
+      !selectedOfficerId ||
+      !workspaceOpen
+    ) {
+      return;
+    }
+
+    const response = await fetch(
+      `/api/agencies/${agency.id}` +
+        `/officers/${selectedOfficerId}/workspace`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+          "Unable to refresh employee workspace."
+      );
+    }
+
+    setEmployeeWorkspace(data);
   }
 
   async function refreshAssignments() {
@@ -650,7 +1559,11 @@ function App() {
         );
       }
 
-      await refreshAssignments();
+      await Promise.all([
+        refreshAssignments(),
+        refreshEmployeeWorkspace(),
+        loadDashboard(agency.id),
+      ]);
     } catch (err) {
       setAssignmentError(err.message);
     } finally {
@@ -659,11 +1572,11 @@ function App() {
   }
 
   async function handleEnd(assignment) {
-    const endDate = window.prompt(
-      `End date for ${assignment.assignment_name} (YYYY-MM-DD):`
+    const inactiveDate = window.prompt(
+      `Date ${assignment.assignment_name} stops applying (YYYY-MM-DD):`
     );
 
-    if (!endDate) {
+    if (!inactiveDate) {
       return;
     }
 
@@ -681,7 +1594,7 @@ function App() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            end_date: endDate,
+            inactive_date: inactiveDate,
           }),
         }
       );
@@ -694,37 +1607,17 @@ function App() {
         );
       }
 
-      await refreshAssignments();
+      await Promise.all([
+        refreshAssignments(),
+        refreshEmployeeWorkspace(),
+        loadDashboard(agency.id),
+      ]);
     } catch (err) {
       setAssignmentError(err.message);
     } finally {
       setAssignmentBusy(false);
     }
   }
-
-  const primaryAssignmentTypes =
-    assignmentSummary?.assignment_types.filter((item) =>
-      [
-        "POLICE_CHIEF",
-        "SUPERVISOR",
-        "PUBLIC_INFORMATION_OFFICER",
-      ].includes(item.assignment_type)
-    ) || [];
-
-  const pioAssignment =
-    assignmentSummary?.assignment_types.find(
-      (item) =>
-        item.assignment_type ===
-        "PUBLIC_INFORMATION_OFFICER"
-    );
-
-  const activeTdemVerification =
-    credentialVerifications.find(
-      (item) =>
-        item.credential_type ===
-          "TDEM_PIO_CERTIFICATION" &&
-        item.active
-    );
 
   function getPeaceOfficerCertificateLevel(employee) {
     const certificate = employee.highest_certificate;
@@ -812,10 +1705,33 @@ function App() {
           <h1>Paradigm Training Manager</h1>
         </div>
 
-        <div className="version">v0.2.10</div>
+        <div className="version">v0.2.11</div>
       </header>
 
       <main className="page">
+        {workspaceOpen ? (
+          <EmployeeWorkspace
+            workspace={employeeWorkspace}
+            loading={loadingWorkspace}
+            error={workspaceError}
+            onBack={closeEmployeeWorkspace}
+            assignmentSummary={assignmentSummary}
+            assignmentBusy={assignmentBusy}
+            assignmentError={assignmentError}
+            credentialVerifications={
+              credentialVerifications
+            }
+            credentialBusy={credentialBusy}
+            credentialError={credentialError}
+            onActivateAssignment={handleActivate}
+            onEndAssignment={handleEnd}
+            onVerifyTdem={handleVerifyTdem}
+            onRevokeTdem={handleRevokeTdem}
+            onEditEmail={handleEditEmployeeEmail}
+            onEmailEmployee={handleEmailEmployee}
+          />
+        ) : (
+          <>
         <section className="dashboard-section">
           <div className="dashboard-heading">
             <div>
@@ -834,7 +1750,25 @@ function App() {
               </p>
             </div>
 
-            {dashboard && (
+            <div className="dashboard-header-actions">
+              <button
+                type="button"
+                className="agency-email-settings-button"
+                onClick={() => {
+                  setEmailSettingsError("");
+                  setEmailDomain(
+                    agency?.email_domain || ""
+                  );
+                  setEmailPattern(
+                    agency?.email_pattern || ""
+                  );
+                  setEmailSettingsOpen(true);
+                }}
+              >
+                Email Settings
+              </button>
+
+              {dashboard && (
               <div className="dashboard-period">
                 <span>
                   Training Unit{" "}
@@ -850,8 +1784,120 @@ function App() {
                   )}
                 </strong>
               </div>
-            )}
+              )}
+            </div>
           </div>
+
+          {emailSettingsOpen && (
+            <section className="agency-email-settings-panel">
+              <div className="agency-email-settings-heading">
+                <div>
+                  <h3>Agency Email Settings</h3>
+                  <p>
+                    Define the standard employee email
+                    convention for this agency.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="settings-close-button"
+                  aria-label="Close email settings"
+                  onClick={() =>
+                    setEmailSettingsOpen(false)
+                  }
+                >
+                  ×
+                </button>
+              </div>
+
+              {emailSettingsError && (
+                <div className="message error-message">
+                  {emailSettingsError}
+                </div>
+              )}
+
+              <form
+                className="agency-email-settings-form"
+                onSubmit={handleSaveEmailSettings}
+              >
+                <label>
+                  <span>Email Domain</span>
+                  <input
+                    type="text"
+                    value={emailDomain}
+                    placeholder="example.gov"
+                    onChange={(event) =>
+                      setEmailDomain(
+                        event.target.value
+                      )
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span>Email Format</span>
+                  <select
+                    value={emailPattern}
+                    onChange={(event) =>
+                      setEmailPattern(
+                        event.target.value
+                      )
+                    }
+                  >
+                    <option value="">
+                      Select email format
+                    </option>
+                    <option value="FIRST_INITIAL_LAST">
+                      First initial + last name
+                    </option>
+                    <option value="FIRST_DOT_LAST">
+                      First name . last name
+                    </option>
+                    <option value="FIRST_LAST">
+                      First name + last name
+                    </option>
+                    <option value="LAST_FIRST_INITIAL">
+                      Last name + first initial
+                    </option>
+                  </select>
+                </label>
+
+                <div className="agency-email-example">
+                  <span>Example</span>
+                  <strong>
+                    {buildEmailConventionExample(
+                      emailPattern,
+                      emailDomain
+                    )}
+                  </strong>
+                </div>
+
+                <div className="agency-email-settings-actions">
+                  <button
+                    type="button"
+                    className="settings-secondary-button"
+                    disabled={emailSettingsBusy}
+                    onClick={() =>
+                      setEmailSettingsOpen(false)
+                    }
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="settings-primary-button"
+                    disabled={emailSettingsBusy}
+                  >
+                    {emailSettingsBusy
+                      ? "Saving..."
+                      : "Save Email Settings"}
+                  </button>
+                </div>
+              </form>
+            </section>
+          )}
 
           {loadingDashboard && (
             <div className="dashboard-loading">
@@ -1019,6 +2065,7 @@ function App() {
                     <EmployeeComplianceCard
                       key={employee.id}
                       employee={employee}
+                      onOpen={openEmployeeWorkspace}
                     />
                   )
                 )}
@@ -1146,162 +2193,8 @@ function App() {
           </section>
         )}
 
-        <section className="assignments-panel">
-          <div className="section-heading">
-            <div>
-              <h2>Officer Assignments</h2>
-              <p>
-                Agency-managed assignments control additional
-                TCOLE compliance rules.
-              </p>
-            </div>
-          </div>
-
-          <div className="officer-selector">
-            <label htmlFor="officer-select">
-              Officer
-            </label>
-
-            <select
-              id="officer-select"
-              value={selectedOfficerId}
-              onChange={(event) =>
-                setSelectedOfficerId(event.target.value)
-              }
-            >
-              <option value="">
-                Select an officer
-              </option>
-
-              {officers.map((officer) => (
-                <option
-                  key={officer.id}
-                  value={officer.id}
-                >
-                  {officer.name} | PID {officer.tcole_pid}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {assignmentError && (
-            <div className="message error-message">
-              {assignmentError}
-            </div>
-          )}
-
-          {selectedOfficerId && loadingAssignments && (
-            <div className="assignment-loading">
-              Loading assignments...
-            </div>
-          )}
-
-          {selectedOfficerId &&
-            !loadingAssignments &&
-            assignmentSummary && (
-              <div className="assignment-list">
-                {primaryAssignmentTypes.map((assignment) => (
-                  <AssignmentRow
-                    key={assignment.assignment_type}
-                    assignment={assignment}
-                    onActivate={handleActivate}
-                    onEnd={handleEnd}
-                    busy={assignmentBusy}
-                  />
-                ))}
-              </div>
-            )}
-
-          {selectedOfficerId &&
-            pioAssignment?.active && (
-              <div className="credential-panel">
-                <div className="credential-heading">
-                  <div>
-                    <h3>TDEM PIO Certification</h3>
-                    <p>
-                      Agency verification of the separate TDEM
-                      certification requirement.
-                    </p>
-                  </div>
-
-                  <span
-                    className={
-                      activeTdemVerification
-                        ? "credential-status verified"
-                        : "credential-status unverified"
-                    }
-                  >
-                    {activeTdemVerification
-                      ? "Verified"
-                      : "Not Verified"}
-                  </span>
-                </div>
-
-                {credentialError && (
-                  <div className="message error-message">
-                    {credentialError}
-                  </div>
-                )}
-
-                {activeTdemVerification ? (
-                  <div className="credential-details">
-                    <div>
-                      <span>Effective Date</span>
-                      <strong>
-                        {activeTdemVerification.effective_date ||
-                          "Not recorded"}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>Verified By</span>
-                      <strong>
-                        {activeTdemVerification.verified_by ||
-                          "Not recorded"}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>Reference</span>
-                      <strong>
-                        {activeTdemVerification.reference ||
-                          "Not recorded"}
-                      </strong>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="credential-button revoke"
-                      disabled={credentialBusy}
-                      onClick={handleRevokeTdem}
-                    >
-                      {credentialBusy
-                        ? "Working..."
-                        : "Revoke Verification"}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="credential-unverified">
-                    <p>
-                      PTM has no active agency verification of this
-                      officer's TDEM PIO certification.
-                    </p>
-
-                    <button
-                      type="button"
-                      className="credential-button verify"
-                      disabled={credentialBusy}
-                      onClick={handleVerifyTdem}
-                    >
-                      {credentialBusy
-                        ? "Working..."
-                        : "Verify Certification"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-        </section>
+          </>
+        )}
       </main>
     </div>
   );

@@ -15,6 +15,8 @@ class Agency(db.Model):
     name = db.Column(db.String(200), nullable=False)
     tcole_agency_number = db.Column(db.String(50), nullable=True)
     ori = db.Column(db.String(50), nullable=True)
+    email_domain = db.Column(db.String(255), nullable=True)
+    email_pattern = db.Column(db.String(50), nullable=True)
     status = db.Column(db.String(20), nullable=False, default="active")
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = db.Column(
@@ -63,6 +65,7 @@ class Officer(db.Model):
     first_name = db.Column(db.String(100), nullable=False)
     middle_name = db.Column(db.String(100), nullable=True)
     last_name = db.Column(db.String(100), nullable=False)
+    email_override = db.Column(db.String(255), nullable=True)
     employment_status = db.Column(db.String(30), nullable=False, default="active")
     archived_at = db.Column(db.DateTime(timezone=True), nullable=True)
     archived_reason = db.Column(db.String(500), nullable=True)

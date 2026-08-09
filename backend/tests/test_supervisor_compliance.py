@@ -159,7 +159,7 @@ def test_3737_completed_before_appointment_counts(app):
         )
 
 
-def test_3737_too_early_does_not_count(app):
+def test_3737_prior_career_completion_counts(app):
     with app.app_context():
         agency, officer = make_supervisor(
             date(2026, 5, 1)
@@ -169,7 +169,7 @@ def test_3737_too_early_does_not_count(app):
             agency,
             officer,
             "3737",
-            date(2025, 4, 30),
+            date(2020, 4, 30),
         )
 
         db.session.commit()
@@ -179,11 +179,22 @@ def test_3737_too_early_does_not_count(app):
             evaluation_date=date(2026, 8, 8),
         )
 
+        first = result["first_time_supervisor"]
+
+        assert first["completed"] is True
         assert (
-            result[
-                "first_time_supervisor"
-            ]["completed"]
+            first["completion_timing"]
+            == "PRIOR_COMPLETION"
+        )
+        assert (
+            first["completed_within_window"]
             is False
+        )
+        assert first["repeat_required"] is False
+        assert not any(
+            item["type"]
+            == "NEW_SUPERVISOR_TRAINING"
+            for item in result["requirements"]
         )
 
 
@@ -421,4 +432,135 @@ def test_missing_hb33_reports_evidence_basis(app):
         assert (
             "Agency review recommended"
             in requirement["message"]
+        )
+
+
+def test_3737_late_completion_clears_active_deficiency(app):
+    with app.app_context():
+        agency, officer = make_supervisor(
+            date(2023, 1, 1)
+        )
+
+        add_course(
+            agency,
+            officer,
+            "3737",
+            date(2026, 1, 15),
+        )
+
+        add_course(
+            agency,
+            officer,
+            "3366",
+            date(2026, 3, 1),
+        )
+
+        db.session.commit()
+
+        result = evaluate_supervisor(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        first = result["first_time_supervisor"]
+
+        assert first["completed"] is True
+        assert (
+            first["completion_timing"]
+            == "LATE_COMPLETION"
+        )
+        assert (
+            first["completed_within_window"]
+            is False
+        )
+        assert first["repeat_required"] is False
+
+        assert not any(
+            item["type"]
+            == "NEW_SUPERVISOR_TRAINING"
+            for item in result["requirements"]
+        )
+
+        assert result["status"] == "COMPLIANT"
+
+
+def test_3737_within_window_records_timely_completion(app):
+    with app.app_context():
+        agency, officer = make_supervisor(
+            date(2026, 5, 1)
+        )
+
+        add_course(
+            agency,
+            officer,
+            "3737",
+            date(2026, 6, 1),
+        )
+
+        db.session.commit()
+
+        result = evaluate_supervisor(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        first = result["first_time_supervisor"]
+
+        assert first["completed"] is True
+        assert (
+            first["completion_timing"]
+            == "WITHIN_WINDOW"
+        )
+        assert (
+            first["completed_within_window"]
+            is True
+        )
+        assert first["repeat_required"] is False
+
+
+def test_prior_3737_satisfies_later_supervisor_assignment(app):
+    with app.app_context():
+        agency, officer = make_supervisor(
+            date(2026, 1, 1)
+        )
+
+        db.session.add(
+            OfficerAssignment(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                assignment_type="SUPERVISOR",
+                effective_date=date(2018, 6, 1),
+                end_date=date(2020, 6, 1),
+            )
+        )
+
+        add_course(
+            agency,
+            officer,
+            "3737",
+            date(2018, 8, 1),
+        )
+
+        db.session.commit()
+
+        result = evaluate_supervisor(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        first = result["first_time_supervisor"]
+
+        assert (
+            result[
+                "first_supervisor_appointment_date"
+            ]
+            == "2018-06-01"
+        )
+        assert first["completed"] is True
+        assert first["repeat_required"] is False
+
+        assert not any(
+            item["type"]
+            == "NEW_SUPERVISOR_TRAINING"
+            for item in result["requirements"]
         )

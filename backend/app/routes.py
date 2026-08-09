@@ -32,9 +32,16 @@ from app.compliance.supervisor import (
 from app.compliance.officer_profile import (
     evaluate_officer_compliance_profile,
 )
+from app.services.employee_workspace import (
+    get_employee_workspace,
+)
+from app.services.compliance_email import (
+    get_compliance_email,
+)
 from app.compliance.agency_dashboard import (
     evaluate_agency_compliance_dashboard,
 )
+from app.extensions import db
 from app.services.tcole_import import (
     TcoleImportError,
     get_import_summary,
@@ -54,6 +61,8 @@ def list_agencies():
             {
                 "id": str(agency.id),
                 "name": agency.name,
+                "email_domain": agency.email_domain,
+                "email_pattern": agency.email_pattern,
             }
             for agency in agencies
         ]
@@ -291,8 +300,8 @@ def end_officer_assignment(
             agency_id=agency_id,
             officer_id=officer_id,
             assignment_type=assignment_type,
-            end_date=payload.get(
-                "end_date"
+            inactive_date=payload.get(
+                "inactive_date"
             ),
         )
     except AssignmentError as exc:
@@ -498,6 +507,50 @@ def supervisor_compliance(
 @api.get(
     "/agencies/<uuid:agency_id>"
     "/officers/<uuid:officer_id>"
+    "/workspace"
+)
+def employee_workspace(
+    agency_id,
+    officer_id,
+):
+    result = get_employee_workspace(
+        agency_id,
+        officer_id,
+    )
+
+    if result is None:
+        return jsonify(
+            {"error": "Officer not found."}
+        ), 404
+
+    return jsonify(result), 200
+
+
+@api.get(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/compliance-email"
+)
+def officer_compliance_email(
+    agency_id,
+    officer_id,
+):
+    result = get_compliance_email(
+        agency_id,
+        officer_id,
+    )
+
+    if result is None:
+        return jsonify(
+            {"error": "Officer not found."}
+        ), 404
+
+    return jsonify(result), 200
+
+
+@api.get(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
     "/compliance/profile"
 )
 def officer_compliance_profile(
@@ -538,3 +591,131 @@ def agency_compliance_dashboard(
         ), 404
 
     return jsonify(result), 200
+
+
+@api.patch(
+    "/agencies/<uuid:agency_id>/email-configuration"
+)
+def update_agency_email_configuration(agency_id):
+    payload = request.get_json(silent=True) or {}
+
+    agency = db.session.get(Agency, agency_id)
+
+    if agency is None:
+        return jsonify(
+            {"error": "Agency not found."}
+        ), 404
+
+    supported_patterns = {
+        "FIRST_INITIAL_LAST",
+        "FIRST_DOT_LAST",
+        "FIRST_LAST",
+        "LAST_FIRST_INITIAL",
+    }
+
+    email_domain = payload.get("email_domain")
+    email_pattern = payload.get("email_pattern")
+
+    if email_domain is not None:
+        email_domain = email_domain.strip().lower()
+
+        if email_domain.startswith("@"):
+            email_domain = email_domain[1:]
+
+        if not email_domain:
+            email_domain = None
+
+        elif (
+            "@" in email_domain
+            or " " in email_domain
+            or "." not in email_domain
+        ):
+            return jsonify(
+                {
+                    "error":
+                        "Enter a valid email domain."
+                }
+            ), 400
+
+    if email_pattern is not None:
+        email_pattern = email_pattern.strip()
+
+        if not email_pattern:
+            email_pattern = None
+
+        elif email_pattern not in supported_patterns:
+            return jsonify(
+                {
+                    "error":
+                        "Unsupported email pattern."
+                }
+            ), 400
+
+    agency.email_domain = email_domain
+    agency.email_pattern = email_pattern
+
+    db.session.commit()
+
+    return jsonify(
+        {
+            "agency_id": str(agency.id),
+            "email_domain": agency.email_domain,
+            "email_pattern": agency.email_pattern,
+        }
+    ), 200
+
+
+@api.patch(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>/email"
+)
+def update_officer_email(agency_id, officer_id):
+    payload = request.get_json(silent=True) or {}
+
+    officer = Officer.query.filter_by(
+        id=officer_id,
+        agency_id=agency_id,
+    ).one_or_none()
+
+    if officer is None:
+        return jsonify(
+            {"error": "Officer not found."}
+        ), 404
+
+    email_override = payload.get("email_override")
+
+    if email_override is not None:
+        email_override = email_override.strip()
+
+        if not email_override:
+            email_override = None
+
+        elif (
+            "@" not in email_override
+            or email_override.startswith("@")
+            or email_override.endswith("@")
+            or " " in email_override
+        ):
+            return jsonify(
+                {
+                    "error":
+                        "Enter a valid email address."
+                }
+            ), 400
+
+    officer.email_override = email_override
+    db.session.commit()
+
+    from app.compliance.email_resolver import (
+        resolve_officer_email,
+    )
+
+    return jsonify(
+        {
+            "officer_id": str(officer.id),
+            "email_override":
+                officer.email_override,
+            "resolved_email":
+                resolve_officer_email(officer),
+        }
+    ), 200

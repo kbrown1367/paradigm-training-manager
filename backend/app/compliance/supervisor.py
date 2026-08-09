@@ -144,6 +144,12 @@ def evaluate_supervisor(
         ]["window_years_after"],
     )
 
+    # Course #3737 is a one-time, career-level requirement.
+    # Any documented completion in the officer's imported
+    # TCOLE training history satisfies the current requirement.
+    #
+    # The appointment window is retained separately so PTM can
+    # distinguish timely completion from prior or late completion.
     course_3737 = find_course(
         officer,
         {
@@ -151,12 +157,27 @@ def evaluate_supervisor(
                 "first_time_supervisor"
             ]["course_number"]
         },
-        start_date=first_window_start,
-        end_date=first_window_end,
     )
 
     first_time_complete = (
         course_3737 is not None
+    )
+
+    if course_3737 is None:
+        completion_timing = None
+    elif (
+        first_window_start
+        <= course_3737.course_date
+        <= first_window_end
+    ):
+        completion_timing = "WITHIN_WINDOW"
+    elif course_3737.course_date < first_window_start:
+        completion_timing = "PRIOR_COMPLETION"
+    else:
+        completion_timing = "LATE_COMPLETION"
+
+    completed_within_window = (
+        completion_timing == "WITHIN_WINDOW"
     )
 
     hb33_due = date.fromisoformat(
@@ -279,6 +300,10 @@ def evaluate_supervisor(
                 if course_3737
                 else None
             ),
+            "completion_timing": completion_timing,
+            "completed_within_window":
+                completed_within_window,
+            "repeat_required": False,
         },
         "hb33": {
             "due_date": hb33_due.isoformat(),
