@@ -18,6 +18,22 @@ REQUIRED_COLUMNS = {
 }
 
 
+SUPPORTED_LICENSES = {
+    "Peace Officer License": {
+        "kind": "PEACE_OFFICER",
+        "field": "peace_officer_service_start_date",
+    },
+    "Jailer License": {
+        "kind": "JAILER",
+        "field": "jailer_service_start_date",
+    },
+    "County Jailer License": {
+        "kind": "JAILER",
+        "field": "jailer_service_start_date",
+    },
+}
+
+
 class LicenseeSearchImportError(ValueError):
     pass
 
@@ -29,12 +45,16 @@ def _decode_csv(content):
     return content
 
 
-def _parse_date(value, row_number):
+def _parse_date(
+    value,
+    row_number,
+    record_name,
+):
     value = (value or "").strip()
 
     if not value:
         raise LicenseeSearchImportError(
-            f"Row {row_number}: Peace Officer License "
+            f"Row {row_number}: {record_name} "
             "record does not contain a RecordDate."
         )
 
@@ -78,13 +98,24 @@ def import_licensee_search(
         )
 
     rows_processed = 0
+    supported_license_rows = 0
+
     peace_officer_license_rows = 0
     service_dates_populated = 0
     service_dates_updated = 0
     service_dates_unchanged = 0
+
+    jailer_license_rows = 0
+    jailer_service_dates_populated = 0
+    jailer_service_dates_updated = 0
+    jailer_service_dates_unchanged = 0
+
     unmatched_license_rows = 0
 
-    seen_pids = set()
+    # Keyed by logical license kind plus PID so aliases such
+    # as Jailer License / County Jailer License cannot create
+    # duplicate service-date records for one employee.
+    seen_license_records = set()
 
     for row_number, row in enumerate(
         reader,
@@ -100,14 +131,25 @@ def import_licensee_search(
             row.get("RecordName") or ""
         ).strip()
 
-        if (
-            record_desc != "License"
-            or record_name
-            != "Peace Officer License"
-        ):
+        if record_desc != "License":
             continue
 
-        peace_officer_license_rows += 1
+        license_definition = (
+            SUPPORTED_LICENSES.get(record_name)
+        )
+
+        if license_definition is None:
+            continue
+
+        supported_license_rows += 1
+
+        license_kind = license_definition["kind"]
+        field_name = license_definition["field"]
+
+        if license_kind == "PEACE_OFFICER":
+            peace_officer_license_rows += 1
+        elif license_kind == "JAILER":
+            jailer_license_rows += 1
 
         tcole_pid = (
             row.get("P_ID") or ""
@@ -115,22 +157,29 @@ def import_licensee_search(
 
         if not tcole_pid:
             raise LicenseeSearchImportError(
-                f"Row {row_number}: Peace Officer "
-                "License record has no P_ID."
+                f"Row {row_number}: {record_name} "
+                "record has no P_ID."
             )
 
-        if tcole_pid in seen_pids:
+        seen_key = (
+            license_kind,
+            tcole_pid,
+        )
+
+        if seen_key in seen_license_records:
             raise LicenseeSearchImportError(
                 "Department Licensee Search Report "
-                "contains more than one Peace Officer "
-                f"License record for P_ID {tcole_pid}."
+                "contains more than one "
+                f"{license_kind.replace('_', ' ').title()} "
+                f"license record for P_ID {tcole_pid}."
             )
 
-        seen_pids.add(tcole_pid)
+        seen_license_records.add(seen_key)
 
         license_date = _parse_date(
             row.get("RecordDate"),
             row_number,
+            record_name,
         )
 
         officer = Officer.query.filter_by(
@@ -142,31 +191,47 @@ def import_licensee_search(
             unmatched_license_rows += 1
             continue
 
-        existing_date = (
-            officer.peace_officer_service_start_date
+        existing_date = getattr(
+            officer,
+            field_name,
         )
 
         if existing_date is None:
-            officer.peace_officer_service_start_date = (
-                license_date
+            setattr(
+                officer,
+                field_name,
+                license_date,
             )
-            service_dates_populated += 1
+
+            if license_kind == "PEACE_OFFICER":
+                service_dates_populated += 1
+            else:
+                jailer_service_dates_populated += 1
 
         elif existing_date == license_date:
-            service_dates_unchanged += 1
+            if license_kind == "PEACE_OFFICER":
+                service_dates_unchanged += 1
+            else:
+                jailer_service_dates_unchanged += 1
 
         else:
-            # TCOLE is authoritative for this field.
-            officer.peace_officer_service_start_date = (
-                license_date
+            # TCOLE is authoritative for imported
+            # license/service dates.
+            setattr(
+                officer,
+                field_name,
+                license_date,
             )
-            service_dates_updated += 1
 
-    if peace_officer_license_rows == 0:
+            if license_kind == "PEACE_OFFICER":
+                service_dates_updated += 1
+            else:
+                jailer_service_dates_updated += 1
+
+    if supported_license_rows == 0:
         raise LicenseeSearchImportError(
-            "No Peace Officer License records were "
-            "found in the Department Licensee Search "
-            "Report."
+            "No supported license records were found "
+            "in the Department Licensee Search Report."
         )
 
     if commit:
@@ -174,6 +239,8 @@ def import_licensee_search(
 
     return {
         "rows_processed": rows_processed,
+        "supported_license_rows":
+            supported_license_rows,
         "peace_officer_license_rows":
             peace_officer_license_rows,
         "service_dates_populated":
@@ -182,6 +249,14 @@ def import_licensee_search(
             service_dates_updated,
         "service_dates_unchanged":
             service_dates_unchanged,
+        "jailer_license_rows":
+            jailer_license_rows,
+        "jailer_service_dates_populated":
+            jailer_service_dates_populated,
+        "jailer_service_dates_updated":
+            jailer_service_dates_updated,
+        "jailer_service_dates_unchanged":
+            jailer_service_dates_unchanged,
         "unmatched_license_rows":
             unmatched_license_rows,
     }

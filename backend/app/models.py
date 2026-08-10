@@ -70,6 +70,10 @@ class Officer(db.Model):
         db.Date,
         nullable=True,
     )
+    jailer_service_start_date = db.Column(
+        db.Date,
+        nullable=True,
+    )
     verified_military_months = db.Column(
         db.Integer,
         nullable=False,
@@ -300,6 +304,26 @@ class ImportJob(db.Model):
         default=0,
     )
     peace_officer_license_rows = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
+    jailer_license_rows = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
+    jailer_service_dates_populated = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
+    jailer_service_dates_updated = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
+    jailer_service_dates_unchanged = db.Column(
         db.Integer,
         nullable=False,
         default=0,

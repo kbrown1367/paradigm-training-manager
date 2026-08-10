@@ -31,6 +31,14 @@ def serialize_import_job(job):
             job.licensee_search_rows_processed,
         "peace_officer_license_rows":
             job.peace_officer_license_rows,
+        "jailer_license_rows":
+            job.jailer_license_rows,
+        "jailer_service_dates_populated":
+            job.jailer_service_dates_populated,
+        "jailer_service_dates_updated":
+            job.jailer_service_dates_updated,
+        "jailer_service_dates_unchanged":
+            job.jailer_service_dates_unchanged,
         "service_dates_populated":
             job.service_dates_populated,
         "service_dates_updated":
@@ -178,6 +186,30 @@ def run_tcole_import(
         job.peace_officer_license_rows = (
             licensee_search_result[
                 "peace_officer_license_rows"
+            ]
+        )
+
+        job.jailer_license_rows = (
+            licensee_search_result[
+                "jailer_license_rows"
+            ]
+        )
+
+        job.jailer_service_dates_populated = (
+            licensee_search_result[
+                "jailer_service_dates_populated"
+            ]
+        )
+
+        job.jailer_service_dates_updated = (
+            licensee_search_result[
+                "jailer_service_dates_updated"
+            ]
+        )
+
+        job.jailer_service_dates_unchanged = (
+            licensee_search_result[
+                "jailer_service_dates_unchanged"
             ]
         )
 

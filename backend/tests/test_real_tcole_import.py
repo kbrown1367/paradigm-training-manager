@@ -87,6 +87,12 @@ def test_real_tcole_files_import_end_to_end(app):
         assert job.service_dates_populated == 41
         assert job.service_dates_updated == 0
         assert job.service_dates_unchanged == 0
+
+        assert job.jailer_license_rows == 5
+        assert job.jailer_service_dates_populated == 5
+        assert job.jailer_service_dates_updated == 0
+        assert job.jailer_service_dates_unchanged == 0
+
         assert job.unmatched_license_rows == 0
 
         officers_with_service_dates = Officer.query.filter(
@@ -94,6 +100,21 @@ def test_real_tcole_files_import_end_to_end(app):
         ).count()
 
         assert officers_with_service_dates == 41
+
+        jailers_with_service_dates = Officer.query.filter(
+            Officer.jailer_service_start_date.isnot(None)
+        ).count()
+
+        assert jailers_with_service_dates == 5
+
+        battice = Officer.query.filter_by(
+            tcole_pid="478578"
+        ).one()
+
+        assert (
+            battice.jailer_service_start_date.isoformat()
+            == "2020-01-30"
+        )
 
         print()
         print("REAL TCOLE FOUR-FILE IMPORT SUMMARY")
@@ -113,8 +134,16 @@ def test_real_tcole_files_import_end_to_end(app):
             f"{job.peace_officer_license_rows}"
         )
         print(
-            "Service dates populated: "
+            "Peace Officer service dates populated: "
             f"{job.service_dates_populated}"
+        )
+        print(
+            "Jailer License rows: "
+            f"{job.jailer_license_rows}"
+        )
+        print(
+            "Jailer service dates populated: "
+            f"{job.jailer_service_dates_populated}"
         )
         print(
             "Service dates updated: "
