@@ -132,6 +132,7 @@ def test_profile_includes_all_four_components(app):
 
         assert set(result["components"]) == {
             "PEACE_OFFICER",
+            "COUNTY_JAILER",
             "POLICE_CHIEF",
             "SUPERVISOR",
             "PUBLIC_INFORMATION_OFFICER",
@@ -454,3 +455,157 @@ def test_employee_with_no_applicable_engine_is_not_evaluated(app):
             coverage["applicable_components"]
             == []
         )
+
+
+def test_county_jailer_component_is_not_applicable_without_license(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_peace_officer()
+
+        result = evaluate_officer_compliance_profile(
+            officer,
+            evaluation_date=date(2026, 8, 10),
+        )
+
+        component = result["components"]["COUNTY_JAILER"]
+
+        assert component["applicable"] is False
+        assert component["status"] == "NOT_APPLICABLE"
+
+        assert (
+            "COUNTY_JAILER"
+            not in result[
+                "evaluation_coverage"
+            ]["applicable_components"]
+        )
+
+
+def test_county_jailer_component_is_evaluated_with_license(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_peace_officer()
+
+        db.session.add(
+            OfficerAward(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                award_type="License",
+                award_name="Jailer License",
+                award_date=date(2025, 1, 1),
+            )
+        )
+
+        db.session.commit()
+
+        result = evaluate_officer_compliance_profile(
+            officer,
+            evaluation_date=date(2026, 8, 10),
+        )
+
+        component = result["components"]["COUNTY_JAILER"]
+
+        assert component["applicable"] is True
+        assert component["status"] == "DUE"
+        assert component["raw_status"] == "OUTSTANDING"
+
+        assert (
+            "COUNTY_JAILER"
+            in result[
+                "evaluation_coverage"
+            ]["applicable_components"]
+        )
+
+        course_numbers = {
+            item["course_number"]
+            for item in component["requirements"]
+        }
+
+        assert course_numbers == {"4902", "3939"}
+
+
+def test_dual_license_employee_evaluates_both_license_components(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_peace_officer()
+
+        db.session.add(
+            OfficerAward(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                award_type="License",
+                award_name="Jailer License",
+                award_date=date(2025, 1, 1),
+            )
+        )
+
+        db.session.commit()
+
+        result = evaluate_officer_compliance_profile(
+            officer,
+            evaluation_date=date(2026, 8, 10),
+        )
+
+        applicable = set(
+            result[
+                "evaluation_coverage"
+            ]["applicable_components"]
+        )
+
+        assert "PEACE_OFFICER" in applicable
+        assert "COUNTY_JAILER" in applicable
+
+        assert (
+            result["components"]["PEACE_OFFICER"][
+                "applicable"
+            ]
+            is True
+        )
+
+        assert (
+            result["components"]["COUNTY_JAILER"][
+                "applicable"
+            ]
+            is True
+        )
+
+
+def test_jailer_deficiencies_roll_into_unified_requirements(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_peace_officer()
+
+        db.session.add(
+            OfficerAward(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                award_type="License",
+                award_name="Jailer License",
+                award_date=date(2025, 1, 1),
+            )
+        )
+
+        db.session.commit()
+
+        result = evaluate_officer_compliance_profile(
+            officer,
+            evaluation_date=date(2026, 8, 10),
+        )
+
+        jailer_requirements = [
+            item
+            for item in result["requirements"]
+            if item["source_component"]
+            == "COUNTY_JAILER"
+        ]
+
+        course_numbers = {
+            item["course_number"]
+            for item in jailer_requirements
+        }
+
+        assert course_numbers == {"4902", "3939"}
+        assert result["overall_status"] == "DUE"

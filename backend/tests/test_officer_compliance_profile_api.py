@@ -80,6 +80,7 @@ def test_officer_compliance_profile_endpoint(app):
     assert "components" in data
     assert set(data["components"]) == {
         "PEACE_OFFICER",
+        "COUNTY_JAILER",
         "POLICE_CHIEF",
         "SUPERVISOR",
         "PUBLIC_INFORMATION_OFFICER",

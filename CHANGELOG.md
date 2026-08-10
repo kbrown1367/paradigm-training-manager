@@ -2,6 +2,25 @@
 
 All notable PTM releases are documented here.
 
+## v0.2.13 - 2026-08-10
+
+### County Jailer Compliance
+- Added County Jailer legislative compliance evaluation.
+- Added current-unit evaluation for Interacting with Veterans in a Jail Setting (#4902).
+- Added current-cycle evaluation for Cultural Diversity (#3939).
+- Added agency-verified Jailer Cultural Diversity exemption handling.
+- Added safe migration support for the new exemption fact with existing employees defaulting to false.
+- Added dynamic TCOLE unit and cycle handling for County Jailer requirements.
+- Added automatic reset of unit-based requirements across unit boundaries.
+- Added automatic reset of cycle-based requirements across four-year cycle boundaries.
+- Added County Jailer as a first-class component in the unified employee compliance profile.
+- Added support for employees holding both Peace Officer and County Jailer licenses without cross-license interference.
+
+### Validation
+- Added County Jailer compliance regression tests.
+- Added unified profile tests for County Jailer and dual-license employees.
+- Full backend test suite passed with 256 tests.
+
 ## v0.2.12 - 2026-08-10
 
 ### Peace Officer Proficiency Certification

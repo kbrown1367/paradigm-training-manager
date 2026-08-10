@@ -135,3 +135,70 @@ def test_qualification_facts_are_tenant_scoped(
     )
 
     assert response.status_code == 404
+
+
+
+def test_jailer_cultural_diversity_exemption_defaults_false(
+    app,
+):
+    with app.app_context():
+        _, officer = make_officer()
+
+        assert (
+            officer
+            .verified_jailer_cultural_diversity_exemption
+            is False
+        )
+
+
+def test_update_jailer_cultural_diversity_exemption(
+    app,
+    client,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+        agency_id = str(agency.id)
+        officer_id = str(officer.id)
+
+    response = client.patch(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/qualification-facts",
+        json={
+            "verified_jailer_cultural_diversity_exemption":
+                True
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert (
+        data[
+            "verified_jailer_cultural_diversity_exemption"
+        ]
+        is True
+    )
+
+
+def test_invalid_jailer_exemption_rejected(
+    app,
+    client,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+        agency_id = str(agency.id)
+        officer_id = str(officer.id)
+
+    response = client.patch(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/qualification-facts",
+        json={
+            "verified_jailer_cultural_diversity_exemption":
+                "yes"
+        },
+    )
+
+    assert response.status_code == 400

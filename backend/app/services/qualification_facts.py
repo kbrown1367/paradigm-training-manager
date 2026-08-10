@@ -21,6 +21,8 @@ def _serialize(officer):
             officer.verified_education_level,
         "verified_military_months":
             officer.verified_military_months,
+        "verified_jailer_cultural_diversity_exemption":
+            officer.verified_jailer_cultural_diversity_exemption,
     }
 
 
@@ -47,6 +49,8 @@ def update_qualification_facts(
     verified_military_months=None,
     education_supplied=False,
     military_supplied=False,
+    verified_jailer_cultural_diversity_exemption=None,
+    jailer_exemption_supplied=False,
 ):
     officer = Officer.query.filter_by(
         id=officer_id,
@@ -101,6 +105,21 @@ def update_qualification_facts(
             )
 
         officer.verified_military_months = months
+
+    if jailer_exemption_supplied:
+        exemption = (
+            verified_jailer_cultural_diversity_exemption
+        )
+
+        if not isinstance(exemption, bool):
+            raise QualificationFactsError(
+                "verified_jailer_cultural_diversity_exemption "
+                "must be true or false."
+            )
+
+        officer.verified_jailer_cultural_diversity_exemption = (
+            exemption
+        )
 
     db.session.commit()
 

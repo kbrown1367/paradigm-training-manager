@@ -79,6 +79,11 @@ class Officer(db.Model):
         db.String(30),
         nullable=True,
     )
+    verified_jailer_cultural_diversity_exemption = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=False,
+    )
     employment_status = db.Column(db.String(30), nullable=False, default="active")
     archived_at = db.Column(db.DateTime(timezone=True), nullable=True)
     archived_reason = db.Column(db.String(500), nullable=True)

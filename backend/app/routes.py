@@ -573,6 +573,15 @@ def update_officer_qualification_facts(
             military_supplied=(
                 "verified_military_months" in payload
             ),
+            verified_jailer_cultural_diversity_exemption=(
+                payload.get(
+                    "verified_jailer_cultural_diversity_exemption"
+                )
+            ),
+            jailer_exemption_supplied=(
+                "verified_jailer_cultural_diversity_exemption"
+                in payload
+            ),
         )
     except QualificationFactsError as exc:
         return jsonify(

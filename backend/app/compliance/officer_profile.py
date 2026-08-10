@@ -3,6 +3,10 @@ from datetime import date
 from app.compliance.credentials import (
     get_highest_peace_officer_certificate,
 )
+from app.compliance.county_jailer import (
+    evaluate_county_jailer,
+    has_county_jailer_license,
+)
 from app.compliance.peace_officer_unit import (
     evaluate_peace_officer_unit,
     has_peace_officer_license,
@@ -21,6 +25,7 @@ from app.compliance.supervisor import (
 def _raw_component_status(component_name, result):
     status_fields = {
         "PEACE_OFFICER": "unit_status",
+        "COUNTY_JAILER": "status",
         "POLICE_CHIEF": "chief_status",
         "SUPERVISOR": "status",
         "PUBLIC_INFORMATION_OFFICER": "status",
@@ -174,6 +179,19 @@ def evaluate_officer_compliance_profile(
             "deficiencies": [],
         }
 
+    if has_county_jailer_license(officer):
+        county_jailer = evaluate_county_jailer(
+            officer,
+            evaluation_date=evaluation_date,
+        )
+    else:
+        county_jailer = {
+            "applicable": False,
+            "status": "NOT_APPLICABLE",
+            "requirements": [],
+            "deficiencies": [],
+        }
+
     police_chief = evaluate_police_chief(
         officer,
         evaluation_date=evaluation_date,
@@ -193,6 +211,10 @@ def evaluate_officer_compliance_profile(
         _normalize_component(
             "PEACE_OFFICER",
             peace_officer,
+        ),
+        _normalize_component(
+            "COUNTY_JAILER",
+            county_jailer,
         ),
         _normalize_component(
             "POLICE_CHIEF",

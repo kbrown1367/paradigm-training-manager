@@ -1,0 +1,19 @@
+{
+  "rule_set_id": "JAILER-COMPLIANCE",
+  "version": "1.1",
+  "license_type": "County Jailer",
+  "evaluation_window": "CURRENT_TCOLE_CYCLE_AND_UNIT",
+  "unit_requirements": [
+    {
+      "course_number": "4902",
+      "name": "Interacting with Veterans in a Jail Setting"
+    }
+  ],
+  "cycle_requirements": [
+    {
+      "course_number": "3939",
+      "name": "Cultural Diversity",
+      "exemption_fact": "verified_jailer_cultural_diversity_exemption"
+    }
+  ]
+}
