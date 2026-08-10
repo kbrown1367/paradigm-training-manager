@@ -72,6 +72,11 @@ class Officer(db.Model):
     )
     verified_military_months = db.Column(
         db.Integer,
+        nullable=False,
+        default=0,
+    )
+    verified_education_level = db.Column(
+        db.String(30),
         nullable=True,
     )
     employment_status = db.Column(db.String(30), nullable=False, default="active")

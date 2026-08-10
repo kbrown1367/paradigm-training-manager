@@ -319,6 +319,607 @@ function RequirementList({
   );
 }
 
+function formatProficiencyStatus(status) {
+  const labels = {
+    ELIGIBLE: "Eligible",
+    NOT_ELIGIBLE: "Not Yet Eligible",
+    PENDING_COURSE_EVALUATION: "Course Review Needed",
+    INSUFFICIENT_DATA: "Insufficient Data",
+    NOT_APPLICABLE: "Not Applicable",
+    TERMINAL: "Highest Certificate Achieved",
+  };
+
+  return (
+    labels[status] ||
+    status?.replaceAll("_", " ").toLowerCase() ||
+    "Unknown"
+  );
+}
+
+function formatProficiencyPathway(pathway) {
+  if (!pathway) {
+    return null;
+  }
+
+  const labels = {
+    SERVICE: "Service",
+    SERVICE_TRAINING: "Service + Training",
+    EDUCATION: "Education",
+    MILITARY: "Military Service",
+  };
+
+  return labels[pathway.type] || pathway.type;
+}
+
+function ProficiencyAdvancementPanel({ advancement }) {
+  if (!advancement) {
+    return null;
+  }
+
+  const status = advancement.status;
+  const pathway = formatProficiencyPathway(
+    advancement.qualifying_pathway
+  );
+
+  const bestPathway =
+    advancement.best_available_pathway;
+
+  const displayPathway =
+    advancement.qualifying_pathway || bestPathway;
+
+  const displayPathwayLabel =
+    formatProficiencyPathway(displayPathway);
+
+  const serviceRequirement =
+    displayPathway?.type === "SERVICE_TRAINING"
+      ? displayPathway.service_years
+      : null;
+
+  const trainingRequirement =
+    displayPathway?.type === "SERVICE_TRAINING"
+      ? displayPathway.training_hours
+      : null;
+
+  const serviceShort =
+    bestPathway?.type === "SERVICE_TRAINING"
+      ? Number(bestPathway.service_years_short || 0)
+      : 0;
+
+  const trainingShort =
+    bestPathway?.type === "SERVICE_TRAINING"
+      ? Number(bestPathway.training_hours_short || 0)
+      : 0;
+
+  if (status === "NOT_APPLICABLE") {
+    return (
+      <section className="workspace-panel proficiency-preview">
+        <div className="workspace-panel-heading">
+          <h3>Next Proficiency Certificate</h3>
+        </div>
+
+        <div className="workspace-empty">
+          Peace Officer proficiency certification does not
+          apply to this employee.
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="workspace-panel proficiency-preview">
+      <div className="workspace-panel-heading">
+        <div>
+          <h3>Next Proficiency Certificate</h3>
+          <p>
+            TCOLE proficiency advancement based on currently
+            available agency records.
+          </p>
+        </div>
+
+        <span
+          className={`proficiency-status ${status || ""}`}
+        >
+          {formatProficiencyStatus(status)}
+        </span>
+      </div>
+
+      <div className="proficiency-certificate-row">
+        <div>
+          <span>Current Certificate</span>
+          <strong>
+            {advancement.current_certificate ||
+              "No proficiency certificate"}
+          </strong>
+        </div>
+
+        <div className="proficiency-arrow">→</div>
+
+        <div>
+          <span>Next Certificate</span>
+          <strong>
+            {advancement.next_certificate ||
+              "No higher certificate"}
+          </strong>
+        </div>
+      </div>
+
+      <div className="proficiency-facts">
+        <div
+          className={
+            serviceShort > 0
+              ? "proficiency-fact deficient"
+              : serviceRequirement != null
+                ? "proficiency-fact satisfied"
+                : "proficiency-fact"
+          }
+        >
+          <span>Peace Officer Service</span>
+
+          <strong>
+            {advancement.service_years != null
+              ? serviceRequirement != null
+                ? `${advancement.service_years} / ${serviceRequirement} years required`
+                : `${advancement.service_years} years`
+              : "Not available"}
+          </strong>
+
+          {serviceRequirement != null && (
+            <small>
+              {serviceShort > 0
+                ? `${serviceShort} ${
+                    serviceShort === 1
+                      ? "year"
+                      : "years"
+                  } short`
+                : "✓ Service requirement met"}
+            </small>
+          )}
+        </div>
+
+        <div
+          className={
+            trainingShort > 0
+              ? "proficiency-fact deficient"
+              : trainingRequirement != null
+                ? "proficiency-fact satisfied"
+                : "proficiency-fact"
+          }
+        >
+          <span>TCOLE Training Hours</span>
+
+          <strong>
+            {advancement.training_hours != null
+              ? trainingRequirement != null
+                ? `${Number(
+                    advancement.training_hours
+                  ).toLocaleString()} / ${Number(
+                    trainingRequirement
+                  ).toLocaleString()} required`
+                : Number(
+                    advancement.training_hours
+                  ).toLocaleString()
+              : "Not available"}
+          </strong>
+
+          {trainingRequirement != null && (
+            <small>
+              {trainingShort > 0
+                ? `${trainingShort.toLocaleString()} hours short`
+                : "✓ Training requirement met"}
+            </small>
+          )}
+        </div>
+
+        <div className="proficiency-fact">
+          <span>Education</span>
+          <strong>
+            {advancement.education_level ||
+              "Not reported"}
+          </strong>
+        </div>
+
+        <div
+          className={
+            status === "NOT_ELIGIBLE" &&
+            !advancement.qualifying_pathway &&
+            displayPathway
+              ? "proficiency-fact deficient"
+              : "proficiency-fact"
+          }
+        >
+          <span>Qualifying Pathway</span>
+
+          <strong>
+            {status === "TERMINAL"
+              ? "Complete"
+              : displayPathwayLabel ||
+                pathway ||
+                "Not yet established"}
+          </strong>
+
+          {status === "NOT_ELIGIBLE" &&
+            !advancement.qualifying_pathway &&
+            displayPathway && (
+              <small>
+                Requirements not yet met
+              </small>
+            )}
+        </div>
+      </div>
+
+      {advancement.course_requirements?.length > 0 && (
+        <div className="proficiency-section">
+          <strong>Required Proficiency Courses</strong>
+
+          <div className="proficiency-requirements">
+            {advancement.course_requirements.map(
+              (requirement, index) => (
+                <div
+                  className="proficiency-requirement"
+                  key={
+                    requirement.course_number ||
+                    requirement.label ||
+                    index
+                  }
+                >
+                  <div className="proficiency-course-info">
+                    <strong>
+                      {requirement.label ||
+                        requirement.course_name ||
+                        requirement.course_number ||
+                        "Required course"}
+                    </strong>
+
+                    {requirement.accepted_courses?.length > 0 && (
+                      <span className="proficiency-course-number">
+                        {requirement.accepted_courses.length === 1
+                          ? `Required: TCOLE Course #${requirement.accepted_courses[0]}`
+                          : `Accepted: ${requirement.accepted_courses
+                              .map((course) => `#${course}`)
+                              .join(" or ")}`}
+                      </span>
+                    )}
+
+                    {requirement.status === "MET" &&
+                      requirement.satisfied_by?.courses?.length > 0 && (
+                        <span className="proficiency-course-match">
+                          Satisfied by:{" "}
+                          {requirement.satisfied_by.courses
+                            .map(
+                              (course) =>
+                                `TCOLE Course #${course.course_number}`
+                            )
+                            .join(" + ")}
+                        </span>
+                      )}
+                  </div>
+
+                  <span
+                    className={
+                      "proficiency-course-status " +
+                      (requirement.status === "MET"
+                        ? "completed"
+                        : requirement.status === "NOT_APPLICABLE"
+                          ? "not-applicable"
+                          : requirement.status ===
+                              "INSUFFICIENT_DATA"
+                            ? "insufficient"
+                            : "missing")
+                    }
+                  >
+                    {requirement.status === "MET"
+                      ? "Completed"
+                      : requirement.status === "NOT_APPLICABLE"
+                        ? "Not Applicable"
+                        : requirement.status ===
+                            "INSUFFICIENT_DATA"
+                          ? "Needs Information"
+                          : "Missing"}
+                  </span>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      )}
+
+
+
+      {advancement.insufficient_data_requirements?.length >
+        0 && (
+        <div className="proficiency-section">
+          <strong>Additional Information Needed</strong>
+
+          <ul className="proficiency-missing-list">
+            {advancement.insufficient_data_requirements.map(
+              (requirement, index) => (
+                <li key={index}>{requirement}</li>
+              )
+            )}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function formatEducationLevel(level) {
+  const labels = {
+    ASSOCIATE: "Associate Degree",
+    BACHELOR: "Bachelor's Degree",
+    MASTER: "Master's Degree",
+    DOCTORATE: "Doctorate",
+  };
+
+  return labels[level] || "Not reported";
+}
+
+function QualificationInformationPanel({
+  facts,
+  advancement,
+  busy,
+  error,
+  onSave,
+}) {
+  const [education, setEducation] = useState("");
+  const [militaryEnabled, setMilitaryEnabled] =
+    useState(false);
+  const [militaryYears, setMilitaryYears] =
+    useState("0");
+  const [militaryMonths, setMilitaryMonths] =
+    useState("0");
+
+  useEffect(() => {
+    if (!facts) {
+      return;
+    }
+
+    setEducation(
+      facts.verified_education_level || ""
+    );
+
+    const totalMonths = Number(
+      facts.verified_military_months || 0
+    );
+
+    setMilitaryEnabled(totalMonths > 0);
+    setMilitaryYears(
+      String(Math.floor(totalMonths / 12))
+    );
+    setMilitaryMonths(
+      String(totalMonths % 12)
+    );
+  }, [
+    facts?.officer_id,
+    facts?.verified_education_level,
+    facts?.verified_military_months,
+  ]);
+
+  if (!facts) {
+    return (
+      <section className="workspace-panel">
+        <div className="workspace-panel-heading">
+          <div>
+            <h3>Qualification Information</h3>
+            <p>
+              Supplemental information used for TCOLE
+              proficiency advancement.
+            </p>
+          </div>
+        </div>
+
+        <div className="workspace-empty">
+          Loading qualification information...
+        </div>
+      </section>
+    );
+  }
+
+  const effectiveEducation =
+    advancement?.education_level || null;
+
+  const totalMilitaryMonths =
+    militaryEnabled
+      ? Math.max(
+          0,
+          Number.parseInt(
+            militaryYears || "0",
+            10
+          ) || 0
+        ) *
+          12 +
+        Math.max(
+          0,
+          Math.min(
+            11,
+            Number.parseInt(
+              militaryMonths || "0",
+              10
+            ) || 0
+          )
+        )
+      : 0;
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    await onSave({
+      verified_education_level:
+        education || null,
+      verified_military_months:
+        totalMilitaryMonths,
+    });
+  }
+
+  return (
+    <section className="workspace-panel qualification-panel">
+      <div className="workspace-panel-heading">
+        <div>
+          <h3>Qualification Information</h3>
+          <p>
+            Agency-managed facts used when evaluating
+            alternate TCOLE proficiency pathways.
+          </p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="message error-message">
+          {error}
+        </div>
+      )}
+
+      <form
+        className="qualification-form"
+        onSubmit={handleSubmit}
+      >
+        <div className="qualification-block">
+          <div className="qualification-heading">
+            <div>
+              <strong>Education</strong>
+              <span>
+                TCOLE-reported education takes precedence.
+                The agency value below is used only as a
+                fallback when TCOLE does not report one.
+              </span>
+            </div>
+
+            <div className="qualification-effective">
+              <span>Effective Education</span>
+              <strong>
+                {formatEducationLevel(
+                  effectiveEducation
+                )}
+              </strong>
+            </div>
+          </div>
+
+          <label className="qualification-field">
+            <span>Agency-Verified Education</span>
+
+            <select
+              value={education}
+              disabled={busy}
+              onChange={(event) =>
+                setEducation(event.target.value)
+              }
+            >
+              <option value="">
+                Not reported
+              </option>
+              <option value="ASSOCIATE">
+                Associate Degree
+              </option>
+              <option value="BACHELOR">
+                Bachelor's Degree
+              </option>
+              <option value="MASTER">
+                Master's Degree
+              </option>
+              <option value="DOCTORATE">
+                Doctorate
+              </option>
+            </select>
+          </label>
+        </div>
+
+        <div className="qualification-block">
+          <div className="qualification-heading">
+            <div>
+              <strong>
+                Qualifying Military Service
+              </strong>
+              <span>
+                Defaults to no qualifying military
+                service. Turn this on only when military
+                service applies to the officer.
+              </span>
+            </div>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={militaryEnabled}
+              className={
+                "assignment-toggle" +
+                (militaryEnabled
+                  ? " active"
+                  : "")
+              }
+              disabled={busy}
+              onClick={() => {
+                setMilitaryEnabled(
+                  (current) => !current
+                );
+              }}
+            >
+              <span className="assignment-toggle-knob" />
+              <span className="assignment-toggle-label">
+                {militaryEnabled ? "On" : "Off"}
+              </span>
+            </button>
+          </div>
+
+          {militaryEnabled && (
+            <div className="military-duration">
+              <label className="qualification-field">
+                <span>Years</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={militaryYears}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setMilitaryYears(
+                      event.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label className="qualification-field">
+                <span>Additional Months</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="11"
+                  step="1"
+                  value={militaryMonths}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setMilitaryMonths(
+                      event.target.value
+                    )
+                  }
+                />
+              </label>
+            </div>
+          )}
+
+          {!militaryEnabled && (
+            <div className="qualification-no-military">
+              No qualifying military service recorded.
+            </div>
+          )}
+        </div>
+
+        <div className="qualification-actions">
+          <button
+            type="submit"
+            className="credential-button verify"
+            disabled={busy}
+          >
+            {busy
+              ? "Saving..."
+              : "Save Qualification Information"}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
 function EmployeeWorkspace({
   workspace,
   loading,
@@ -330,6 +931,10 @@ function EmployeeWorkspace({
   credentialVerifications,
   credentialBusy,
   credentialError,
+  qualificationFacts,
+  qualificationBusy,
+  qualificationError,
+  onSaveQualificationFacts,
   onActivateAssignment,
   onEndAssignment,
   onVerifyTdem,
@@ -893,22 +1498,18 @@ function EmployeeWorkspace({
         )}
       </section>
 
-      <section className="workspace-panel proficiency-preview">
-        <div className="workspace-panel-heading">
-          <h3>Next Proficiency Certificate</h3>
-        </div>
+      <QualificationInformationPanel
+        facts={qualificationFacts}
+        advancement={workspace.proficiency_advancement}
+        busy={qualificationBusy}
+        error={qualificationError}
+        onSave={onSaveQualificationFacts}
+      />
 
-        <div className="workspace-empty">
-          Current certificate:{" "}
-          <strong>
-            {workspace.proficiency_advancement
-              ?.current_certificate ||
-              "No proficiency certificate"}
-          </strong>
-          . Detailed next-certificate eligibility will
-          be added in v0.2.12.
-        </div>
-      </section>
+      <ProficiencyAdvancementPanel
+        advancement={workspace.proficiency_advancement}
+      />
+
     </section>
   );
 }
@@ -964,6 +1565,7 @@ function App() {
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [assignmentSummary, setAssignmentSummary] = useState(null);
   const [credentialVerifications, setCredentialVerifications] = useState([]);
+  const [qualificationFacts, setQualificationFacts] = useState(null);
 
   const [awardsFile, setAwardsFile] = useState(null);
   const [coursesFile, setCoursesFile] = useState(null);
@@ -973,11 +1575,13 @@ function App() {
   const [loadingAgency, setLoadingAgency] = useState(true);
   const [assignmentBusy, setAssignmentBusy] = useState(false);
   const [credentialBusy, setCredentialBusy] = useState(false);
+  const [qualificationBusy, setQualificationBusy] = useState(false);
   const [importing, setImporting] = useState(false);
 
   const [error, setError] = useState("");
   const [assignmentError, setAssignmentError] = useState("");
   const [credentialError, setCredentialError] = useState("");
+  const [qualificationError, setQualificationError] = useState("");
   const [result, setResult] = useState(null);
 
   async function loadDashboard(agencyId) {
@@ -1051,6 +1655,8 @@ function App() {
     setSelectedOfficerId("");
     setAssignmentSummary(null);
     setCredentialVerifications([]);
+    setQualificationFacts(null);
+    setQualificationError("");
 
     window.scrollTo({
       top: 0,
@@ -1144,6 +1750,41 @@ function App() {
     }
 
     loadAssignments();
+  }, [agency, selectedOfficerId]);
+
+  useEffect(() => {
+    async function loadQualificationFacts() {
+      if (!agency || !selectedOfficerId) {
+        setQualificationFacts(null);
+        setQualificationError("");
+        return;
+      }
+
+      setQualificationError("");
+
+      try {
+        const response = await fetch(
+          `/api/agencies/${agency.id}` +
+            `/officers/${selectedOfficerId}` +
+            `/qualification-facts`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              "Unable to load qualification information."
+          );
+        }
+
+        setQualificationFacts(data);
+      } catch (err) {
+        setQualificationError(err.message);
+      }
+    }
+
+    loadQualificationFacts();
   }, [agency, selectedOfficerId]);
 
   const ready =
@@ -1258,6 +1899,49 @@ function App() {
       await refreshEmployeeWorkspace();
     } catch (err) {
       setWorkspaceError(err.message);
+    }
+  }
+
+  async function handleSaveQualificationFacts(
+    payload
+  ) {
+    if (!agency?.id || !selectedOfficerId) {
+      return;
+    }
+
+    setQualificationBusy(true);
+    setQualificationError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+          `/officers/${selectedOfficerId}` +
+          `/qualification-facts`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to save qualification information."
+        );
+      }
+
+      setQualificationFacts(data);
+
+      await refreshEmployeeWorkspace();
+    } catch (err) {
+      setQualificationError(err.message);
+    } finally {
+      setQualificationBusy(false);
     }
   }
 
@@ -1729,6 +2413,12 @@ function App() {
             }
             credentialBusy={credentialBusy}
             credentialError={credentialError}
+            qualificationFacts={qualificationFacts}
+            qualificationBusy={qualificationBusy}
+            qualificationError={qualificationError}
+            onSaveQualificationFacts={
+              handleSaveQualificationFacts
+            }
             onActivateAssignment={handleActivate}
             onEndAssignment={handleEnd}
             onVerifyTdem={handleVerifyTdem}

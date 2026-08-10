@@ -181,6 +181,7 @@ def _training_hours(officer):
 def _education_level(officer):
     level = None
 
+    # TCOLE academic recognition is authoritative when present.
     for award in officer.awards:
         name = (award.award_name or "").lower()
 
@@ -201,7 +202,17 @@ def _education_level(officer):
         ):
             level = candidate
 
-    return level
+    if level is not None:
+        return level
+
+    # Agency verification is a fallback only when TCOLE
+    # does not report an academic recognition.
+    verified = officer.verified_education_level
+
+    if verified in EDUCATION_RANK:
+        return verified
+
+    return None
 
 
 def _service_years(officer, evaluation_date):
@@ -272,6 +283,75 @@ def _evaluate_military(
         "known": True,
         "pathway": None,
     }
+
+
+def _best_service_training_pathway(
+    pathways,
+    service_years,
+    training_hours,
+):
+    if service_years is None:
+        return None
+
+    candidates = []
+
+    for pathway in pathways:
+        required_service = pathway["service_years"]
+        required_training = Decimal(
+            str(pathway["training_hours"])
+        )
+
+        service_short = max(
+            0,
+            required_service - service_years,
+        )
+        training_short = max(
+            Decimal("0"),
+            required_training - training_hours,
+        )
+
+        candidates.append(
+            {
+                "type": "SERVICE_TRAINING",
+                **pathway,
+                "actual_service_years":
+                    service_years,
+                "actual_training_hours":
+                    float(training_hours),
+                "service_years_short":
+                    service_short,
+                "training_hours_short":
+                    float(training_short),
+            }
+        )
+
+    if not candidates:
+        return None
+
+    service_feasible = [
+        candidate
+        for candidate in candidates
+        if candidate["service_years_short"] == 0
+    ]
+
+    if service_feasible:
+        return min(
+            service_feasible,
+            key=lambda candidate: (
+                candidate["training_hours_short"],
+                candidate["training_hours"],
+                -candidate["service_years"],
+            ),
+        )
+
+    return min(
+        candidates,
+        key=lambda candidate: (
+            candidate["service_years_short"],
+            candidate["training_hours_short"],
+            candidate["training_hours"],
+        ),
+    )
 
 
 def _evaluate_service_training(
@@ -492,6 +572,14 @@ def evaluate_peace_officer_proficiency(
         training_hours,
     )
 
+    best_available_pathway = (
+        _best_service_training_pathway(
+            rules["service_training"],
+            service_years,
+            training_hours,
+        )
+    )
+
     education = _evaluate_education(
         rules["education"],
         service_years,
@@ -564,6 +652,8 @@ def evaluate_peace_officer_proficiency(
         "education_level": education_level,
         "verified_military_months": military_months,
         "qualifying_pathway": qualifying_pathway,
+        "best_available_pathway":
+            best_available_pathway,
         "alternate_pathway_possible": (
             military_months is None
             and bool(rules["military"])

@@ -271,6 +271,9 @@ def evaluate_course_requirement(
     context=None,
 ):
     context = context or {}
+    accepted_courses = list(
+        requirement.get("accepted_courses", [])
+    )
 
     applicable, applicability_reason = (
         _requirement_applicable(
@@ -283,6 +286,7 @@ def evaluate_course_requirement(
         return {
             "id": requirement["id"],
             "label": requirement["label"],
+            "accepted_courses": accepted_courses,
             "applicable": False,
             "status": "NOT_APPLICABLE",
             "satisfied_by": None,
@@ -293,6 +297,7 @@ def evaluate_course_requirement(
         return {
             "id": requirement["id"],
             "label": requirement["label"],
+            "accepted_courses": accepted_courses,
             "applicable": None,
             "status": "INSUFFICIENT_DATA",
             "satisfied_by": None,
@@ -308,6 +313,7 @@ def evaluate_course_requirement(
         return {
             "id": requirement["id"],
             "label": requirement["label"],
+            "accepted_courses": accepted_courses,
             "applicable": True,
             "status": "MET",
             "satisfied_by": {
@@ -340,6 +346,7 @@ def evaluate_course_requirement(
         return {
             "id": requirement["id"],
             "label": requirement["label"],
+            "accepted_courses": accepted_courses,
             "applicable": True,
             "status": "MET",
             "satisfied_by": group,
@@ -358,6 +365,7 @@ def evaluate_course_requirement(
         return {
             "id": requirement["id"],
             "label": requirement["label"],
+            "accepted_courses": accepted_courses,
             "applicable": True,
             "status": "MET",
             "satisfied_by": dated,
@@ -367,6 +375,7 @@ def evaluate_course_requirement(
     return {
         "id": requirement["id"],
         "label": requirement["label"],
+        "accepted_courses": accepted_courses,
         "applicable": True,
         "status": "MISSING",
         "satisfied_by": None,

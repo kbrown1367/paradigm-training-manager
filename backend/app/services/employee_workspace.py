@@ -7,6 +7,12 @@ from app.compliance.email_resolver import (
 from app.compliance.officer_profile import (
     evaluate_officer_compliance_profile,
 )
+from app.compliance.peace_officer_proficiency import (
+    evaluate_peace_officer_proficiency,
+)
+from app.compliance.peace_officer_unit import (
+    has_peace_officer_license,
+)
 from app.compliance.training_calendar import get_unit
 from app.models import Officer
 
@@ -56,6 +62,32 @@ def build_employee_workspace(
         officer,
         evaluation_date=evaluation_date,
     )
+
+    if has_peace_officer_license(officer):
+        proficiency_advancement = (
+            evaluate_peace_officer_proficiency(
+                officer,
+                evaluation_date=evaluation_date,
+            )
+        )
+    else:
+        proficiency_advancement = {
+            "status": "NOT_APPLICABLE",
+            "current_certificate": None,
+            "current_certificate_date": None,
+            "next_certificate": None,
+            "service_years": None,
+            "training_hours": 0.0,
+            "education_level": None,
+            "verified_military_months": None,
+            "qualifying_pathway": None,
+            "alternate_pathway_possible": False,
+            "pathway_results": {},
+            "course_requirements": [],
+            "missing_requirements": [],
+            "insufficient_data_requirements": [],
+            "rule_version": None,
+        }
 
     email = resolve_officer_email(officer)
     unit = get_unit(evaluation_date)
@@ -197,15 +229,8 @@ def build_employee_workspace(
             ],
         "components":
             profile["components"],
-        "proficiency_advancement": {
-            "status": "NOT_YET_IMPLEMENTED",
-            "current_certificate":
-                profile["officer"][
-                    "highest_certificate"
-                ],
-            "next_certificate": None,
-            "requirements": [],
-        },
+        "proficiency_advancement":
+            proficiency_advancement,
     }
 
 

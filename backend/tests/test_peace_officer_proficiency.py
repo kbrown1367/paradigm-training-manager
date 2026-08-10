@@ -220,7 +220,7 @@ def test_service_is_not_inferred_from_agency_tenure(app):
         assert result["status"] == "INSUFFICIENT_DATA"
 
 
-def test_military_pathway_remains_unverified(app):
+def test_military_pathway_defaults_to_no_service(app):
     with app.app_context():
         officer = make_officer(
             certificate="Advanced Peace Officer",
@@ -234,10 +234,9 @@ def test_military_pathway_remains_unverified(app):
             "military"
         ]
 
+        assert officer.verified_military_months == 0
         assert military["known"] is False
-        assert result[
-            "alternate_pathway_possible"
-        ] is True
+        assert military["satisfied"] is False
 
 
 def test_service_years_exact_anniversary(app):
@@ -484,7 +483,7 @@ def test_known_inputs_but_no_pathway_is_not_eligible(app):
         assert result["status"] == "NOT_ELIGIBLE"
 
 
-def test_unknown_military_does_not_block_known_training_pathway(
+def test_default_no_military_does_not_block_known_training_pathway(
     app,
 ):
     with app.app_context():
@@ -497,7 +496,6 @@ def test_unknown_military_does_not_block_known_training_pathway(
             8,
             9,
         )
-        officer.verified_military_months = None
         db.session.commit()
 
         result = evaluate_peace_officer_proficiency(
@@ -505,6 +503,7 @@ def test_unknown_military_does_not_block_known_training_pathway(
             evaluation_date=date(2026, 8, 9),
         )
 
+        assert officer.verified_military_months == 0
         assert result["qualifying_pathway"][
             "type"
         ] == "SERVICE_TRAINING"
@@ -798,3 +797,146 @@ def test_basic_pre_cutoff_courses_become_not_applicable(app):
             field_training["status"]
             == "NOT_APPLICABLE"
         )
+
+
+def test_agency_verified_education_is_fallback(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Basic Peace Officer",
+        )
+        officer.peace_officer_service_start_date = date(
+            2024,
+            8,
+            9,
+        )
+        officer.verified_education_level = "BACHELOR"
+        officer.verified_military_months = 0
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        assert result["education_level"] == "BACHELOR"
+        assert result["qualifying_pathway"]["type"] == (
+            "EDUCATION"
+        )
+
+
+def test_tcole_education_overrides_agency_fallback(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Basic Peace Officer",
+            education="Master Degree",
+        )
+        officer.verified_education_level = "ASSOCIATE"
+        officer.verified_military_months = 0
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+        )
+
+        assert result["education_level"] == "MASTER"
+
+
+def test_best_available_service_training_pathway_reports_training_shortfall(
+    app,
+):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Intermediate Peace Officer",
+            training_hours=1461,
+        )
+        officer.peace_officer_service_start_date = date(
+            2020,
+            8,
+            10,
+        )
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 10),
+        )
+
+        assert result["status"] == "NOT_ELIGIBLE"
+        assert result["qualifying_pathway"] is None
+
+        pathway = result["best_available_pathway"]
+
+        assert pathway["type"] == "SERVICE_TRAINING"
+        assert pathway["service_years"] == 6
+        assert pathway["training_hours"] == 2400
+
+        assert pathway["actual_service_years"] == 6
+        assert pathway["actual_training_hours"] == 1461.0
+
+        assert pathway["service_years_short"] == 0
+        assert pathway["training_hours_short"] == 939.0
+
+
+def test_best_available_service_training_pathway_can_report_service_shortfall(
+    app,
+):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Intermediate Peace Officer",
+            training_hours=3000,
+        )
+        officer.peace_officer_service_start_date = date(
+            2022,
+            8,
+            10,
+        )
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 10),
+        )
+
+        pathway = result["best_available_pathway"]
+
+        assert pathway["type"] == "SERVICE_TRAINING"
+        assert pathway["service_years"] == 6
+        assert pathway["training_hours"] == 2400
+        assert pathway["actual_service_years"] == 4
+        assert pathway["actual_training_hours"] == 3000.0
+        assert pathway["service_years_short"] == 2
+        assert pathway["training_hours_short"] == 0.0
+
+
+def test_satisfied_pathway_is_also_best_available_pathway(
+    app,
+):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Basic Peace Officer",
+            training_hours=1200,
+        )
+        officer.peace_officer_service_start_date = date(
+            2022,
+            8,
+            10,
+        )
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 10),
+        )
+
+        assert result["qualifying_pathway"] == {
+            "type": "SERVICE_TRAINING",
+            "service_years": 4,
+            "training_hours": 1200,
+        }
+
+        pathway = result["best_available_pathway"]
+
+        assert pathway["service_years"] == 4
+        assert pathway["training_hours"] == 1200
+        assert pathway["service_years_short"] == 0
+        assert pathway["training_hours_short"] == 0.0

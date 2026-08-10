@@ -35,6 +35,11 @@ from app.compliance.officer_profile import (
 from app.services.employee_workspace import (
     get_employee_workspace,
 )
+from app.services.qualification_facts import (
+    QualificationFactsError,
+    get_qualification_facts,
+    update_qualification_facts,
+)
 from app.services.compliance_email import (
     get_compliance_email,
 )
@@ -515,6 +520,69 @@ def supervisor_compliance(
     result = evaluate_supervisor(
         officer
     )
+
+    return jsonify(result), 200
+
+
+@api.get(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/qualification-facts"
+)
+def officer_qualification_facts(
+    agency_id,
+    officer_id,
+):
+    result = get_qualification_facts(
+        agency_id,
+        officer_id,
+    )
+
+    if result is None:
+        return jsonify(
+            {"error": "Officer not found."}
+        ), 404
+
+    return jsonify(result), 200
+
+
+@api.patch(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/qualification-facts"
+)
+def update_officer_qualification_facts(
+    agency_id,
+    officer_id,
+):
+    payload = request.get_json(silent=True) or {}
+
+    try:
+        result = update_qualification_facts(
+            agency_id,
+            officer_id,
+            verified_education_level=payload.get(
+                "verified_education_level"
+            ),
+            verified_military_months=payload.get(
+                "verified_military_months"
+            ),
+            education_supplied=(
+                "verified_education_level" in payload
+            ),
+            military_supplied=(
+                "verified_military_months" in payload
+            ),
+        )
+    except QualificationFactsError as exc:
+        return jsonify(
+            {"error": str(exc)}
+        ), 400
+
+    if result is None:
+        return jsonify(
+            {"error": "Officer not found."}
+        ), 404
 
     return jsonify(result), 200
 

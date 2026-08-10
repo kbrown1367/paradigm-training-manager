@@ -220,7 +220,7 @@ def test_workspace_contains_compliance_details(app):
         assert "components" in result
 
 
-def test_workspace_reserves_proficiency_section(app):
+def test_workspace_contains_proficiency_evaluation(app):
     with app.app_context():
         _, officer = make_officer()
 
@@ -233,12 +233,63 @@ def test_workspace_reserves_proficiency_section(app):
             "proficiency_advancement"
         ]
 
-        assert advancement["status"] == (
-            "NOT_YET_IMPLEMENTED"
-        )
         assert advancement[
             "current_certificate"
         ] == "Intermediate Peace Officer"
+        assert advancement[
+            "next_certificate"
+        ] == "Advanced Peace Officer"
+        assert advancement["status"] != (
+            "NOT_YET_IMPLEMENTED"
+        )
+        assert "service_years" in advancement
+        assert "training_hours" in advancement
+        assert "course_requirements" in advancement
+        assert "missing_requirements" in advancement
+
+
+def test_workspace_marks_peace_officer_proficiency_not_applicable_without_license(
+    app,
+):
+    with app.app_context():
+        agency = Agency(
+            name="Jailer Test Agency",
+            email_domain="example.gov",
+            email_pattern="FIRST_INITIAL_LAST",
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="654321",
+            first_name="John",
+            last_name="Doe",
+        )
+        db.session.add(officer)
+        db.session.commit()
+
+        result = build_employee_workspace(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        advancement = result[
+            "proficiency_advancement"
+        ]
+
+        assert advancement["status"] == (
+            "NOT_APPLICABLE"
+        )
+        assert advancement[
+            "current_certificate"
+        ] is None
+        assert advancement[
+            "next_certificate"
+        ] is None
+        assert advancement[
+            "course_requirements"
+        ] == []
 
 
 def test_workspace_lookup_is_tenant_scoped(app):
