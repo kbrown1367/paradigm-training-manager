@@ -56,8 +56,15 @@ Peace Officer,"ACOSTA, CELIA",484608,Sum Hrs: 4,1849,12/12/2019,4
 Peace Officer,"ARANZETA, JOE A.",556622,Sum Hrs: 4,3189,01/15/2026,4
 """
 
+LICENSEE_SEARCH = """P_ID,LNAME,FNAME,MNAME,SFX,GENDER,RACE,SSN,DOB,RecordDesc,RecordName,RecordDate
+484608,ACOSTA,CELIA,,,F,White,1234,01/01/1990,Officer Info,,
+484608,ACOSTA,CELIA,,,F,White,1234,01/01/1990,License,Peace Officer License,07/30/2020
+556622,ARANZETA,JOE,A,,M,White,5678,01/01/1990,Officer Info,,
+556622,ARANZETA,JOE,A,,M,White,5678,01/01/1990,License,Peace Officer License,09/03/2024
+"""
 
-def test_complete_three_file_import(app):
+
+def test_complete_four_file_import(app):
     with app.app_context():
         agency = make_agency()
 
@@ -66,6 +73,7 @@ def test_complete_three_file_import(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         assert result["status"] == "completed"
@@ -102,6 +110,7 @@ def test_bad_course_file_rolls_back_awards_and_officers(app):
                 AWARDS,
                 bad_courses,
                 CYCLE,
+                LICENSEE_SEARCH,
             )
 
         assert Officer.query.count() == 0
@@ -130,6 +139,7 @@ def test_bad_awards_file_creates_no_operational_data(app):
                 bad_awards,
                 COURSES,
                 CYCLE,
+                LICENSEE_SEARCH,
             )
 
         assert Officer.query.count() == 0
@@ -150,6 +160,7 @@ def test_reimport_is_idempotent(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         second = run_tcole_import(
@@ -157,6 +168,7 @@ def test_reimport_is_idempotent(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         assert first["awards_created"] == 3
@@ -186,6 +198,7 @@ def test_import_is_tenant_scoped(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         run_tcole_import(
@@ -193,6 +206,7 @@ def test_import_is_tenant_scoped(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         assert Officer.query.count() == 4
@@ -218,6 +232,7 @@ def test_unknown_agency_is_rejected(app):
                 AWARDS,
                 COURSES,
                 CYCLE,
+                LICENSEE_SEARCH,
             )
 
         assert ImportJob.query.count() == 0
@@ -236,6 +251,7 @@ def test_reimport_preserves_agency_managed_officer_data(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         officer = Officer.query.filter_by(
@@ -263,6 +279,7 @@ def test_reimport_preserves_agency_managed_officer_data(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         refreshed = db.session.get(
@@ -295,6 +312,7 @@ def test_missing_from_later_import_does_not_archive_officer(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         officer = Officer.query.filter_by(
@@ -317,11 +335,17 @@ def test_missing_from_later_import_does_not_archive_officer(app):
 Peace Officer,"ACOSTA, CELIA",484608,Sum Hrs: 4,1849,12/12/2019,4
 """
 
+        reduced_licensee_search = """P_ID,LNAME,FNAME,MNAME,SFX,GENDER,RACE,SSN,DOB,RecordDesc,RecordName,RecordDate
+484608,ACOSTA,CELIA,,,F,White,1234,01/01/1990,Officer Info,,
+484608,ACOSTA,CELIA,,,F,White,1234,01/01/1990,License,Peace Officer License,07/30/2020
+"""
+
         run_tcole_import(
             agency.id,
             reduced_awards,
             reduced_courses,
             reduced_cycle,
+            reduced_licensee_search,
         )
 
         preserved = db.session.get(

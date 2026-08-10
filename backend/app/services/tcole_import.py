@@ -4,6 +4,9 @@ from app.extensions import db
 from app.importers.tcole_awards import import_awards_roster
 from app.importers.tcole_courses import import_training_records
 from app.importers.tcole_cycle import import_cycle_hours
+from app.importers.tcole_licensee_search import (
+    import_licensee_search,
+)
 from app.models import Agency, ImportJob, Officer, TrainingRecord, utcnow
 
 
@@ -18,11 +21,26 @@ def serialize_import_job(job):
         "awards_filename": job.awards_filename,
         "courses_filename": job.courses_filename,
         "cycle_filename": job.cycle_filename,
+        "licensee_search_filename":
+            job.licensee_search_filename,
         "officer_count": job.officer_count,
         "award_rows_processed": job.award_rows_processed,
         "course_rows_processed": job.course_rows_processed,
         "cycle_rows_processed": job.cycle_rows_processed,
-        "training_records_with_hours": job.training_records_with_hours,
+        "licensee_search_rows_processed":
+            job.licensee_search_rows_processed,
+        "peace_officer_license_rows":
+            job.peace_officer_license_rows,
+        "service_dates_populated":
+            job.service_dates_populated,
+        "service_dates_updated":
+            job.service_dates_updated,
+        "service_dates_unchanged":
+            job.service_dates_unchanged,
+        "unmatched_license_rows":
+            job.unmatched_license_rows,
+        "training_records_with_hours":
+            job.training_records_with_hours,
         "awards_created": job.award_count,
         "training_records_created": job.course_count,
         "awards_skipped": job.skipped_award_count,
@@ -70,9 +88,13 @@ def run_tcole_import(
     awards_content,
     courses_content,
     cycle_content,
+    licensee_search_content,
     awards_filename="rptAwards.csv",
     courses_filename="rptCourseTaken.csv",
     cycle_filename="rptCycleT_All.csv",
+    licensee_search_filename=(
+        "rptDepartmentOfficerSearch.csv"
+    ),
 ):
     agency = db.session.get(Agency, agency_id)
 
@@ -85,6 +107,9 @@ def run_tcole_import(
         awards_filename=awards_filename,
         courses_filename=courses_filename,
         cycle_filename=cycle_filename,
+        licensee_search_filename=(
+            licensee_search_filename
+        ),
         started_at=utcnow(),
     )
 
@@ -114,6 +139,18 @@ def run_tcole_import(
             commit=False,
         )
 
+        db.session.flush()
+
+        licensee_search_result = (
+            import_licensee_search(
+                agency_id,
+                licensee_search_content,
+                commit=False,
+            )
+        )
+
+        db.session.flush()
+
         job.status = "completed"
 
         job.officer_count = Officer.query.filter_by(
@@ -131,6 +168,42 @@ def run_tcole_import(
         job.cycle_rows_processed = cycle_result[
             "rows_processed"
         ]
+
+        job.licensee_search_rows_processed = (
+            licensee_search_result[
+                "rows_processed"
+            ]
+        )
+
+        job.peace_officer_license_rows = (
+            licensee_search_result[
+                "peace_officer_license_rows"
+            ]
+        )
+
+        job.service_dates_populated = (
+            licensee_search_result[
+                "service_dates_populated"
+            ]
+        )
+
+        job.service_dates_updated = (
+            licensee_search_result[
+                "service_dates_updated"
+            ]
+        )
+
+        job.service_dates_unchanged = (
+            licensee_search_result[
+                "service_dates_unchanged"
+            ]
+        )
+
+        job.unmatched_license_rows = (
+            licensee_search_result[
+                "unmatched_license_rows"
+            ]
+        )
 
         job.training_records_with_hours = (
             TrainingRecord.query.filter_by(

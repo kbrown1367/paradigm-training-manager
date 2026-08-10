@@ -66,6 +66,14 @@ class Officer(db.Model):
     middle_name = db.Column(db.String(100), nullable=True)
     last_name = db.Column(db.String(100), nullable=False)
     email_override = db.Column(db.String(255), nullable=True)
+    peace_officer_service_start_date = db.Column(
+        db.Date,
+        nullable=True,
+    )
+    verified_military_months = db.Column(
+        db.Integer,
+        nullable=True,
+    )
     employment_status = db.Column(db.String(30), nullable=False, default="active")
     archived_at = db.Column(db.DateTime(timezone=True), nullable=True)
     archived_reason = db.Column(db.String(500), nullable=True)
@@ -268,10 +276,44 @@ class ImportJob(db.Model):
     awards_filename = db.Column(db.String(255), nullable=True)
     courses_filename = db.Column(db.String(255), nullable=True)
     cycle_filename = db.Column(db.String(255), nullable=True)
+    licensee_search_filename = db.Column(
+        db.String(255),
+        nullable=True,
+    )
     officer_count = db.Column(db.Integer, nullable=False, default=0)
     award_rows_processed = db.Column(db.Integer, nullable=False, default=0)
     course_rows_processed = db.Column(db.Integer, nullable=False, default=0)
     cycle_rows_processed = db.Column(db.Integer, nullable=False, default=0)
+    licensee_search_rows_processed = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
+    peace_officer_license_rows = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
+    service_dates_populated = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
+    service_dates_updated = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
+    service_dates_unchanged = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
+    unmatched_license_rows = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+    )
     training_records_with_hours = db.Column(
         db.Integer,
         nullable=False,

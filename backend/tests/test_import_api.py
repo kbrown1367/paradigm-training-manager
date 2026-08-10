@@ -48,8 +48,20 @@ Peace Officer,"ACOSTA, CELIA",484608,Sum Hrs: 4,1849,12/12/2019,4
 Peace Officer,"ARANZETA, JOE A.",556622,Sum Hrs: 4,3189,01/15/2026,4
 """
 
+LICENSEE_SEARCH = b"""P_ID,LNAME,FNAME,MNAME,SFX,GENDER,RACE,SSN,DOB,RecordDesc,RecordName,RecordDate
+484608,ACOSTA,CELIA,,,F,White,1234,01/01/1990,Officer Info,,
+484608,ACOSTA,CELIA,,,F,White,1234,01/01/1990,License,Peace Officer License,07/30/2020
+556622,ARANZETA,JOE,A,,M,White,5678,01/01/1990,Officer Info,,
+556622,ARANZETA,JOE,A,,M,White,5678,01/01/1990,License,Peace Officer License,09/03/2024
+"""
 
-def import_payload(awards=AWARDS, courses=COURSES, cycle=CYCLE):
+
+def import_payload(
+    awards=AWARDS,
+    courses=COURSES,
+    cycle=CYCLE,
+    licensee_search=LICENSEE_SEARCH,
+):
     return {
         "awards_file": (
             io.BytesIO(awards),
@@ -63,10 +75,14 @@ def import_payload(awards=AWARDS, courses=COURSES, cycle=CYCLE):
             io.BytesIO(cycle),
             "rptCycleT_All.csv",
         ),
+        "licensee_search_file": (
+            io.BytesIO(licensee_search),
+            "rptDepartmentOfficerSearch.csv",
+        ),
     }
 
 
-def test_tcole_import_api_accepts_three_files(app):
+def test_tcole_import_api_accepts_four_files(app):
     with app.app_context():
         agency_id = make_agency()
 
@@ -96,7 +112,7 @@ def test_tcole_import_api_accepts_three_files(app):
         assert ImportJob.query.count() == 1
 
 
-def test_tcole_import_api_requires_all_three_files(app):
+def test_tcole_import_api_requires_all_four_files(app):
     with app.app_context():
         agency_id = make_agency()
 
@@ -122,7 +138,8 @@ def test_tcole_import_api_requires_all_three_files(app):
     data = response.get_json()
 
     assert (
-        "awards_file, courses_file, and cycle_file are required."
+        "awards_file, courses_file, cycle_file, and "
+        "licensee_search_file are required."
         in data["error"]
     )
 

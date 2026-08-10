@@ -1,0 +1,28 @@
+{
+  "authority": "TCOLE Commission Rules 221.1 and 221.3",
+  "rule_version": "2026-02-09",
+  "effective_date": "2026-02-09",
+  "rule_id": "PEACE_OFFICER_MASTER",
+  "certificate": "Master Peace Officer",
+  "prerequisite_certificates": [
+    "Basic Peace Officer",
+    "Intermediate Peace Officer",
+    "Advanced Peace Officer"
+  ],
+  "required_courses": [
+    {
+      "id": "ICS_300",
+      "label": "FEMA ICS 300",
+      "accepted_courses": [
+        "66300"
+      ]
+    },
+    {
+      "id": "ICS_400",
+      "label": "FEMA ICS 400",
+      "accepted_courses": [
+        "66400"
+      ]
+    }
+  ]
+}

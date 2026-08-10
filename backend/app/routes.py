@@ -74,18 +74,23 @@ def import_tcole_records(agency_id):
     awards_file = request.files.get("awards_file")
     courses_file = request.files.get("courses_file")
     cycle_file = request.files.get("cycle_file")
+    licensee_search_file = request.files.get(
+        "licensee_search_file"
+    )
 
     if (
         awards_file is None
         or courses_file is None
         or cycle_file is None
+        or licensee_search_file is None
     ):
         return (
             jsonify(
                 {
                     "error": (
                         "awards_file, courses_file, "
-                        "and cycle_file are required."
+                        "cycle_file, and "
+                        "licensee_search_file are required."
                     )
                 }
             ),
@@ -98,11 +103,21 @@ def import_tcole_records(agency_id):
             awards_content=awards_file.read(),
             courses_content=courses_file.read(),
             cycle_content=cycle_file.read(),
+            licensee_search_content=(
+                licensee_search_file.read()
+            ),
             awards_filename=awards_file.filename or "rptAwards.csv",
             courses_filename=(
                 courses_file.filename or "rptCourseTaken.csv"
             ),
-            cycle_filename=cycle_file.filename or "rptCycleT_All.csv",
+            cycle_filename=(
+                cycle_file.filename
+                or "rptCycleT_All.csv"
+            ),
+            licensee_search_filename=(
+                licensee_search_file.filename
+                or "rptDepartmentOfficerSearch.csv"
+            ),
         )
     except TcoleImportError as exc:
         return jsonify({"error": str(exc)}), 400

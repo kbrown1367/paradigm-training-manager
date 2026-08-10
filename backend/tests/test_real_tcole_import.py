@@ -12,6 +12,9 @@ FIXTURE_DIR = Path(__file__).parent / "fixtures"
 AWARDS_PATH = FIXTURE_DIR / "rptAwards.csv"
 COURSES_PATH = FIXTURE_DIR / "rptCourseTaken.csv"
 CYCLE_PATH = FIXTURE_DIR / "rptCycleT_All.csv"
+LICENSEE_SEARCH_PATH = (
+    FIXTURE_DIR / "rptDepartmentOfficerSearch.csv"
+)
 
 
 @pytest.fixture()
@@ -43,9 +46,13 @@ def test_real_tcole_files_import_end_to_end(app):
             AWARDS_PATH.read_bytes(),
             COURSES_PATH.read_bytes(),
             CYCLE_PATH.read_bytes(),
+            LICENSEE_SEARCH_PATH.read_bytes(),
             awards_filename=AWARDS_PATH.name,
             courses_filename=COURSES_PATH.name,
             cycle_filename=CYCLE_PATH.name,
+            licensee_search_filename=(
+                LICENSEE_SEARCH_PATH.name
+            ),
         )
 
         assert result["status"] == "completed"
@@ -70,8 +77,26 @@ def test_real_tcole_files_import_end_to_end(app):
             TrainingRecord.credited_hours.isnot(None)
         ).count()
 
+        # Real TCOLE four-report regression baseline.
+        #
+        # These values verify that the Department Licensee
+        # Search report is fully reconciled and that Peace
+        # Officer License dates populate service-start dates.
+        assert job.licensee_search_rows_processed == 6925
+        assert job.peace_officer_license_rows == 41
+        assert job.service_dates_populated == 41
+        assert job.service_dates_updated == 0
+        assert job.service_dates_unchanged == 0
+        assert job.unmatched_license_rows == 0
+
+        officers_with_service_dates = Officer.query.filter(
+            Officer.peace_officer_service_start_date.isnot(None)
+        ).count()
+
+        assert officers_with_service_dates == 41
+
         print()
-        print("REAL TCOLE THREE-FILE IMPORT SUMMARY")
+        print("REAL TCOLE FOUR-FILE IMPORT SUMMARY")
         print("------------------------------------")
         print(f"Officers: {Officer.query.count()}")
         print(f"Award rows processed: {job.award_rows_processed}")
@@ -79,6 +104,30 @@ def test_real_tcole_files_import_end_to_end(app):
         print(f"Course rows processed: {job.course_rows_processed}")
         print(f"Training records created: {job.course_count}")
         print(f"Cycle rows processed: {job.cycle_rows_processed}")
+        print(
+            "Licensee search rows processed: "
+            f"{job.licensee_search_rows_processed}"
+        )
+        print(
+            "Peace Officer License rows: "
+            f"{job.peace_officer_license_rows}"
+        )
+        print(
+            "Service dates populated: "
+            f"{job.service_dates_populated}"
+        )
+        print(
+            "Service dates updated: "
+            f"{job.service_dates_updated}"
+        )
+        print(
+            "Service dates unchanged: "
+            f"{job.service_dates_unchanged}"
+        )
+        print(
+            "Unmatched license rows: "
+            f"{job.unmatched_license_rows}"
+        )
         print(
             "Training records with credited hours: "
             f"{job.training_records_with_hours}"

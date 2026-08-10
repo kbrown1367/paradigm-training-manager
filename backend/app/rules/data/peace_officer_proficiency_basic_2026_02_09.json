@@ -1,0 +1,80 @@
+{
+  "authority": "TCOLE Commission Rules 221.1 and 221.3",
+  "rule_version": "2026-02-09",
+  "effective_date": "2026-02-09",
+  "rule_id": "PEACE_OFFICER_BASIC",
+  "certificate": "Basic Peace Officer",
+  "minimum_service_years": 1,
+  "required_courses": [
+    {
+      "id": "PERSONNEL_ORIENTATION",
+      "label": "Personnel Orientation",
+      "accepted_courses": [
+        "1999"
+      ],
+      "applicability": {
+        "peace_officer_license_on_or_after": "1998-06-01"
+      }
+    },
+    {
+      "id": "FIELD_TRAINING",
+      "label": "Peace Officer Field Training",
+      "accepted_courses": [
+        "3722"
+      ],
+      "applicability": {
+        "peace_officer_license_on_or_after": "2004-06-01"
+      }
+    },
+    {
+      "id": "FINDING_WELLNESS",
+      "label": "Finding Wellness",
+      "accepted_courses": [
+        "4202"
+      ]
+    },
+    {
+      "id": "ICS_100",
+      "label": "FEMA ICS 100",
+      "accepted_courses": [
+        "66100",
+        "1000696",
+        "1000720",
+        "1000736"
+      ]
+    },
+    {
+      "id": "ICS_200",
+      "label": "FEMA ICS 200",
+      "accepted_courses": [
+        "66200",
+        "1000696",
+        "1000720",
+        "1000736"
+      ]
+    },
+    {
+      "id": "ICS_700",
+      "label": "FEMA ICS 700",
+      "accepted_courses": [
+        "66700",
+        "1000696",
+        "1000720",
+        "1000736"
+      ]
+    },
+    {
+      "id": "HUMAN_TRAFFICKING",
+      "label": "Human Trafficking",
+      "accepted_courses": [
+        "3270",
+        "3271",
+        "3268",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    }
+  ]
+}

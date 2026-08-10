@@ -1,0 +1,102 @@
+{
+  "authority": "TCOLE Commission Rules 221.1 and 221.3",
+  "rule_version": "2026-02-09",
+  "effective_date": "2026-02-09",
+  "rule_id": "PEACE_OFFICER_ADVANCED",
+  "certificate": "Advanced Peace Officer",
+  "prerequisite_certificates": [
+    "Basic Peace Officer",
+    "Intermediate Peace Officer"
+  ],
+  "required_courses": [
+    {
+      "id": "ADVANCED_HUMAN_TRAFFICKING",
+      "label": "Advanced Human Trafficking",
+      "accepted_courses": [
+        "3271",
+        "3268"
+      ]
+    },
+    {
+      "id": "CRISIS_INTERVENTION",
+      "label": "Crisis Intervention Training",
+      "accepted_courses": [
+        "1850",
+        "1000667",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "MISSING_EXPLOITED_CHILDREN",
+      "label": "Missing and Exploited Children",
+      "accepted_courses": [
+        "3275",
+        "782096",
+        "53268",
+        "53267",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "CHILD_SAFETY_CHECK_ALERT",
+      "label": "Child Safety Check Alert List",
+      "accepted_courses": [
+        "4068",
+        "53268",
+        "53269",
+        "53270",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "CANINE_ENCOUNTERS",
+      "label": "Canine Encounters",
+      "accepted_courses": [
+        "4065",
+        "6048",
+        "62040",
+        "62041",
+        "62042",
+        "9988",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "DE_ESCALATION",
+      "label": "De-escalation Techniques",
+      "accepted_courses": [
+        "1849",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "ICS_300",
+      "label": "FEMA ICS 300",
+      "accepted_courses": [
+        "66300"
+      ]
+    },
+    {
+      "id": "ICS_400",
+      "label": "FEMA ICS 400",
+      "accepted_courses": [
+        "66400"
+      ]
+    }
+  ]
+}

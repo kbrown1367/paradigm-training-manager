@@ -1,0 +1,235 @@
+{
+  "authority": "TCOLE Commission Rules 221.1 and 221.3",
+  "rule_version": "2026-02-09",
+  "effective_date": "2026-02-09",
+  "rule_id": "PEACE_OFFICER_INTERMEDIATE",
+  "certificate": "Intermediate Peace Officer",
+  "prerequisite_certificates": [
+    "Basic Peace Officer"
+  ],
+  "required_courses": [
+    {
+      "id": "CHILD_ABUSE",
+      "label": "Child Abuse Prevention and Investigation",
+      "accepted_courses": [
+        "2105"
+      ]
+    },
+    {
+      "id": "CRIME_SCENE_INVESTIGATION",
+      "label": "Crime Scene Investigation",
+      "accepted_courses": [
+        "2106",
+        "40052"
+      ]
+    },
+    {
+      "id": "USE_OF_FORCE",
+      "label": "Use of Force",
+      "accepted_courses": [
+        "2107"
+      ]
+    },
+    {
+      "id": "ARREST_SEARCH_SEIZURE",
+      "label": "Arrest, Search and Seizure",
+      "accepted_courses": [
+        "2108"
+      ]
+    },
+    {
+      "id": "SPANISH",
+      "label": "Spanish",
+      "accepted_courses": [
+        "2109",
+        "2110",
+        "2111",
+        "34001",
+        "22109"
+      ]
+    },
+    {
+      "id": "IDENTITY_THEFT",
+      "label": "Identity Theft",
+      "accepted_courses": [
+        "3277",
+        "1000643",
+        "1000667",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "ASSET_FORFEITURE",
+      "label": "Asset Forfeiture",
+      "accepted_courses": [
+        "3255",
+        "3257",
+        "1000643",
+        "1000667",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "RACIAL_PROFILING",
+      "label": "Racial Profiling",
+      "accepted_courses": [
+        "3256",
+        "3257",
+        "1000643",
+        "1000667",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "HUMAN_TRAFFICKING",
+      "label": "Human Trafficking",
+      "accepted_courses": [
+        "3270",
+        "3271",
+        "3268",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "CRISIS_INTERVENTION",
+      "label": "Crisis Intervention Training",
+      "accepted_courses": [
+        "1850",
+        "1000667",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "HEARING_IMPAIRED_DRIVERS",
+      "label": "Interacting with Drivers Deaf/Hard of Hearing",
+      "accepted_courses": [
+        "7887",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "DE_ESCALATION",
+      "label": "De-escalation Techniques",
+      "accepted_courses": [
+        "1849",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "MISSING_EXPLOITED_CHILDREN",
+      "label": "Missing and Exploited Children",
+      "accepted_courses": [
+        "3275",
+        "782096",
+        "53268",
+        "53267",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "CHILD_SAFETY_CHECK_ALERT",
+      "label": "Child Safety Check Alert List",
+      "accepted_courses": [
+        "4068",
+        "53268",
+        "53269",
+        "53270",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "CANINE_ENCOUNTERS",
+      "label": "Canine Encounters",
+      "accepted_courses": [
+        "4065",
+        "6048",
+        "62040",
+        "62041",
+        "62042",
+        "9988",
+        "1000696",
+        "1000720",
+        "1000736",
+        "10011"
+      ]
+    },
+    {
+      "id": "SPECIAL_INVESTIGATIVE_TOPICS",
+      "label": "Special Investigative Topics",
+      "accepted_courses": [
+        "3232",
+        "3264",
+        "3265",
+        "3737",
+        "786106"
+      ],
+      "accepted_course_groups": [
+        {
+          "courses": [
+            "3261",
+            "3262",
+            "3263"
+          ],
+          "require_all": true,
+          "same_two_year_unit": true
+        }
+      ],
+      "dated_equivalencies": [
+        {
+          "courses": [
+            "3214",
+            "3224",
+            "3244",
+            "3254"
+          ],
+          "completed_before": "2013-12-31"
+        }
+      ]
+    },
+    {
+      "id": "CULTURAL_DIVERSITY",
+      "label": "Cultural Diversity",
+      "accepted_courses": [
+        "3939",
+        "39393",
+        "394",
+        "3737",
+        "786106"
+      ]
+    },
+    {
+      "id": "ICS_300",
+      "label": "FEMA ICS 300",
+      "accepted_courses": [
+        "66300"
+      ]
+    }
+  ]
+}

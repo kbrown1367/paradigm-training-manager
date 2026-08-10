@@ -44,6 +44,13 @@ Peace Officer,"ACOSTA, CELIA",484608,Sum Hrs: 4,1849,12/12/2019,4
 Peace Officer,"ARANZETA, JOE A.",556622,Sum Hrs: 4,3189,01/15/2026,4
 """
 
+LICENSEE_SEARCH = """P_ID,LNAME,FNAME,MNAME,SFX,GENDER,RACE,SSN,DOB,RecordDesc,RecordName,RecordDate
+484608,ACOSTA,CELIA,,,F,White,1234,01/01/1990,Officer Info,,
+484608,ACOSTA,CELIA,,,F,White,1234,01/01/1990,License,Peace Officer License,07/30/2020
+556622,ARANZETA,JOE,A,,M,White,5678,01/01/1990,Officer Info,,
+556622,ARANZETA,JOE,A,,M,White,5678,01/01/1990,License,Peace Officer License,09/03/2024
+"""
+
 
 def make_agency(name="Test Police Department"):
     agency = Agency(name=name)
@@ -61,6 +68,7 @@ def test_completed_import_returns_full_summary(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         assert result["status"] == "completed"
@@ -89,6 +97,7 @@ def test_import_summary_can_be_retrieved(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         summary = get_import_summary(
@@ -113,6 +122,7 @@ def test_reimport_summary_reports_skipped_records(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         second = run_tcole_import(
@@ -120,6 +130,7 @@ def test_reimport_summary_reports_skipped_records(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         assert second["awards_created"] == 0
@@ -138,6 +149,7 @@ def test_import_summary_is_tenant_scoped(app):
             AWARDS,
             COURSES,
             CYCLE,
+            LICENSEE_SEARCH,
         )
 
         with pytest.raises(TcoleImportError):
@@ -161,6 +173,7 @@ def test_failed_import_summary_persists_failure(app):
                 AWARDS,
                 bad_courses,
                 CYCLE,
+                LICENSEE_SEARCH,
             )
 
         job = ImportJob.query.one()

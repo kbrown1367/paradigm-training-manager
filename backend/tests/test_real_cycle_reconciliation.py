@@ -18,6 +18,9 @@ FIXTURE_DIR = Path(__file__).parent / "fixtures"
 AWARDS_PATH = FIXTURE_DIR / "rptAwards.csv"
 COURSES_PATH = FIXTURE_DIR / "rptCourseTaken.csv"
 CYCLE_PATH = FIXTURE_DIR / "rptCycleT_All.csv"
+LICENSEE_SEARCH_PATH = (
+    FIXTURE_DIR / "rptDepartmentOfficerSearch.csv"
+)
 
 
 @pytest.fixture()
@@ -49,9 +52,13 @@ def test_real_cycle_report_reconciles_to_training_history(app):
             AWARDS_PATH.read_bytes(),
             COURSES_PATH.read_bytes(),
             CYCLE_PATH.read_bytes(),
+            LICENSEE_SEARCH_PATH.read_bytes(),
             awards_filename=AWARDS_PATH.name,
             courses_filename=COURSES_PATH.name,
             cycle_filename=CYCLE_PATH.name,
+            licensee_search_filename=(
+                LICENSEE_SEARCH_PATH.name
+            ),
         )
 
         course_count = TrainingRecord.query.count()
@@ -72,7 +79,7 @@ def test_real_cycle_report_reconciles_to_training_history(app):
         )
 
         print()
-        print("REAL TCOLE THREE-REPORT RECONCILIATION")
+        print("REAL TCOLE FOUR-REPORT RECONCILIATION")
         print("--------------------------------------")
         print(f"Officers: {Officer.query.count()}")
         print(f"Training records: {course_count}")
