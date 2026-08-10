@@ -968,6 +968,7 @@ function App() {
   const [awardsFile, setAwardsFile] = useState(null);
   const [coursesFile, setCoursesFile] = useState(null);
   const [cycleFile, setCycleFile] = useState(null);
+  const [licenseeSearchFile, setLicenseeSearchFile] = useState(null);
 
   const [loadingAgency, setLoadingAgency] = useState(true);
   const [assignmentBusy, setAssignmentBusy] = useState(false);
@@ -1150,6 +1151,7 @@ function App() {
     Boolean(awardsFile) &&
     Boolean(coursesFile) &&
     Boolean(cycleFile) &&
+    Boolean(licenseeSearchFile) &&
     !importing;
 
   async function handleSaveEmailSettings(event) {
@@ -1318,6 +1320,10 @@ function App() {
     formData.append("awards_file", awardsFile);
     formData.append("courses_file", coursesFile);
     formData.append("cycle_file", cycleFile);
+    formData.append(
+      "licensee_search_file",
+      licenseeSearchFile
+    );
 
     try {
       const response = await fetch(
@@ -2086,9 +2092,9 @@ function App() {
           <h2>TCOLE Compliance Data Import</h2>
 
           <p>
-            Upload the three official TCOLE reports for your agency.
-            PTM will reconcile personnel, awards, training history,
-            and actual credited training hours.
+            Upload the four official TCOLE reports for your agency.
+            PTM will reconcile personnel, licenses, awards, training
+            history, and actual credited training hours.
           </p>
 
           <div className="agency-panel">
@@ -2123,6 +2129,13 @@ function App() {
             onChange={setCycleFile}
           />
 
+          <FileField
+            label="Department Licensee Search Report"
+            description="rptDepartmentOfficerSearch.csv"
+            file={licenseeSearchFile}
+            onChange={setLicenseeSearchFile}
+          />
+
           <div className="import-action">
             <button
               type="submit"
@@ -2151,7 +2164,7 @@ function App() {
               <div>
                 <h2>Import Completed Successfully</h2>
                 <p>
-                  PTM reconciled all three TCOLE reports.
+                  PTM reconciled all four TCOLE reports.
                 </p>
               </div>
             </div>
@@ -2176,6 +2189,18 @@ function App() {
               <ResultCard
                 label="Cycle Rows"
                 value={result.cycle_rows_processed}
+              />
+              <ResultCard
+                label="License Search Rows"
+                value={result.licensee_search_rows_processed}
+              />
+              <ResultCard
+                label="Peace Officer Licenses"
+                value={result.peace_officer_license_rows}
+              />
+              <ResultCard
+                label="Service Dates Populated"
+                value={result.service_dates_populated}
               />
               <ResultCard
                 label="Records With Hours"
