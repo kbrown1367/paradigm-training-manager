@@ -167,3 +167,25 @@ def test_compliance_email_endpoint_rejects_invalid_track(
     data = response.get_json()
 
     assert "Invalid compliance email track" in data["error"]
+
+
+
+def test_compliance_email_endpoint_accepts_telecommunicator_track(
+    app,
+    client,
+):
+    agency_id, officer_id = seed(app)
+
+    response = client.get(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/compliance-email?track=telecommunicator"
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["subject"] == (
+        "TCOLE Telecommunicator Compliance Status"
+    )

@@ -515,3 +515,49 @@ def test_peace_officer_only_email_has_no_jailer_section(
 
         assert "PEACE OFFICER PROFICIENCY" in body
         assert "COUNTY JAILER PROFICIENCY" not in body
+
+
+
+def test_telecommunicator_email_includes_proficiency(
+    app,
+):
+    with app.app_context():
+        officer = make_officer()
+
+        officer.telecommunicator_service_start_date = (
+            date(2020, 1, 1)
+        )
+
+        db.session.add(
+            OfficerAward(
+                agency_id=officer.agency_id,
+                officer_id=officer.id,
+                award_type="License",
+                award_name="Telecommunicator License",
+                award_date=date(2020, 1, 1),
+            )
+        )
+
+        db.session.commit()
+
+        result = build_compliance_email(
+            officer,
+            evaluation_date=date(2026, 8, 11),
+            track="telecommunicator",
+        )
+
+        body = result["body"]
+
+        assert result["subject"] == (
+            "TCOLE Telecommunicator Compliance Status"
+        )
+
+        assert (
+            "TELECOMMUNICATOR PROFICIENCY"
+            in body
+        )
+
+        assert (
+            "Next Certificate: Basic Telecommunicator"
+            in body
+        )

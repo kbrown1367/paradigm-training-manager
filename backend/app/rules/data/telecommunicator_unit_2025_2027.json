@@ -1,0 +1,13 @@
+{
+  "rule_id": "TELECOMMUNICATOR_UNIT_2025_2027",
+  "license_type": "TELECOMMUNICATOR",
+  "unit_start": "2025-09-01",
+  "unit_end": "2027-08-31",
+  "minimum_total_hours": 20,
+  "required_courses": [
+    {
+      "course_number": "786",
+      "course_title": "Cardiac Emergency Communication"
+    }
+  ]
+}

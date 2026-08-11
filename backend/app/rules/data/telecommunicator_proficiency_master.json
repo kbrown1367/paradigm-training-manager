@@ -1,0 +1,69 @@
+{
+  "rule_set_id": "TELECOMMUNICATOR-PROFICIENCY-MASTER",
+  "rule_version": "2019-09-01",
+  "certificate": "Master Telecommunicator",
+  "license_type": "Telecommunicator",
+  "prerequisite_certificates": [
+    "Basic Telecommunicator",
+    "Intermediate Telecommunicator",
+    "Advanced Telecommunicator"
+  ],
+  "minimum_service_years": 8,
+  "minimum_training_hours": 500,
+  "required_course_categories": [
+    {
+      "id": "CULTURAL_DIVERSITY",
+      "name": "Cultural Diversity",
+      "accepted_courses": [
+        "3939",
+        "394",
+        "39393",
+        "3737"
+      ]
+    },
+    {
+      "id": "ETHICS",
+      "name": "Ethics",
+      "accepted_courses": [
+        "3920",
+        "3925"
+      ]
+    },
+    {
+      "id": "CRISIS_COMMUNICATIONS",
+      "name": "Crisis Communications",
+      "accepted_courses": [
+        "2120",
+        "420",
+        "1080"
+      ]
+    },
+    {
+      "id": "SPANISH",
+      "name": "Spanish",
+      "accepted_courses": [
+        "2109",
+        "2110",
+        "2111",
+        "22109",
+        "34003",
+        "34001"
+      ]
+    }
+  ],
+  "recent_tdd_tty": {
+    "name": "TDD/TTY for Telecommunicators",
+    "lookback_months": 6,
+    "accepted_courses": [
+      "3812",
+      "412",
+      "396",
+      "397",
+      "398",
+      "399",
+      "400",
+      "401",
+      "402"
+    ]
+  }
+}

@@ -7,15 +7,8 @@ from app.compliance.email_resolver import (
 from app.compliance.officer_profile import (
     evaluate_officer_compliance_profile,
 )
-from app.compliance.peace_officer_proficiency import (
-    evaluate_peace_officer_proficiency,
-)
-from app.compliance.jailer_proficiency import (
-    evaluate_jailer_proficiency,
-    has_jailer_license,
-)
-from app.compliance.peace_officer_unit import (
-    has_peace_officer_license,
+from app.compliance.proficiency_tracks import (
+    build_proficiency_advancement,
 )
 from app.compliance.training_calendar import get_unit
 from app.models import Officer
@@ -67,28 +60,12 @@ def build_employee_workspace(
         evaluation_date=evaluation_date,
     )
 
-    peace_officer_proficiency = (
-        evaluate_peace_officer_proficiency(
+    proficiency_advancement = (
+        build_proficiency_advancement(
             officer,
             evaluation_date=evaluation_date,
         )
-        if has_peace_officer_license(officer)
-        else None
     )
-
-    jailer_proficiency = (
-        evaluate_jailer_proficiency(
-            officer,
-            evaluation_date=evaluation_date,
-        )
-        if has_jailer_license(officer)
-        else None
-    )
-
-    proficiency_advancement = {
-        "peace_officer": peace_officer_proficiency,
-        "jailer": jailer_proficiency,
-    }
 
     email = resolve_officer_email(officer)
     unit = get_unit(evaluation_date)
@@ -133,31 +110,51 @@ def build_employee_workspace(
         "components"
     ].get("PEACE_OFFICER", {})
 
-    peace_officer_result = (
-        peace_officer_component.get("result", {})
+    county_jailer_component = profile[
+        "components"
+    ].get("COUNTY_JAILER", {})
+
+    telecommunicator_component = profile[
+        "components"
+    ].get("TELECOMMUNICATOR", {})
+
+    # Summary cards should reflect an applicable primary
+    # license-track unit evaluation rather than assuming
+    # every employee is evaluated as a Peace Officer.
+    if peace_officer_component.get("applicable"):
+        summary_component = peace_officer_component
+    elif county_jailer_component.get("applicable"):
+        summary_component = county_jailer_component
+    elif telecommunicator_component.get("applicable"):
+        summary_component = telecommunicator_component
+    else:
+        summary_component = {}
+
+    summary_result = (
+        summary_component.get("result", {})
     )
 
     training_summary = {
         "current_unit_hours":
             float(current_unit_hours),
         "minimum_total_hours":
-            peace_officer_result.get(
+            summary_result.get(
                 "minimum_total_hours"
             ),
         "remaining_total_hours":
-            peace_officer_result.get(
+            summary_result.get(
                 "remaining_total_hours"
             ),
         "alerrt_hours":
-            peace_officer_result.get(
+            summary_result.get(
                 "alerrt_hours"
             ),
         "required_alerrt_hours":
-            peace_officer_result.get(
+            summary_result.get(
                 "required_alerrt_hours"
             ),
         "remaining_alerrt_hours":
-            peace_officer_result.get(
+            summary_result.get(
                 "remaining_alerrt_hours"
             ),
         "training_record_count":

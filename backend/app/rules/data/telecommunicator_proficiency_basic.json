@@ -1,0 +1,70 @@
+{
+  "rule_set_id": "TELECOMMUNICATOR-PROFICIENCY-BASIC",
+  "rule_version": "2019-09-01",
+  "certificate": "Basic Telecommunicator",
+  "license_type": "Telecommunicator",
+  "minimum_service_years": 1,
+  "required_courses": [
+    {
+      "id": "BASIC_TELECOMMUNICATOR",
+      "name": "Basic Telecommunicator Certificate Course",
+      "accepted_courses": [
+        "1013",
+        "1080"
+      ],
+      "applicability": {
+        "type": "ALWAYS"
+      }
+    },
+    {
+      "id": "PERSONNEL_ORIENTATION",
+      "name": "Personnel Orientation",
+      "accepted_courses": [
+        "1999"
+      ],
+      "applicability": {
+        "type": "APPOINTMENT_DATE_AFTER",
+        "date": "2014-01-01"
+      }
+    },
+    {
+      "id": "CRISIS_COMMUNICATIONS",
+      "name": "Crisis Communications Telecommunicator",
+      "accepted_courses": [
+        "2120",
+        "420",
+        "1080"
+      ],
+      "applicability": {
+        "type": "APPOINTMENT_DATE_AFTER",
+        "date": "2011-12-01"
+      }
+    },
+    {
+      "id": "FIELD_TRAINING",
+      "name": "Telecommunications Field Training",
+      "accepted_courses": [
+        "3720"
+      ],
+      "applicability": {
+        "type": "EVALUATION_DATE_AFTER",
+        "date": "2004-06-01"
+      }
+    }
+  ],
+  "recent_tdd_tty": {
+    "name": "TDD/TTY for Telecommunicators",
+    "lookback_months": 6,
+    "accepted_courses": [
+      "3812",
+      "412",
+      "396",
+      "397",
+      "398",
+      "399",
+      "400",
+      "401",
+      "402"
+    ]
+  }
+}

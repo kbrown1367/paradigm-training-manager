@@ -133,6 +133,7 @@ def test_profile_includes_all_four_components(app):
         assert set(result["components"]) == {
             "PEACE_OFFICER",
             "COUNTY_JAILER",
+            "TELECOMMUNICATOR",
             "POLICE_CHIEF",
             "SUPERVISOR",
             "PUBLIC_INFORMATION_OFFICER",

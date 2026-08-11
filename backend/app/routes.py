@@ -635,6 +635,7 @@ def officer_compliance_email(
     supported_tracks = {
         "peace_officer",
         "jailer",
+        "telecommunicator",
         "combined",
     }
 
@@ -644,7 +645,7 @@ def officer_compliance_email(
                 "error": (
                     "Invalid compliance email track. "
                     "Supported tracks are peace_officer, "
-                    "jailer, and combined."
+                    "jailer, telecommunicator, and combined."
                 )
             }
         ), 400

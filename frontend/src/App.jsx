@@ -142,8 +142,10 @@ function EmployeeComplianceCard({
             <span>PID {employee.tcole_pid}</span>
             <span>•</span>
             <span>
-              {employee.highest_certificate ||
-                "No proficiency certificate"}
+              {formatEmployeeCertificates(
+                employee,
+                employee.proficiency_advancement
+              )}
             </span>
             <span>•</span>
             <span>{assignments}</span>
@@ -318,6 +320,60 @@ function RequirementList({
       )}
     </section>
   );
+}
+
+function formatEmployeeCertificates(
+  employee,
+  proficiencyAdvancement = null
+) {
+  const certificates = [];
+
+  const addCertificate = (label, certificate) => {
+    if (!certificate) {
+      return;
+    }
+
+    const value = `${label}: ${certificate}`;
+
+    if (!certificates.includes(value)) {
+      certificates.push(value);
+    }
+  };
+
+  if (proficiencyAdvancement?.peace_officer) {
+    addCertificate(
+      "Peace Officer",
+      proficiencyAdvancement.peace_officer.current_certificate
+    );
+  } else if (
+    employee.highest_certificate &&
+    employee.highest_certificate.includes("Peace Officer")
+  ) {
+    addCertificate(
+      "Peace Officer",
+      employee.highest_certificate
+    );
+  }
+
+  if (proficiencyAdvancement?.jailer) {
+    addCertificate(
+      "County Jailer",
+      proficiencyAdvancement.jailer.current_certificate
+    );
+  }
+
+  if (proficiencyAdvancement?.telecommunicator) {
+    addCertificate(
+      "Telecommunicator",
+      proficiencyAdvancement.telecommunicator.current_certificate
+    );
+  }
+
+  if (certificates.length === 0) {
+    return "No proficiency certificate";
+  }
+
+  return certificates.join(" • ");
 }
 
 function formatProficiencyStatus(status) {
@@ -1074,10 +1130,38 @@ function EmployeeWorkspace({
             </button>
           )}
 
+
           {workspace.proficiency_advancement
-            ?.peace_officer &&
+            ?.telecommunicator && (
+            <button
+              type="button"
+              className="workspace-email-button"
+              disabled={
+                !workspace.resolved_email?.email
+              }
+              title={
+                workspace.resolved_email?.email
+                  ? "Open a Telecommunicator compliance email."
+                  : "Configure an employee email address first."
+              }
+              onClick={() =>
+                onEmailEmployee(
+                  "telecommunicator"
+                )
+              }
+            >
+              Email Telecommunicator Update
+            </button>
+          )}
+
+          {[
             workspace.proficiency_advancement
-              ?.jailer && (
+              ?.peace_officer,
+            workspace.proficiency_advancement
+              ?.jailer,
+            workspace.proficiency_advancement
+              ?.telecommunicator,
+          ].filter(Boolean).length > 1 && (
               <button
                 type="button"
                 className="workspace-email-button"
@@ -1116,8 +1200,10 @@ function EmployeeWorkspace({
             <span>PID {officer.tcole_pid}</span>
             <span>•</span>
             <span>
-              {officer.highest_certificate ||
-                "No proficiency certificate"}
+              {formatEmployeeCertificates(
+                officer,
+                workspace.proficiency_advancement
+              )}
             </span>
 
             {activeAssignments.map(
@@ -1594,6 +1680,18 @@ function EmployeeWorkspace({
             workspace.proficiency_advancement.jailer
           }
           trackLabel="County Jailer"
+        />
+      )}
+
+
+      {workspace.proficiency_advancement
+        ?.telecommunicator && (
+        <ProficiencyAdvancementPanel
+          advancement={
+            workspace.proficiency_advancement
+              .telecommunicator
+          }
+          trackLabel="Telecommunicator"
         />
       )}
 

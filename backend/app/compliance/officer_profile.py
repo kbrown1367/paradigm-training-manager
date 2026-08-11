@@ -20,12 +20,19 @@ from app.compliance.public_information_officer import (
 from app.compliance.supervisor import (
     evaluate_supervisor,
 )
+from app.compliance.telecommunicator_unit import (
+    evaluate_telecommunicator_unit,
+)
+from app.compliance.telecommunicator_proficiency import (
+    has_telecommunicator_license,
+)
 
 
 def _raw_component_status(component_name, result):
     status_fields = {
         "PEACE_OFFICER": "unit_status",
         "COUNTY_JAILER": "status",
+        "TELECOMMUNICATOR": "unit_status",
         "POLICE_CHIEF": "chief_status",
         "SUPERVISOR": "status",
         "PUBLIC_INFORMATION_OFFICER": "status",
@@ -192,6 +199,21 @@ def evaluate_officer_compliance_profile(
             "deficiencies": [],
         }
 
+    if has_telecommunicator_license(officer):
+        telecommunicator = (
+            evaluate_telecommunicator_unit(
+                officer,
+                evaluation_date=evaluation_date,
+            )
+        )
+    else:
+        telecommunicator = {
+            "applicable": False,
+            "unit_status": "NOT_APPLICABLE",
+            "requirements": [],
+            "deficiencies": [],
+        }
+
     police_chief = evaluate_police_chief(
         officer,
         evaluation_date=evaluation_date,
@@ -215,6 +237,10 @@ def evaluate_officer_compliance_profile(
         _normalize_component(
             "COUNTY_JAILER",
             county_jailer,
+        ),
+        _normalize_component(
+            "TELECOMMUNICATOR",
+            telecommunicator,
         ),
         _normalize_component(
             "POLICE_CHIEF",

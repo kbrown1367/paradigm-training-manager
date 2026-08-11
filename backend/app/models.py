@@ -75,6 +75,10 @@ class Officer(db.Model):
         db.Date,
         nullable=True,
     )
+    telecommunicator_service_start_date = db.Column(
+        db.Date,
+        nullable=True,
+    )
     verified_military_months = db.Column(
         db.Integer,
         nullable=False,

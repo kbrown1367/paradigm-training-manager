@@ -17,12 +17,20 @@ EMAIL_TRACKS = {
         "subject": "TCOLE County Jailer Compliance Status",
         "source_components": {"COUNTY_JAILER"},
     },
+    "telecommunicator": {
+        "label": "Telecommunicator",
+        "subject": (
+            "TCOLE Telecommunicator Compliance Status"
+        ),
+        "source_components": {"TELECOMMUNICATOR"},
+    },
     "combined": {
         "label": "Combined",
         "subject": "TCOLE Compliance Status",
         "source_components": {
             "PEACE_OFFICER",
             "COUNTY_JAILER",
+            "TELECOMMUNICATOR",
         },
     },
 }
@@ -740,6 +748,12 @@ def build_compliance_email(
         proficiency_tracks.get("jailer")
     )
 
+    telecommunicator_proficiency = (
+        proficiency_tracks.get(
+            "telecommunicator"
+        )
+    )
+
     if track in {"peace_officer", "combined"}:
         lines.extend(
             _proficiency_email_lines(
@@ -757,6 +771,20 @@ def build_compliance_email(
                 jailer_proficiency,
                 track_label="County Jailer",
                 highest_certificate="Master Jailer",
+            )
+        )
+
+    if track in {
+        "telecommunicator",
+        "combined",
+    }:
+        lines.extend(
+            _proficiency_email_lines(
+                telecommunicator_proficiency,
+                track_label="Telecommunicator",
+                highest_certificate=(
+                    "Master Telecommunicator"
+                ),
             )
         )
 

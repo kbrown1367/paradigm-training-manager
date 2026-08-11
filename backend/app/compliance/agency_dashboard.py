@@ -7,6 +7,9 @@ from app.compliance.training_calendar import (
     get_cycle,
     get_unit,
 )
+from app.compliance.proficiency_tracks import (
+    build_proficiency_advancement,
+)
 from app.models import Agency, Officer
 
 
@@ -212,6 +215,11 @@ def evaluate_agency_compliance_dashboard(
                 profile["next_due_date"],
             "priority_findings":
                 _priority_findings(profile),
+            "proficiency_advancement":
+                build_proficiency_advancement(
+                    officer,
+                    evaluation_date=evaluation_date,
+                ),
             "overdue_requirements":
                 profile[
                     "overdue_requirements"

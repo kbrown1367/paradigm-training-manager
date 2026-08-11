@@ -31,6 +31,14 @@ SUPPORTED_LICENSES = {
         "kind": "JAILER",
         "field": "jailer_service_start_date",
     },
+    "Telecommunicator License": {
+        "kind": "TELECOMMUNICATOR",
+        "field": "telecommunicator_service_start_date",
+    },
+    "Telecommunications Operator License": {
+        "kind": "TELECOMMUNICATOR",
+        "field": "telecommunicator_service_start_date",
+    },
 }
 
 
@@ -110,6 +118,11 @@ def import_licensee_search(
     jailer_service_dates_updated = 0
     jailer_service_dates_unchanged = 0
 
+    telecommunicator_license_rows = 0
+    telecommunicator_service_dates_populated = 0
+    telecommunicator_service_dates_updated = 0
+    telecommunicator_service_dates_unchanged = 0
+
     unmatched_license_rows = 0
 
     # Keyed by logical license kind plus PID so aliases such
@@ -150,6 +163,8 @@ def import_licensee_search(
             peace_officer_license_rows += 1
         elif license_kind == "JAILER":
             jailer_license_rows += 1
+        elif license_kind == "TELECOMMUNICATOR":
+            telecommunicator_license_rows += 1
 
         tcole_pid = (
             row.get("P_ID") or ""
@@ -205,14 +220,18 @@ def import_licensee_search(
 
             if license_kind == "PEACE_OFFICER":
                 service_dates_populated += 1
-            else:
+            elif license_kind == "JAILER":
                 jailer_service_dates_populated += 1
+            elif license_kind == "TELECOMMUNICATOR":
+                telecommunicator_service_dates_populated += 1
 
         elif existing_date == license_date:
             if license_kind == "PEACE_OFFICER":
                 service_dates_unchanged += 1
-            else:
+            elif license_kind == "JAILER":
                 jailer_service_dates_unchanged += 1
+            elif license_kind == "TELECOMMUNICATOR":
+                telecommunicator_service_dates_unchanged += 1
 
         else:
             # TCOLE is authoritative for imported
@@ -225,8 +244,10 @@ def import_licensee_search(
 
             if license_kind == "PEACE_OFFICER":
                 service_dates_updated += 1
-            else:
+            elif license_kind == "JAILER":
                 jailer_service_dates_updated += 1
+            elif license_kind == "TELECOMMUNICATOR":
+                telecommunicator_service_dates_updated += 1
 
     if supported_license_rows == 0:
         raise LicenseeSearchImportError(
@@ -257,6 +278,14 @@ def import_licensee_search(
             jailer_service_dates_updated,
         "jailer_service_dates_unchanged":
             jailer_service_dates_unchanged,
+        "telecommunicator_license_rows":
+            telecommunicator_license_rows,
+        "telecommunicator_service_dates_populated":
+            telecommunicator_service_dates_populated,
+        "telecommunicator_service_dates_updated":
+            telecommunicator_service_dates_updated,
+        "telecommunicator_service_dates_unchanged":
+            telecommunicator_service_dates_unchanged,
         "unmatched_license_rows":
             unmatched_license_rows,
     }

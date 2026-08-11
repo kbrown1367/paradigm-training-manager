@@ -234,6 +234,7 @@ def test_workspace_contains_peace_officer_proficiency(app):
         assert set(tracks) == {
             "peace_officer",
             "jailer",
+            "telecommunicator",
         }
 
         advancement = tracks["peace_officer"]
@@ -384,6 +385,7 @@ def test_workspace_has_no_proficiency_tracks_without_license(
         assert tracks == {
             "peace_officer": None,
             "jailer": None,
+            "telecommunicator": None,
         }
 
 
@@ -705,3 +707,54 @@ def test_workspace_marks_master_jailer_as_highest(
         assert advancement[
             "status"
         ] == "HIGHEST_CERTIFICATE"
+
+
+
+def test_workspace_contains_telecommunicator_proficiency(
+    app,
+):
+    with app.app_context():
+        agency = Agency(
+            name="Test Communications Center"
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="555555",
+            first_name="Jane",
+            last_name="Dispatcher",
+            telecommunicator_service_start_date=
+                date(2020, 1, 1),
+        )
+
+        db.session.add(officer)
+        db.session.flush()
+
+        db.session.add(
+            OfficerAward(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                award_type="License",
+                award_name="Telecommunicator License",
+                award_date=date(2020, 1, 1),
+            )
+        )
+
+        db.session.commit()
+
+        result = build_employee_workspace(
+            officer,
+            evaluation_date=date(2026, 8, 11),
+        )
+
+        advancement = result[
+            "proficiency_advancement"
+        ]["telecommunicator"]
+
+        assert advancement is not None
+        assert (
+            advancement["next_certificate"]
+            == "Basic Telecommunicator"
+        )
