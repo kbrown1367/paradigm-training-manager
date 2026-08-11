@@ -1,3 +1,5 @@
+from datetime import date
+
 from flask import Blueprint, jsonify, request
 
 from app.models import Agency, Officer
@@ -45,6 +47,9 @@ from app.services.compliance_email import (
 )
 from app.compliance.agency_dashboard import (
     evaluate_agency_compliance_dashboard,
+)
+from app.services.bulk_compliance_communications import (
+    build_bulk_compliance_preflight,
 )
 from app.extensions import db
 from app.services.tcole_import import (
@@ -699,6 +704,47 @@ def agency_compliance_dashboard(
 ):
     result = evaluate_agency_compliance_dashboard(
         agency_id
+    )
+
+    if result is None:
+        return jsonify(
+            {"error": "Agency not found."}
+        ), 404
+
+    return jsonify(result), 200
+
+
+@api.get(
+    "/agencies/<uuid:agency_id>"
+    "/compliance/communications/preflight"
+)
+def bulk_compliance_communications_preflight(
+    agency_id,
+):
+    evaluation_date_value = request.args.get(
+        "evaluation_date"
+    )
+
+    evaluation_date = None
+
+    if evaluation_date_value:
+        try:
+            evaluation_date = date.fromisoformat(
+                evaluation_date_value
+            )
+        except ValueError:
+            return jsonify(
+                {
+                    "error": (
+                        "evaluation_date must use "
+                        "YYYY-MM-DD format."
+                    )
+                }
+            ), 400
+
+    result = build_bulk_compliance_preflight(
+        agency_id,
+        evaluation_date=evaluation_date,
     )
 
     if result is None:

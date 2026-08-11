@@ -1699,6 +1699,1025 @@ function EmployeeWorkspace({
   );
 }
 
+function formatCommunicationTrack(track) {
+  const labels = {
+    peace_officer: "Peace Officer",
+    jailer: "County Jailer",
+    telecommunicator: "Telecommunicator",
+    combined: "Combined",
+  };
+
+  return labels[track] || "None";
+}
+
+
+function formatApplicableTracks(tracks) {
+  if (!tracks?.length) {
+    return "None";
+  }
+
+  return tracks
+    .map(formatCommunicationTrack)
+    .join(" + ");
+}
+
+
+function ComplianceCommunicationsWorkspace({
+  preflight,
+  loading,
+  error,
+  selectedIds,
+  setSelectedIds,
+  onBack,
+}) {
+  const [filter, setFilter] = useState("ALL");
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] =
+    useState(false);
+  const [previewError, setPreviewError] =
+    useState("");
+  const [batchReviewOpen, setBatchReviewOpen] =
+    useState(false);
+  const [
+    batchOpenedIds,
+    setBatchOpenedIds,
+  ] = useState([]);
+  const [
+    batchOpening,
+    setBatchOpening,
+  ] = useState(false);
+  const [
+    batchOpenError,
+    setBatchOpenError,
+  ] = useState("");
+
+  if (loading) {
+    return (
+      <section className="communications-workspace">
+        <button
+          type="button"
+          className="workspace-back"
+          onClick={onBack}
+        >
+          ← Back to Dashboard
+        </button>
+
+        <div className="dashboard-loading">
+          Loading compliance communications...
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="communications-workspace">
+        <button
+          type="button"
+          className="workspace-back"
+          onClick={onBack}
+        >
+          ← Back to Dashboard
+        </button>
+
+        <div className="message error-message">
+          <strong>
+            Compliance communications could not be loaded.
+          </strong>
+          <p>{error}</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!preflight) {
+    return null;
+  }
+
+  const recipients = preflight.recipients || [];
+
+  const filteredRecipients = recipients.filter(
+    (recipient) =>
+      filter === "ALL" ||
+      recipient.overall_status === filter
+  );
+
+  const selectedCount = selectedIds.length;
+
+  const toggleRecipient = (recipient) => {
+    if (recipient.preflight_status !== "READY") {
+      return;
+    }
+
+    setSelectedIds((current) =>
+      current.includes(recipient.officer_id)
+        ? current.filter(
+            (id) => id !== recipient.officer_id
+          )
+        : [...current, recipient.officer_id]
+    );
+  };
+
+  const selectAllEligible = () => {
+    setSelectedIds(
+      recipients
+        .filter(
+          (recipient) =>
+            recipient.preflight_status === "READY"
+        )
+        .map((recipient) => recipient.officer_id)
+    );
+  };
+
+  const clearSelection = () => {
+    setSelectedIds([]);
+  };
+
+  const selectedRecipients = (
+    preflight?.recipients || []
+  ).filter(
+    (recipient) =>
+      selectedIds.includes(
+        recipient.officer_id
+      ) &&
+      recipient.preflight_status === "READY"
+  );
+
+  const batchTrackCounts =
+    selectedRecipients.reduce(
+      (counts, recipient) => {
+        const track =
+          recipient.communication_track ||
+          "unknown";
+
+        counts[track] =
+          (counts[track] || 0) + 1;
+
+        return counts;
+      },
+      {}
+    );
+
+  const removeFromBatch = (officerId) => {
+    setSelectedIds(
+      selectedIds.filter(
+        (id) => id !== officerId
+      )
+    );
+  };
+
+  const openBatchReview = () => {
+    if (selectedRecipients.length === 0) {
+      return;
+    }
+
+    setBatchOpenedIds([]);
+    setBatchOpenError("");
+    setBatchReviewOpen(true);
+  };
+
+  const closeBatchReview = () => {
+    setBatchReviewOpen(false);
+  };
+
+  const openRecipientInEmailApp = async (
+    recipient
+  ) => {
+    if (
+      !recipient ||
+      recipient.preflight_status !== "READY" ||
+      !recipient.communication_track
+    ) {
+      return false;
+    }
+
+    setBatchOpening(true);
+    setBatchOpenError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${preflight.agency.id}` +
+          `/officers/${recipient.officer_id}` +
+          `/compliance-email` +
+          `?track=${encodeURIComponent(
+            recipient.communication_track
+          )}`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to prepare the compliance email."
+        );
+      }
+
+      if (!data.can_email || !data.recipient) {
+        throw new Error(
+          "No employee email address is configured."
+        );
+      }
+
+      const mailto =
+        `mailto:${encodeURIComponent(data.recipient)}` +
+        `?subject=${encodeURIComponent(data.subject)}` +
+        `&body=${encodeURIComponent(data.body)}`;
+
+      window.location.href = mailto;
+
+      setBatchOpenedIds((current) =>
+        current.includes(recipient.officer_id)
+          ? current
+          : [...current, recipient.officer_id]
+      );
+
+      return true;
+    } catch (err) {
+      setBatchOpenError(err.message);
+      return false;
+    } finally {
+      setBatchOpening(false);
+    }
+  };
+
+
+  const unopenedRecipients =
+    selectedRecipients.filter(
+      (recipient) =>
+        !batchOpenedIds.includes(
+          recipient.officer_id
+        )
+    );
+
+
+  const nextRecipient =
+    unopenedRecipients[0] || null;
+
+
+  const openNextBatchEmail = async () => {
+    if (!nextRecipient || batchOpening) {
+      return;
+    }
+
+    await openRecipientInEmailApp(
+      nextRecipient
+    );
+  };
+
+
+  const openPreview = async (recipient) => {
+    if (
+      recipient.preflight_status !== "READY" ||
+      !recipient.communication_track
+    ) {
+      return;
+    }
+
+    setPreviewLoading(true);
+    setPreviewError("");
+    setPreview(null);
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${preflight.agency.id}` +
+          `/officers/${recipient.officer_id}` +
+          `/compliance-email` +
+          `?track=${encodeURIComponent(
+            recipient.communication_track
+          )}`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to prepare compliance email preview."
+        );
+      }
+
+      setPreview({
+        ...data,
+        overall_status: recipient.overall_status,
+        communication_track:
+          recipient.communication_track,
+        applicable_tracks:
+          recipient.applicable_tracks,
+      });
+    } catch (err) {
+      setPreviewError(err.message);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const closePreview = () => {
+    setPreview(null);
+    setPreviewError("");
+    setPreviewLoading(false);
+  };
+
+  return (
+    <section className="communications-workspace">
+      <button
+        type="button"
+        className="workspace-back"
+        onClick={onBack}
+      >
+        ← Back to Dashboard
+      </button>
+
+      <div className="communications-heading">
+        <div>
+          <div className="dashboard-kicker">
+            Compliance Communications
+          </div>
+
+          <h2>
+            {preflight.agency?.name ||
+              "Agency Compliance Communications"}
+          </h2>
+
+          <p>
+            Review employees who are ready to receive
+            individualized TCOLE compliance updates.
+          </p>
+        </div>
+
+        <div className="communications-as-of">
+          <span>As of</span>
+          <strong>
+            {formatDashboardDate(
+              preflight.evaluation_date
+            )}
+          </strong>
+        </div>
+      </div>
+
+      <div className="communications-summary-grid">
+        <div className="communications-summary-card">
+          <span>Employees</span>
+          <strong>
+            {preflight.summary.total_employees}
+          </strong>
+        </div>
+
+        <div className="communications-summary-card ready">
+          <span>Ready</span>
+          <strong>
+            {preflight.summary.eligible_recipients}
+          </strong>
+        </div>
+
+        <div className="communications-summary-card selected">
+          <span>Selected</span>
+          <strong>{selectedCount}</strong>
+        </div>
+
+        <div className="communications-summary-card action">
+          <span>Action Required</span>
+          <strong>
+            {preflight.summary.action_required}
+          </strong>
+        </div>
+      </div>
+
+      <div className="communications-toolbar">
+        <div
+          className="communications-filter-tabs"
+          role="group"
+          aria-label="Filter compliance communications"
+        >
+          {[
+            ["ALL", "All"],
+            ["DUE", "Training Due"],
+            ["NONCOMPLIANT", "Noncompliant"],
+            ["COMPLIANT", "Compliant"],
+            ["NOT_EVALUATED", "Not Evaluated"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={
+                "communications-filter-tab" +
+                (filter === value ? " active" : "")
+              }
+              onClick={() => setFilter(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="communications-selection-actions">
+          <button
+            type="button"
+            className="settings-secondary-button"
+            onClick={clearSelection}
+          >
+            Clear Selection
+          </button>
+
+          <button
+            type="button"
+            className="settings-primary-button"
+            onClick={selectAllEligible}
+          >
+            Select All Eligible
+          </button>
+        </div>
+      </div>
+
+      <div className="communications-result-count">
+        Showing{" "}
+        <strong>{filteredRecipients.length}</strong>{" "}
+        of <strong>{recipients.length}</strong>{" "}
+        employees
+      </div>
+
+      <div className="communications-table-wrap">
+        <table className="communications-table">
+          <thead>
+            <tr>
+              <th className="communications-select-column">
+                Select
+              </th>
+              <th>Employee</th>
+              <th>Status</th>
+              <th>License Track(s)</th>
+              <th>Requirements</th>
+              <th>Next Due</th>
+              <th>Email</th>
+              <th>Readiness</th>
+              <th>Preview</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {filteredRecipients.map((recipient) => {
+              const ready =
+                recipient.preflight_status === "READY";
+
+              const selected = selectedIds.includes(
+                recipient.officer_id
+              );
+
+              const requirementCount =
+                (recipient.overdue_count || 0) +
+                (recipient.outstanding_count || 0) +
+                (recipient.pending_review_count || 0);
+
+              return (
+                <tr
+                  key={recipient.officer_id}
+                  className={
+                    ready
+                      ? "communications-row-ready"
+                      : "communications-row-action"
+                  }
+                >
+                  <td className="communications-select-column">
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      disabled={!ready}
+                      aria-label={
+                        `Select ${recipient.employee_name}`
+                      }
+                      onChange={() =>
+                        toggleRecipient(recipient)
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    <div className="communications-employee">
+                      <strong>
+                        {recipient.employee_name}
+                      </strong>
+                      <span>
+                        PID {recipient.tcole_pid}
+                      </span>
+                    </div>
+                  </td>
+
+                  <td>
+                    <WorkspaceStatus
+                      status={recipient.overall_status}
+                    />
+                  </td>
+
+                  <td>
+                    {formatApplicableTracks(
+                      recipient.applicable_tracks
+                    )}
+                  </td>
+
+                  <td>
+                    <strong>{requirementCount}</strong>
+                  </td>
+
+                  <td>
+                    {formatDashboardDate(
+                      recipient.next_due_date
+                    )}
+                  </td>
+
+                  <td
+                    className="communications-email-cell"
+                    title={
+                      recipient.email ||
+                      "Not configured"
+                    }
+                  >
+                    <span className="communications-email-text">
+                      {recipient.email ||
+                        "Not configured"}
+                    </span>
+                  </td>
+
+                  <td>
+                    {ready ? (
+                      <span className="communications-ready-badge">
+                        Ready
+                      </span>
+                    ) : (
+                      <div className="communications-issues">
+                        <span className="communications-action-badge">
+                          Action Required
+                        </span>
+
+                        {recipient.preflight_issues?.map(
+                          (issue) => (
+                            <span
+                              key={issue.code}
+                              className="communications-issue"
+                            >
+                              {issue.message}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </td>
+
+                  <td>
+                    <button
+                      type="button"
+                      className="communications-preview-button"
+                      disabled={!ready}
+                      onClick={() =>
+                        openPreview(recipient)
+                      }
+                    >
+                      Preview
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {filteredRecipients.length === 0 && (
+          <div className="dashboard-empty">
+            No employees match the current communication
+            filter.
+          </div>
+        )}
+      </div>
+
+      <div className="communications-footer">
+        <div>
+          <strong>{selectedCount}</strong>{" "}
+          employee{selectedCount === 1 ? "" : "s"} selected.
+        </div>
+
+        <button
+          type="button"
+          className="settings-primary-button"
+          disabled={selectedRecipients.length === 0}
+          onClick={openBatchReview}
+        >
+          Prepare Batch
+        </button>
+      </div>
+
+      {batchReviewOpen && (
+        <div
+          className="communications-preview-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget
+            ) {
+              closeBatchReview();
+            }
+          }}
+        >
+          <section
+            className="communications-batch-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Compliance communication batch review"
+          >
+            <div className="communications-preview-header">
+              <div>
+                <div className="dashboard-kicker">
+                  Final Communication Review
+                </div>
+
+                <h3>
+                  {selectedRecipients.length} Compliance{" "}
+                  {selectedRecipients.length === 1
+                    ? "Update"
+                    : "Updates"}{" "}
+                  Ready
+                </h3>
+
+                <p className="communications-batch-subtitle">
+                  Review the final recipient batch before
+                  continuing to the sending stage.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="communications-preview-close"
+                onClick={closeBatchReview}
+                aria-label="Close batch review"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="communications-batch-summary">
+              <div>
+                <span>Total Ready</span>
+                <strong>
+                  {selectedRecipients.length}
+                </strong>
+              </div>
+
+              <div>
+                <span>Peace Officer</span>
+                <strong>
+                  {batchTrackCounts.peace_officer || 0}
+                </strong>
+              </div>
+
+              <div>
+                <span>County Jailer</span>
+                <strong>
+                  {batchTrackCounts.jailer || 0}
+                </strong>
+              </div>
+
+              <div>
+                <span>Telecommunicator</span>
+                <strong>
+                  {batchTrackCounts.telecommunicator || 0}
+                </strong>
+              </div>
+
+              <div>
+                <span>Combined</span>
+                <strong>
+                  {batchTrackCounts.combined || 0}
+                </strong>
+              </div>
+            </div>
+
+            <div className="communications-batch-confirmation">
+              <strong>
+                All {selectedRecipients.length} selected{" "}
+                {selectedRecipients.length === 1
+                  ? "employee has"
+                  : "employees have"}{" "}
+                passed communication preflight.
+              </strong>
+
+              <span>
+                Each recipient has a valid email address
+                and a supported individualized compliance
+                communication type.
+              </span>
+            </div>
+
+            <div className="communications-batch-table-wrap">
+              <table className="communications-batch-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Communication</th>
+                    <th>Requirements</th>
+                    <th>Next Due</th>
+                    <th>Email</th>
+                    <th>Email App</th>
+                    <th>Remove</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {selectedRecipients.map(
+                    (recipient) => (
+                      <tr key={recipient.officer_id}>
+                        <td>
+                          <strong>
+                            {recipient.employee_name}
+                          </strong>
+                          <span className="communications-batch-pid">
+                            PID {recipient.tcole_pid}
+                          </span>
+                        </td>
+
+                        <td>
+                          {formatCommunicationTrack(
+                            recipient.communication_track
+                          )}
+                        </td>
+
+                        <td>
+                          {recipient.requirement_count}
+                        </td>
+
+                        <td>
+                          {recipient.next_due_date
+                            ? formatDashboardDate(
+                                recipient.next_due_date
+                              )
+                            : "None"}
+                        </td>
+
+                        <td
+                          title={recipient.email}
+                          className="communications-email-cell"
+                        >
+                          <span className="communications-email-text">
+                            {recipient.email}
+                          </span>
+                        </td>
+
+                        <td>
+                          {batchOpenedIds.includes(
+                            recipient.officer_id
+                          ) ? (
+                            <span className="communications-opened-badge">
+                              Opened
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="communications-open-email-button"
+                              disabled={batchOpening}
+                              onClick={() =>
+                                openRecipientInEmailApp(
+                                  recipient
+                                )
+                              }
+                            >
+                              Open
+                            </button>
+                          )}
+                        </td>
+
+                        <td>
+                          <button
+                            type="button"
+                            className="communications-remove-button"
+                            onClick={() =>
+                              removeFromBatch(
+                                recipient.officer_id
+                              )
+                            }
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {selectedRecipients.length === 0 && (
+              <div className="communications-batch-empty">
+                No employees remain in this batch.
+                Return to the Communications workspace
+                to select recipients.
+              </div>
+            )}
+
+            <div className="communications-batch-footer">
+              <div>
+                <strong>
+                  {selectedRecipients.length}
+                </strong>{" "}
+                final{" "}
+                {selectedRecipients.length === 1
+                  ? "recipient"
+                  : "recipients"}
+              </div>
+
+              <div className="communications-batch-actions">
+                <button
+                  type="button"
+                  className="communications-secondary-button"
+                  onClick={closeBatchReview}
+                >
+                  Back to Selection
+                </button>
+
+                <button
+                  type="button"
+                  className="settings-primary-button"
+                  disabled={
+                    !nextRecipient ||
+                    batchOpening
+                  }
+                  onClick={openNextBatchEmail}
+                >
+                  {batchOpening
+                    ? "Opening Email..."
+                    : nextRecipient
+                      ? `Open Next Email (${
+                          batchOpenedIds.length + 1
+                        } of ${
+                          selectedRecipients.length
+                        })`
+                      : "All Emails Opened"}
+                </button>
+              </div>
+            </div>
+
+            <div className="communications-send-disabled-note">
+              PTM opens each individualized message in your
+              computer's default email application. Sending
+              remains under your control in Outlook or your
+              configured mail application.
+            </div>
+
+            {batchOpenError && (
+              <div className="communications-batch-open-error">
+                <strong>
+                  Email could not be opened.
+                </strong>
+                <span>{batchOpenError}</span>
+              </div>
+            )}
+
+            {selectedRecipients.length > 0 &&
+              unopenedRecipients.length === 0 && (
+              <div className="communications-batch-complete">
+                <strong>
+                  All {selectedRecipients.length} compliance
+                  emails have been opened in the default email
+                  application.
+                </strong>
+                <span>
+                  PTM does not mark these messages as sent.
+                  Your email application's Sent Items remains
+                  the record of transmission.
+                </span>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {(previewLoading ||
+        previewError ||
+        preview) && (
+        <div
+          className="communications-preview-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget
+            ) {
+              closePreview();
+            }
+          }}
+        >
+          <section
+            className="communications-preview-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Compliance email preview"
+          >
+            <div className="communications-preview-header">
+              <div>
+                <div className="dashboard-kicker">
+                  Compliance Email Preview
+                </div>
+
+                <h3>
+                  {preview?.employee_name ||
+                    "Preparing Preview"}
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                className="communications-preview-close"
+                onClick={closePreview}
+                aria-label="Close email preview"
+              >
+                ×
+              </button>
+            </div>
+
+            {previewLoading && (
+              <div className="dashboard-loading">
+                Preparing individualized compliance
+                update...
+              </div>
+            )}
+
+            {previewError && (
+              <div className="message error-message">
+                <strong>
+                  Email preview could not be prepared.
+                </strong>
+                <p>{previewError}</p>
+              </div>
+            )}
+
+            {preview && !previewLoading && (
+              <>
+                <div className="communications-preview-meta">
+                  <div>
+                    <span>To</span>
+                    <strong>
+                      {preview.recipient ||
+                        "No email address"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Subject</span>
+                    <strong>
+                      {preview.subject}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Communication Type</span>
+                    <strong>
+                      {formatCommunicationTrack(
+                        preview.communication_track
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Status</span>
+                    <strong>
+                      {String(
+                        preview.overall_status ||
+                          "UNKNOWN"
+                      )
+                        .replaceAll("_", " ")
+                        .toLowerCase()
+                        .replace(
+                          /\b\w/g,
+                          (character) =>
+                            character.toUpperCase()
+                        )}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="communications-preview-body">
+                  <pre>{preview.body}</pre>
+                </div>
+
+                <div className="communications-preview-footer">
+                  <span>
+                    This is the exact message PTM will use
+                    for this employee.
+                  </span>
+
+                  <button
+                    type="button"
+                    className="settings-primary-button"
+                    onClick={closePreview}
+                  >
+                    Close Preview
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+      )}
+    </section>
+  );
+}
+
+
 function buildEmailConventionExample(
   pattern,
   domain,
@@ -1748,6 +2767,26 @@ function App() {
   const [loadingWorkspace, setLoadingWorkspace] = useState(false);
   const [workspaceError, setWorkspaceError] = useState("");
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [
+    communicationsOpen,
+    setCommunicationsOpen,
+  ] = useState(false);
+  const [
+    communicationsPreflight,
+    setCommunicationsPreflight,
+  ] = useState(null);
+  const [
+    communicationsLoading,
+    setCommunicationsLoading,
+  ] = useState(false);
+  const [
+    communicationsError,
+    setCommunicationsError,
+  ] = useState("");
+  const [
+    communicationsSelectedIds,
+    setCommunicationsSelectedIds,
+  ] = useState([]);
   const [assignmentSummary, setAssignmentSummary] = useState(null);
   const [credentialVerifications, setCredentialVerifications] = useState([]);
   const [qualificationFacts, setQualificationFacts] = useState(null);
@@ -1793,6 +2832,82 @@ function App() {
       setLoadingDashboard(false);
     }
   }
+
+  async function openComplianceCommunications() {
+    if (!agency?.id) {
+      return;
+    }
+
+    setCommunicationsOpen(true);
+    setCommunicationsLoading(true);
+    setCommunicationsError("");
+    setCommunicationsPreflight(null);
+    setCommunicationsSelectedIds([]);
+    setEmailSettingsOpen(false);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+
+    try {
+      const evaluationDate =
+        dashboard?.evaluation_date;
+
+      const query = evaluationDate
+        ? `?evaluation_date=${encodeURIComponent(
+            evaluationDate
+          )}`
+        : "";
+
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+          `/compliance/communications/preflight` +
+          query
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to load compliance communications."
+        );
+      }
+
+      setCommunicationsPreflight(data);
+
+      setCommunicationsSelectedIds(
+        (data.recipients || [])
+          .filter(
+            (recipient) =>
+              recipient.selected_by_default
+          )
+          .map(
+            (recipient) =>
+              recipient.officer_id
+          )
+      );
+    } catch (err) {
+      setCommunicationsError(err.message);
+    } finally {
+      setCommunicationsLoading(false);
+    }
+  }
+
+
+  function closeComplianceCommunications() {
+    setCommunicationsOpen(false);
+    setCommunicationsPreflight(null);
+    setCommunicationsError("");
+    setCommunicationsSelectedIds([]);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
 
   async function openEmployeeWorkspace(employee) {
     if (!agency?.id || !employee?.id) {
@@ -2587,7 +3702,18 @@ function App() {
       </header>
 
       <main className="page">
-        {workspaceOpen ? (
+        {communicationsOpen ? (
+          <ComplianceCommunicationsWorkspace
+            preflight={communicationsPreflight}
+            loading={communicationsLoading}
+            error={communicationsError}
+            selectedIds={communicationsSelectedIds}
+            setSelectedIds={
+              setCommunicationsSelectedIds
+            }
+            onBack={closeComplianceCommunications}
+          />
+        ) : workspaceOpen ? (
           <EmployeeWorkspace
             workspace={employeeWorkspace}
             loading={loadingWorkspace}
@@ -2635,6 +3761,14 @@ function App() {
             </div>
 
             <div className="dashboard-header-actions">
+              <button
+                type="button"
+                className="communications-launch-button"
+                onClick={openComplianceCommunications}
+              >
+                Email Compliance Updates
+              </button>
+
               <button
                 type="button"
                 className="agency-email-settings-button"
