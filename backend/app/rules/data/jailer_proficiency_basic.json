@@ -1,0 +1,25 @@
+{
+  "rule_set_id": "JAILER-PROFICIENCY-BASIC",
+  "rule_version": "1.0",
+  "certificate": "Basic Jailer",
+  "license_type": "County Jailer",
+  "minimum_service_years": 1,
+  "required_courses": [
+    {
+      "course_number": "1999",
+      "name": "Personnel Orientation",
+      "applicability": {
+        "type": "LICENSE_DATE_ON_OR_AFTER",
+        "date": "1998-06-01"
+      }
+    },
+    {
+      "course_number": "3721",
+      "name": "County Correction Officer Field Training",
+      "applicability": {
+        "type": "LICENSE_DATE_ON_OR_AFTER",
+        "date": "2004-06-01"
+      }
+    }
+  ]
+}

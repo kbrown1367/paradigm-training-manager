@@ -627,9 +627,32 @@ def officer_compliance_email(
     agency_id,
     officer_id,
 ):
+    track = request.args.get(
+        "track",
+        "peace_officer",
+    )
+
+    supported_tracks = {
+        "peace_officer",
+        "jailer",
+        "combined",
+    }
+
+    if track not in supported_tracks:
+        return jsonify(
+            {
+                "error": (
+                    "Invalid compliance email track. "
+                    "Supported tracks are peace_officer, "
+                    "jailer, and combined."
+                )
+            }
+        ), 400
+
     result = get_compliance_email(
         agency_id,
         officer_id,
+        track=track,
     )
 
     if result is None:

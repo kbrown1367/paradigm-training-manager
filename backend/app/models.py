@@ -65,6 +65,7 @@ class Officer(db.Model):
     first_name = db.Column(db.String(100), nullable=False)
     middle_name = db.Column(db.String(100), nullable=True)
     last_name = db.Column(db.String(100), nullable=False)
+    suffix = db.Column(db.String(20), nullable=True)
     email_override = db.Column(db.String(255), nullable=True)
     peace_officer_service_start_date = db.Column(
         db.Date,

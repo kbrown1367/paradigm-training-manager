@@ -1,0 +1,103 @@
+{
+  "rule_set_id": "JAILER-PROFICIENCY-INTERMEDIATE",
+  "rule_version": "1.0",
+  "certificate": "Intermediate Jailer",
+  "license_type": "County Jailer",
+  "prerequisite_certificates": [
+    "Basic Jailer"
+  ],
+  "pathways": {
+    "service_training": [
+      {
+        "service_years": 6,
+        "training_hours": 400
+      },
+      {
+        "service_years": 4,
+        "training_hours": 800
+      },
+      {
+        "service_years": 2,
+        "training_hours": 1200
+      },
+      {
+        "service_years": 1,
+        "training_hours": 2400
+      }
+    ],
+    "education": [
+      {
+        "service_years": 2,
+        "education_level": "ASSOCIATE"
+      },
+      {
+        "service_years": 1,
+        "education_level": "BACHELOR"
+      }
+    ]
+  },
+  "required_courses": [
+    {
+      "id": "SUICIDE_DETECTION",
+      "name": "Suicide Detection and Prevention",
+      "accepted_courses": [
+        "3501",
+        "1120",
+        "2018",
+        "91209"
+      ],
+      "applicability": {
+        "type": "BASIC_CERTIFICATE_ON_OR_AFTER",
+        "date": "1993-03-01"
+      }
+    },
+    {
+      "id": "INMATE_RIGHTS",
+      "name": "Inmate Rights and Privileges",
+      "accepted_courses": [
+        "3502"
+      ],
+      "applicability": {
+        "type": "BASIC_CERTIFICATE_ON_OR_AFTER",
+        "date": "1993-03-01"
+      }
+    },
+    {
+      "id": "INTERPERSONAL_COMMUNICATIONS",
+      "name": "Interpersonal Communications",
+      "accepted_courses": [
+        "3503"
+      ],
+      "applicability": {
+        "type": "BASIC_CERTIFICATE_ON_OR_AFTER",
+        "date": "1993-03-01"
+      }
+    },
+    {
+      "id": "USE_OF_FORCE",
+      "name": "Use of Force",
+      "accepted_courses": [
+        "3504"
+      ],
+      "applicability": {
+        "type": "BASIC_CERTIFICATE_ON_OR_AFTER",
+        "date": "1993-03-01"
+      }
+    },
+    {
+      "id": "SPANISH",
+      "name": "Spanish",
+      "accepted_courses": [
+        "2109",
+        "2110",
+        "34001",
+        "34002",
+        "2111"
+      ],
+      "applicability": {
+        "type": "BASIC_CERTIFICATE_ON_OR_AFTER",
+        "date": "1993-03-01"
+      }
+    }
+  ]
+}

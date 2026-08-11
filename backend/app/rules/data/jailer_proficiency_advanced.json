@@ -1,0 +1,47 @@
+{
+  "rule_set_id": "JAILER-PROFICIENCY-ADVANCED",
+  "rule_version": "1.0",
+  "certificate": "Advanced Jailer",
+  "license_type": "County Jailer",
+  "prerequisite_certificates": [
+    "Basic Jailer",
+    "Intermediate Jailer"
+  ],
+  "pathways": {
+    "service_training": [
+      {
+        "service_years": 8,
+        "training_hours": 800
+      },
+      {
+        "service_years": 6,
+        "training_hours": 1200
+      },
+      {
+        "service_years": 4,
+        "training_hours": 2400
+      }
+    ],
+    "education": [
+      {
+        "service_years": 6,
+        "education_level": "ASSOCIATE"
+      },
+      {
+        "service_years": 4,
+        "education_level": "BACHELOR"
+      }
+    ],
+    "military": [
+      {
+        "service_years": 6,
+        "military_years": 2
+      },
+      {
+        "service_years": 4,
+        "military_years": 4
+      }
+    ]
+  },
+  "required_courses": []
+}

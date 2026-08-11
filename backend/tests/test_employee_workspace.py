@@ -220,7 +220,7 @@ def test_workspace_contains_compliance_details(app):
         assert "components" in result
 
 
-def test_workspace_contains_proficiency_evaluation(app):
+def test_workspace_contains_peace_officer_proficiency(app):
     with app.app_context():
         _, officer = make_officer()
 
@@ -229,31 +229,136 @@ def test_workspace_contains_proficiency_evaluation(app):
             evaluation_date=date(2026, 8, 9),
         )
 
-        advancement = result[
-            "proficiency_advancement"
-        ]
+        tracks = result["proficiency_advancement"]
 
-        assert advancement[
-            "current_certificate"
-        ] == "Intermediate Peace Officer"
-        assert advancement[
-            "next_certificate"
-        ] == "Advanced Peace Officer"
-        assert advancement["status"] != (
-            "NOT_YET_IMPLEMENTED"
+        assert set(tracks) == {
+            "peace_officer",
+            "jailer",
+        }
+
+        advancement = tracks["peace_officer"]
+
+        assert advancement is not None
+        assert (
+            advancement["current_certificate"]
+            == "Intermediate Peace Officer"
+        )
+        assert (
+            advancement["next_certificate"]
+            == "Advanced Peace Officer"
         )
         assert "service_years" in advancement
         assert "training_hours" in advancement
         assert "course_requirements" in advancement
-        assert "missing_requirements" in advancement
+
+        assert tracks["jailer"] is None
 
 
-def test_workspace_marks_peace_officer_proficiency_not_applicable_without_license(
+def test_workspace_contains_jailer_proficiency(app):
+    with app.app_context():
+        agency = Agency(
+            name="Jailer Test Agency",
+            email_domain="example.gov",
+            email_pattern="FIRST_INITIAL_LAST",
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="654321",
+            first_name="John",
+            last_name="Doe",
+            jailer_service_start_date=date(
+                2020,
+                1,
+                30,
+            ),
+        )
+        db.session.add(officer)
+        db.session.flush()
+
+        db.session.add(
+            OfficerAward(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                award_type="License",
+                award_name="Jailer License",
+                award_date=date(2020, 1, 30),
+            )
+        )
+
+        db.session.commit()
+
+        result = build_employee_workspace(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        tracks = result["proficiency_advancement"]
+
+        assert tracks["peace_officer"] is None
+        assert tracks["jailer"] is not None
+        assert (
+            tracks["jailer"]["certificate"]
+            == "Basic Jailer"
+        )
+        assert tracks["jailer"][
+            "has_jailer_license"
+        ] is True
+
+
+def test_workspace_preserves_dual_license_proficiency(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        officer.jailer_service_start_date = date(
+            2020,
+            1,
+            30,
+        )
+
+        db.session.add(
+            OfficerAward(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                award_type="License",
+                award_name="County Jailer License",
+                award_date=date(2020, 1, 30),
+            )
+        )
+
+        db.session.commit()
+
+        result = build_employee_workspace(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        tracks = result["proficiency_advancement"]
+
+        assert tracks["peace_officer"] is not None
+        assert tracks["jailer"] is not None
+
+        assert (
+            tracks["peace_officer"][
+                "current_certificate"
+            ]
+            == "Intermediate Peace Officer"
+        )
+
+        assert (
+            tracks["jailer"]["certificate"]
+            == "Basic Jailer"
+        )
+
+
+def test_workspace_has_no_proficiency_tracks_without_license(
     app,
 ):
     with app.app_context():
         agency = Agency(
-            name="Jailer Test Agency",
+            name="No License Agency",
             email_domain="example.gov",
             email_pattern="FIRST_INITIAL_LAST",
         )
@@ -274,22 +379,12 @@ def test_workspace_marks_peace_officer_proficiency_not_applicable_without_licens
             evaluation_date=date(2026, 8, 9),
         )
 
-        advancement = result[
-            "proficiency_advancement"
-        ]
+        tracks = result["proficiency_advancement"]
 
-        assert advancement["status"] == (
-            "NOT_APPLICABLE"
-        )
-        assert advancement[
-            "current_certificate"
-        ] is None
-        assert advancement[
-            "next_certificate"
-        ] is None
-        assert advancement[
-            "course_requirements"
-        ] == []
+        assert tracks == {
+            "peace_officer": None,
+            "jailer": None,
+        }
 
 
 def test_workspace_lookup_is_tenant_scoped(app):
@@ -313,3 +408,300 @@ def test_workspace_lookup_is_tenant_scoped(app):
             officer.id,
             evaluation_date=date(2026, 8, 9),
         ) is None
+
+
+def test_workspace_advances_basic_jailer_to_intermediate(
+    app,
+):
+    with app.app_context():
+        agency = Agency(
+            name="Jailer Progression Agency"
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="700001",
+            first_name="John",
+            last_name="Basic",
+            jailer_service_start_date=date(
+                2020,
+                1,
+                1,
+            ),
+        )
+        db.session.add(officer)
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                OfficerAward(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    award_type="License",
+                    award_name="Jailer License",
+                    award_date=date(2020, 1, 1),
+                ),
+                OfficerAward(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    award_type="Certificate",
+                    award_name="Basic Jailer",
+                    award_date=date(2021, 1, 1),
+                ),
+            ]
+        )
+
+        db.session.commit()
+
+        result = build_employee_workspace(
+            officer,
+            evaluation_date=date(2026, 8, 11),
+        )
+
+        advancement = result[
+            "proficiency_advancement"
+        ]["jailer"]
+
+        assert advancement[
+            "current_certificate"
+        ] == "Basic Jailer"
+
+        assert advancement[
+            "next_certificate"
+        ] == "Intermediate Jailer"
+
+        assert advancement[
+            "certificate"
+        ] == "Intermediate Jailer"
+
+
+def test_workspace_advances_intermediate_jailer_to_advanced(
+    app,
+):
+    with app.app_context():
+        agency = Agency(
+            name="Jailer Progression Agency"
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="700002",
+            first_name="John",
+            last_name="Intermediate",
+            jailer_service_start_date=date(
+                2015,
+                1,
+                1,
+            ),
+        )
+        db.session.add(officer)
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                OfficerAward(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    award_type="License",
+                    award_name="Jailer License",
+                    award_date=date(2015, 1, 1),
+                ),
+                OfficerAward(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    award_type="Certificate",
+                    award_name="Basic Jailer",
+                    award_date=date(2016, 1, 1),
+                ),
+                OfficerAward(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    award_type="Certificate",
+                    award_name=(
+                        "Intermediate Jailer Proficiency"
+                    ),
+                    award_date=date(2020, 1, 1),
+                ),
+            ]
+        )
+
+        db.session.commit()
+
+        result = build_employee_workspace(
+            officer,
+            evaluation_date=date(2026, 8, 11),
+        )
+
+        advancement = result[
+            "proficiency_advancement"
+        ]["jailer"]
+
+        assert advancement[
+            "current_certificate"
+        ] == "Intermediate Jailer"
+
+        assert advancement[
+            "next_certificate"
+        ] == "Advanced Jailer"
+
+        assert advancement[
+            "certificate"
+        ] == "Advanced Jailer"
+
+
+def test_workspace_advances_advanced_jailer_to_master(
+    app,
+):
+    with app.app_context():
+        agency = Agency(
+            name="Jailer Progression Agency"
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="700003",
+            first_name="John",
+            last_name="Advanced",
+            jailer_service_start_date=date(
+                2005,
+                1,
+                1,
+            ),
+        )
+        db.session.add(officer)
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                OfficerAward(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    award_type="License",
+                    award_name="Jailer License",
+                    award_date=date(2005, 1, 1),
+                ),
+                OfficerAward(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    award_type="Certificate",
+                    award_name="Basic Jailer",
+                    award_date=date(2006, 1, 1),
+                ),
+                OfficerAward(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    award_type="Certificate",
+                    award_name=(
+                        "Intermediate Jailer Proficiency"
+                    ),
+                    award_date=date(2010, 1, 1),
+                ),
+                OfficerAward(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    award_type="Certificate",
+                    award_name=(
+                        "Advanced Jailer Proficiency"
+                    ),
+                    award_date=date(2015, 1, 1),
+                ),
+            ]
+        )
+
+        db.session.commit()
+
+        result = build_employee_workspace(
+            officer,
+            evaluation_date=date(2026, 8, 11),
+        )
+
+        advancement = result[
+            "proficiency_advancement"
+        ]["jailer"]
+
+        assert advancement[
+            "current_certificate"
+        ] == "Advanced Jailer"
+
+        assert advancement[
+            "next_certificate"
+        ] == "Master Jailer"
+
+        assert advancement[
+            "certificate"
+        ] == "Master Jailer"
+
+
+def test_workspace_marks_master_jailer_as_highest(
+    app,
+):
+    with app.app_context():
+        agency = Agency(
+            name="Jailer Progression Agency"
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="700004",
+            first_name="John",
+            last_name="Master",
+            jailer_service_start_date=date(
+                2000,
+                1,
+                1,
+            ),
+        )
+        db.session.add(officer)
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                OfficerAward(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    award_type="License",
+                    award_name="Jailer License",
+                    award_date=date(2000, 1, 1),
+                ),
+                OfficerAward(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    award_type="Certificate",
+                    award_name=(
+                        "Master Jailer Proficiency"
+                    ),
+                    award_date=date(2020, 1, 1),
+                ),
+            ]
+        )
+
+        db.session.commit()
+
+        result = build_employee_workspace(
+            officer,
+            evaluation_date=date(2026, 8, 11),
+        )
+
+        advancement = result[
+            "proficiency_advancement"
+        ]["jailer"]
+
+        assert advancement[
+            "current_certificate"
+        ] == "Master Jailer"
+
+        assert advancement[
+            "next_certificate"
+        ] is None
+
+        assert advancement[
+            "status"
+        ] == "HIGHEST_CERTIFICATE"

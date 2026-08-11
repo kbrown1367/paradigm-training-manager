@@ -19,6 +19,30 @@ class AwardsImportError(ValueError):
     pass
 
 
+SUFFIXES = {
+    "JR",
+    "SR",
+    "II",
+    "III",
+    "IV",
+    "V",
+}
+
+
+def _normalize_suffix(value):
+    normalized = (
+        (value or "")
+        .strip()
+        .replace(".", "")
+        .upper()
+    )
+
+    if normalized in SUFFIXES:
+        return normalized
+
+    return None
+
+
 def parse_officer_name(value):
     value = (value or "").strip()
 
@@ -30,22 +54,45 @@ def parse_officer_name(value):
             f"Officer name is not in expected LAST, FIRST format: {value}"
         )
 
-    last_name, given_names = value.split(",", 1)
+    family_name, given_names = value.split(",", 1)
 
-    last_name = last_name.strip()
+    family_name = family_name.strip()
     given_names = given_names.strip()
 
-    parts = given_names.split()
+    family_parts = family_name.split()
+    given_parts = given_names.split()
 
-    if not last_name or not parts:
+    if not family_parts or not given_parts:
+        raise AwardsImportError(
+            f"Officer name is incomplete: {value}"
+        )
+
+    suffix = None
+
+    possible_suffix = _normalize_suffix(
+        family_parts[-1]
+    )
+
+    if possible_suffix:
+        suffix = possible_suffix
+        family_parts = family_parts[:-1]
+
+    last_name = " ".join(family_parts).strip()
+
+    if not last_name:
         raise AwardsImportError(
             f"Officer name is incomplete: {value}"
         )
 
     return {
-        "first_name": parts[0],
-        "middle_name": " ".join(parts[1:]) if len(parts) > 1 else None,
+        "first_name": given_parts[0],
+        "middle_name": (
+            " ".join(given_parts[1:])
+            if len(given_parts) > 1
+            else None
+        ),
         "last_name": last_name,
+        "suffix": suffix,
     }
 
 
@@ -148,6 +195,7 @@ def import_awards_roster(agency_id, csv_content, commit=True):
                         first_name=name["first_name"],
                         middle_name=name["middle_name"],
                         last_name=name["last_name"],
+                        suffix=name["suffix"],
                     )
                     db.session.add(officer)
                     db.session.flush()
@@ -156,6 +204,7 @@ def import_awards_roster(agency_id, csv_content, commit=True):
                     officer.first_name = name["first_name"]
                     officer.middle_name = name["middle_name"]
                     officer.last_name = name["last_name"]
+                    officer.suffix = name["suffix"]
                     officers_updated += 1
 
                 officers_by_pid[pid] = officer

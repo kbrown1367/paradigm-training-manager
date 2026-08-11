@@ -40,6 +40,7 @@ def test_parse_simple_tcole_name():
         "first_name": "CELIA",
         "middle_name": None,
         "last_name": "ACOSTA",
+        "suffix": None,
     }
 
 
@@ -49,7 +50,8 @@ def test_parse_tcole_name_with_middle_and_suffix():
     assert result == {
         "first_name": "JACK",
         "middle_name": "J.",
-        "last_name": "AUSMUS JR.",
+        "last_name": "AUSMUS",
+        "suffix": "JR",
     }
 
 

@@ -96,6 +96,7 @@ function EmployeeComplianceCard({
     employee.first_name,
     employee.middle_name,
     employee.last_name,
+    employee.suffix,
   ]
     .filter(Boolean)
     .join(" ");
@@ -351,7 +352,10 @@ function formatProficiencyPathway(pathway) {
   return labels[pathway.type] || pathway.type;
 }
 
-function ProficiencyAdvancementPanel({ advancement }) {
+function ProficiencyAdvancementPanel({
+  advancement,
+  trackLabel,
+}) {
   if (!advancement) {
     return null;
   }
@@ -398,7 +402,7 @@ function ProficiencyAdvancementPanel({ advancement }) {
         </div>
 
         <div className="workspace-empty">
-          Peace Officer proficiency certification does not
+          {trackLabel} proficiency certification does not
           apply to this employee.
         </div>
       </section>
@@ -409,7 +413,7 @@ function ProficiencyAdvancementPanel({ advancement }) {
     <section className="workspace-panel proficiency-preview">
       <div className="workspace-panel-heading">
         <div>
-          <h3>Next Proficiency Certificate</h3>
+          <h3>{trackLabel} Proficiency</h3>
           <p>
             TCOLE proficiency advancement based on currently
             available agency records.
@@ -453,7 +457,7 @@ function ProficiencyAdvancementPanel({ advancement }) {
                 : "proficiency-fact"
           }
         >
-          <span>Peace Officer Service</span>
+          <span>{trackLabel} Service</span>
 
           <strong>
             {advancement.service_years != null
@@ -565,6 +569,7 @@ function ProficiencyAdvancementPanel({ advancement }) {
                   <div className="proficiency-course-info">
                     <strong>
                       {requirement.label ||
+                        requirement.name ||
                         requirement.course_name ||
                         requirement.course_number ||
                         "Required course"}
@@ -580,7 +585,9 @@ function ProficiencyAdvancementPanel({ advancement }) {
                       </span>
                     )}
 
-                    {requirement.status === "MET" &&
+                    {["MET", "COMPLETE"].includes(
+                        requirement.status
+                      ) &&
                       requirement.satisfied_by?.courses?.length > 0 && (
                         <span className="proficiency-course-match">
                           Satisfied by:{" "}
@@ -597,7 +604,9 @@ function ProficiencyAdvancementPanel({ advancement }) {
                   <span
                     className={
                       "proficiency-course-status " +
-                      (requirement.status === "MET"
+                      (["MET", "COMPLETE"].includes(
+                        requirement.status
+                      )
                         ? "completed"
                         : requirement.status === "NOT_APPLICABLE"
                           ? "not-applicable"
@@ -607,7 +616,9 @@ function ProficiencyAdvancementPanel({ advancement }) {
                             : "missing")
                     }
                   >
-                    {requirement.status === "MET"
+                    {["MET", "COMPLETE"].includes(
+                        requirement.status
+                      )
                       ? "Completed"
                       : requirement.status === "NOT_APPLICABLE"
                         ? "Not Applicable"
@@ -991,6 +1002,7 @@ function EmployeeWorkspace({
     officer.first_name,
     officer.middle_name,
     officer.last_name,
+    officer.suffix,
   ]
     .filter(Boolean)
     .join(" ");
@@ -1011,19 +1023,80 @@ function EmployeeWorkspace({
           ← Back to Dashboard
         </button>
 
-        <button
-          type="button"
-          className="workspace-email-button"
-          disabled={!workspace.resolved_email?.email}
-          title={
-            workspace.resolved_email?.email
-              ? "Open a compliance email in your default email application."
-              : "Configure an employee email address first."
-          }
-          onClick={onEmailEmployee}
+        <div
+          className="workspace-email-actions"
+          style={{
+            display: "flex",
+            gap: "8px",
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+          }}
         >
-          Email Employee
-        </button>
+          {workspace.proficiency_advancement
+            ?.peace_officer && (
+            <button
+              type="button"
+              className="workspace-email-button"
+              disabled={
+                !workspace.resolved_email?.email
+              }
+              title={
+                workspace.resolved_email?.email
+                  ? "Open a Peace Officer compliance email."
+                  : "Configure an employee email address first."
+              }
+              onClick={() =>
+                onEmailEmployee("peace_officer")
+              }
+            >
+              Email Peace Officer Update
+            </button>
+          )}
+
+          {workspace.proficiency_advancement
+            ?.jailer && (
+            <button
+              type="button"
+              className="workspace-email-button"
+              disabled={
+                !workspace.resolved_email?.email
+              }
+              title={
+                workspace.resolved_email?.email
+                  ? "Open a County Jailer compliance email."
+                  : "Configure an employee email address first."
+              }
+              onClick={() =>
+                onEmailEmployee("jailer")
+              }
+            >
+              Email County Jailer Update
+            </button>
+          )}
+
+          {workspace.proficiency_advancement
+            ?.peace_officer &&
+            workspace.proficiency_advancement
+              ?.jailer && (
+              <button
+                type="button"
+                className="workspace-email-button"
+                disabled={
+                  !workspace.resolved_email?.email
+                }
+                title={
+                  workspace.resolved_email?.email
+                    ? "Open a combined compliance email."
+                    : "Configure an employee email address first."
+                }
+                onClick={() =>
+                  onEmailEmployee("combined")
+                }
+              >
+                Email Combined Update
+              </button>
+            )}
+        </div>
       </div>
 
       <div className="workspace-hero">
@@ -1506,9 +1579,23 @@ function EmployeeWorkspace({
         onSave={onSaveQualificationFacts}
       />
 
-      <ProficiencyAdvancementPanel
-        advancement={workspace.proficiency_advancement}
-      />
+      {workspace.proficiency_advancement?.peace_officer && (
+        <ProficiencyAdvancementPanel
+          advancement={
+            workspace.proficiency_advancement.peace_officer
+          }
+          trackLabel="Peace Officer"
+        />
+      )}
+
+      {workspace.proficiency_advancement?.jailer && (
+        <ProficiencyAdvancementPanel
+          advancement={
+            workspace.proficiency_advancement.jailer
+          }
+          trackLabel="County Jailer"
+        />
+      )}
 
     </section>
   );
@@ -1945,7 +2032,9 @@ function App() {
     }
   }
 
-  async function handleEmailEmployee() {
+  async function handleEmailEmployee(
+    track = "peace_officer"
+  ) {
     if (
       !agency?.id ||
       !selectedOfficerId ||
@@ -1960,7 +2049,8 @@ function App() {
       const response = await fetch(
         `/api/agencies/${agency.id}` +
           `/officers/${selectedOfficerId}` +
-          `/compliance-email`
+          `/compliance-email` +
+          `?track=${encodeURIComponent(track)}`
       );
 
       const data = await response.json();

@@ -10,6 +10,10 @@ from app.compliance.officer_profile import (
 from app.compliance.peace_officer_proficiency import (
     evaluate_peace_officer_proficiency,
 )
+from app.compliance.jailer_proficiency import (
+    evaluate_jailer_proficiency,
+    has_jailer_license,
+)
 from app.compliance.peace_officer_unit import (
     has_peace_officer_license,
 )
@@ -63,31 +67,28 @@ def build_employee_workspace(
         evaluation_date=evaluation_date,
     )
 
-    if has_peace_officer_license(officer):
-        proficiency_advancement = (
-            evaluate_peace_officer_proficiency(
-                officer,
-                evaluation_date=evaluation_date,
-            )
+    peace_officer_proficiency = (
+        evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=evaluation_date,
         )
-    else:
-        proficiency_advancement = {
-            "status": "NOT_APPLICABLE",
-            "current_certificate": None,
-            "current_certificate_date": None,
-            "next_certificate": None,
-            "service_years": None,
-            "training_hours": 0.0,
-            "education_level": None,
-            "verified_military_months": None,
-            "qualifying_pathway": None,
-            "alternate_pathway_possible": False,
-            "pathway_results": {},
-            "course_requirements": [],
-            "missing_requirements": [],
-            "insufficient_data_requirements": [],
-            "rule_version": None,
-        }
+        if has_peace_officer_license(officer)
+        else None
+    )
+
+    jailer_proficiency = (
+        evaluate_jailer_proficiency(
+            officer,
+            evaluation_date=evaluation_date,
+        )
+        if has_jailer_license(officer)
+        else None
+    )
+
+    proficiency_advancement = {
+        "peace_officer": peace_officer_proficiency,
+        "jailer": jailer_proficiency,
+    }
 
     email = resolve_officer_email(officer)
     unit = get_unit(evaluation_date)

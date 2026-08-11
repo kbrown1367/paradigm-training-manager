@@ -1,0 +1,68 @@
+{
+  "rule_set_id": "JAILER-PROFICIENCY-MASTER",
+  "rule_version": "1.0",
+  "certificate": "Master Jailer",
+  "license_type": "County Jailer",
+  "prerequisite_certificates": [
+    "Basic Jailer",
+    "Intermediate Jailer",
+    "Advanced Jailer"
+  ],
+  "pathways": {
+    "service_training": [
+      {
+        "service_years": 20,
+        "training_hours": 1200
+      },
+      {
+        "service_years": 15,
+        "training_hours": 2400
+      },
+      {
+        "service_years": 12,
+        "training_hours": 3300
+      },
+      {
+        "service_years": 10,
+        "training_hours": 4000
+      }
+    ],
+    "education": [
+      {
+        "service_years": 12,
+        "education_level": "ASSOCIATE"
+      },
+      {
+        "service_years": 9,
+        "education_level": "BACHELOR"
+      },
+      {
+        "service_years": 7,
+        "education_level": "MASTER"
+      },
+      {
+        "service_years": 5,
+        "education_level": "DOCTORATE"
+      }
+    ],
+    "military": [
+      {
+        "service_years": 12,
+        "military_years": 2
+      },
+      {
+        "service_years": 9,
+        "military_years": 4
+      },
+      {
+        "service_years": 7,
+        "military_years": 5
+      },
+      {
+        "service_years": 5,
+        "military_years": 8
+      }
+    ]
+  },
+  "required_courses": []
+}
