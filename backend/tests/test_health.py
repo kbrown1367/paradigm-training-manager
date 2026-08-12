@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app import create_app
 
 
@@ -18,4 +20,14 @@ def test_health():
 
     assert data["application"] == "Paradigm Training Manager"
     assert data["status"] == "ok"
-    assert data["version"] == "0.1.7"
+
+    expected_version = (
+        Path(__file__)
+        .resolve()
+        .parents[2]
+        .joinpath("VERSION")
+        .read_text()
+        .strip()
+    )
+
+    assert data["version"] == expected_version

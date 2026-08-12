@@ -7,6 +7,7 @@ def test_agency_list_is_returned():
     app = create_app(
         {
             "TESTING": True,
+            "AUTHORIZATION_DISABLED": True,
             "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
         }
     )

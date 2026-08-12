@@ -16,6 +16,7 @@ def app():
     app = create_app(
         {
             "TESTING": True,
+            "AUTHORIZATION_DISABLED": True,
             "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
         }
     )

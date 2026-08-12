@@ -1,7 +1,14 @@
 from datetime import date
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
+from app.authorization import (
+    authorize_operational_api_request,
+)
+from app.auth import (
+    ROLE_AGENCY_ADMIN,
+    ROLE_PLATFORM_ADMIN,
+)
 from app.models import Agency, Officer
 from app.services.credential_verifications import (
     CREDENTIAL_TYPES,
@@ -62,9 +69,41 @@ from app.services.tcole_import import (
 api = Blueprint("api", __name__)
 
 
+@api.before_request
+def enforce_operational_api_authorization():
+    return authorize_operational_api_request()
+
+
 @api.get("/agencies")
 def list_agencies():
-    agencies = Agency.query.order_by(Agency.name).all()
+    user = g.current_user
+
+    if user.role == ROLE_PLATFORM_ADMIN:
+        agencies = (
+            Agency.query
+            .order_by(Agency.name)
+            .all()
+        )
+    elif (
+        user.role == ROLE_AGENCY_ADMIN
+        and user.agency_id is not None
+    ):
+        agency = Agency.query.filter_by(
+            id=user.agency_id,
+        ).one_or_none()
+
+        agencies = (
+            [agency]
+            if agency is not None
+            else []
+        )
+    else:
+        return jsonify(
+            {
+                "error":
+                    "Resource not found."
+            }
+        ), 404
 
     return jsonify(
         [

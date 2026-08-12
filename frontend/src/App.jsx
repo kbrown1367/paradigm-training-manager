@@ -2748,7 +2748,10 @@ function buildEmailConventionExample(
   return `Jane Smith → ${localPart}@${cleanDomain}`;
 }
 
-function App() {
+function OperationalApp({
+  currentUser,
+  onLogout,
+}) {
   const [agency, setAgency] = useState(null);
   const [selectedOfficerId, setSelectedOfficerId] = useState("");
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
@@ -3695,10 +3698,32 @@ function App() {
           <div className="brand-kicker">
             Paradigm Strategic Partners
           </div>
-          <h1>Paradigm Training Manager</h1>
+          <h1>
+            Paradigm Training Manager
+            <sup className="product-mark">™</sup>
+          </h1>
         </div>
 
-        <div className="version">v0.2.11</div>
+        <div className="authenticated-user">
+          <div>
+            <strong>
+              {currentUser?.first_name}{" "}
+              {currentUser?.last_name}
+            </strong>
+
+            <span>
+              {currentUser?.agency?.name ||
+                "Paradigm Strategic Partners"}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onLogout}
+          >
+            Log Out
+          </button>
+        </div>
       </header>
 
       <main className="page">
@@ -4236,5 +4261,1239 @@ function App() {
     </div>
   );
 }
+
+
+
+function ProductFooter() {
+  return (
+    <footer className="product-footer">
+      <div className="product-footer-inner">
+        <div>
+          <strong>
+            Paradigm Training Manager
+            <sup className="product-mark">™</sup>
+          </strong>
+          <span>
+            {" "}
+            | Version {__PTM_VERSION__}
+          </span>
+        </div>
+
+        <div>
+          Copyright © 2026 Paradigm Strategic Partners,
+          LLC. All Rights Reserved.
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+
+
+function RoiCalculator() {
+  const [employees, setEmployees] = useState("50");
+  const [hoursPerMonth, setHoursPerMonth] =
+    useState("8");
+  const [hourlyCost, setHourlyCost] = useState("45");
+
+  const annualHours =
+    Math.max(0, Number(hoursPerMonth) || 0) * 12;
+
+  const annualCost =
+    annualHours *
+    Math.max(0, Number(hourlyCost) || 0);
+
+  const recoveredHours = annualHours * 0.75;
+  const recoveredValue =
+    recoveredHours *
+    Math.max(0, Number(hourlyCost) || 0);
+
+  const employeeCount =
+    Math.max(0, Number(employees) || 0);
+
+  let estimatedSubscription = 399;
+
+  if (employeeCount > 300) {
+    estimatedSubscription = null;
+  } else if (employeeCount > 150) {
+    estimatedSubscription = 2999;
+  } else if (employeeCount > 75) {
+    estimatedSubscription = 1999;
+  } else if (employeeCount > 35) {
+    estimatedSubscription = 1199;
+  } else if (employeeCount > 15) {
+    estimatedSubscription = 749;
+  }
+
+  const netValue =
+    estimatedSubscription == null
+      ? null
+      : recoveredValue - estimatedSubscription;
+
+  const multiple =
+    estimatedSubscription &&
+    estimatedSubscription > 0
+      ? recoveredValue / estimatedSubscription
+      : null;
+
+  return (
+    <div className="public-roi-calculator">
+      <div className="public-roi-inputs">
+        <label>
+          <span>Licensed employees</span>
+          <input
+            type="number"
+            min="1"
+            value={employees}
+            onChange={(event) =>
+              setEmployees(event.target.value)
+            }
+          />
+        </label>
+
+        <label>
+          <span>
+            Hours spent managing compliance each month
+          </span>
+          <input
+            type="number"
+            min="0"
+            step="0.5"
+            value={hoursPerMonth}
+            onChange={(event) =>
+              setHoursPerMonth(event.target.value)
+            }
+          />
+        </label>
+
+        <label>
+          <span>Estimated hourly staff cost</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={hourlyCost}
+            onChange={(event) =>
+              setHourlyCost(event.target.value)
+            }
+          />
+        </label>
+      </div>
+
+      <div className="public-roi-results">
+        <div>
+          <span>Your current process</span>
+          <strong>
+            {annualHours.toLocaleString()} hours/year
+          </strong>
+          <small>
+            ${annualCost.toLocaleString()} estimated annual
+            staff cost
+          </small>
+        </div>
+
+        <div>
+          <span>Illustrative PTM scenario</span>
+          <strong>
+            {Math.round(
+              recoveredHours
+            ).toLocaleString()}{" "}
+            staff hours returned
+          </strong>
+          <small>
+            ${Math.round(
+              recoveredValue
+            ).toLocaleString()}{" "}
+            estimated staff-time value recovered
+          </small>
+        </div>
+
+        <div className="public-roi-net">
+          <span>Estimated net value</span>
+          <strong>
+            {netValue == null
+              ? "Contact us"
+              : `$${Math.round(
+                  netValue
+                ).toLocaleString()}/year`}
+          </strong>
+          <small>
+            {estimatedSubscription == null
+              ? "Enterprise Plus pricing is custom."
+              : `PTM subscription estimate: $${estimatedSubscription.toLocaleString()}/year`}
+          </small>
+
+          {multiple != null && (
+            <small>
+              Illustrative staff-time value:
+              {" "}
+              {multiple.toFixed(1)}× subscription cost
+            </small>
+          )}
+        </div>
+      </div>
+
+      <p className="public-roi-disclaimer">
+        Illustrative estimate based on the values entered
+        above and an assumed 75% reduction in administrative
+        time. Actual time savings will vary by agency.
+      </p>
+    </div>
+  );
+}
+
+
+function PricingCard({
+  name,
+  range,
+  logins,
+  price,
+  featured = false,
+}) {
+  return (
+    <article
+      className={
+        "public-pricing-card" +
+        (featured ? " featured" : "")
+      }
+    >
+      {featured && (
+        <span className="public-pricing-featured">
+          Popular
+        </span>
+      )}
+
+      <h3>{name}</h3>
+      <p>{range}</p>
+      <strong>{price}</strong>
+      <span>{logins}</span>
+    </article>
+  );
+}
+
+
+function FaqItem({ question, answer }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <article className="public-faq-item">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span>{question}</span>
+        <strong>{open ? "−" : "+"}</strong>
+      </button>
+
+      {open && <p>{answer}</p>}
+    </article>
+  );
+}
+
+
+
+function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    setBusy(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        "/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Unable to sign in."
+        );
+      }
+
+      window.location.href = "/app";
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="login-page">
+      <div className="login-shell">
+        <a href="/" className="login-brand">
+          <span>
+            Paradigm Strategic Partners
+          </span>
+
+          <strong>
+            Paradigm Training Manager
+            <sup className="product-mark">™</sup>
+          </strong>
+        </a>
+
+        <section className="login-card">
+          <div className="login-heading">
+            <span>AGENCY ACCESS</span>
+            <h1>Sign in to PTM</h1>
+
+            <p>
+              Use the credentials assigned to you by
+              Paradigm or your agency administrator.
+            </p>
+          </div>
+
+          {error && (
+            <div className="login-error">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <label>
+              <span>Email address</span>
+
+              <input
+                type="email"
+                autoComplete="username"
+                required
+                value={email}
+                disabled={busy}
+                onChange={(event) =>
+                  setEmail(event.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              <span>Password</span>
+
+              <input
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                disabled={busy}
+                onChange={(event) =>
+                  setPassword(event.target.value)
+                }
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={busy}
+            >
+              {busy
+                ? "Signing In..."
+                : "Sign In"}
+            </button>
+          </form>
+
+          <div className="login-help">
+            PTM accounts are created for authorized
+            agency personnel. Public account registration
+            is not available.
+          </div>
+        </section>
+
+        <a href="/" className="login-return">
+          ← Return to Paradigm Training Manager
+        </a>
+      </div>
+    </div>
+  );
+}
+
+
+function AuthenticatedApplication() {
+  const [authState, setAuthState] = useState({
+    loading: true,
+    user: null,
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCurrentUser() {
+      try {
+        const response = await fetch(
+          "/api/auth/me",
+          {
+            credentials: "same-origin",
+          }
+        );
+
+        if (response.status === 401) {
+          window.location.replace("/login");
+          return;
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              "Unable to verify your PTM session."
+          );
+        }
+
+        if (active) {
+          setAuthState({
+            loading: false,
+            user: data.user,
+          });
+        }
+      } catch {
+        if (active) {
+          window.location.replace("/login");
+        }
+      }
+    }
+
+    loadCurrentUser();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleLogout() {
+    try {
+      await fetch(
+        "/api/auth/logout",
+        {
+          method: "POST",
+          credentials: "same-origin",
+        }
+      );
+    } finally {
+      window.location.replace("/login");
+    }
+  }
+
+  if (authState.loading) {
+    return (
+      <div className="auth-loading">
+        <div>
+          <strong>
+            Paradigm Training Manager
+            <sup className="product-mark">™</sup>
+          </strong>
+
+          <span>
+            Verifying your secure session...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <OperationalApp
+      currentUser={authState.user}
+      onLogout={handleLogout}
+    />
+  );
+}
+
+
+function PublicLandingPage() {
+  const openApplication = () => {
+    window.location.href = "/login";
+  };
+
+  return (
+    <div className="public-site">
+      <header className="public-header">
+        <div className="public-header-inner">
+          <a
+            href="/"
+            className="public-brand"
+            aria-label="Paradigm Training Manager home"
+          >
+            <span className="public-brand-company">
+              Paradigm Strategic Partners
+            </span>
+
+            <strong>
+              Paradigm Training Manager
+              <sup className="product-mark">™</sup>
+            </strong>
+          </a>
+
+          <nav
+            className="public-nav"
+            aria-label="Primary navigation"
+          >
+            <a href="#how-it-works">
+              How It Works
+            </a>
+
+            <a href="#why-ptm">
+              Why PTM
+            </a>
+
+            <a href="#pricing">
+              Pricing
+            </a>
+
+            <a href="#faq">
+              FAQ
+            </a>
+
+            <button
+              type="button"
+              className="public-login-button"
+              onClick={openApplication}
+            >
+              Agency Login
+            </button>
+
+            <a
+              href="#request-demo"
+              className="public-demo-button"
+            >
+              Request a Demo
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <section className="public-hero">
+          <div className="public-hero-inner">
+            <div className="public-hero-copy">
+              <div className="public-eyebrow">
+                TCOLE Compliance Management
+              </div>
+
+              <h1>
+                Know who's compliant.
+                <br />
+                Know who isn't.
+                <br />
+                <span>Know exactly why.</span>
+              </h1>
+
+              <p className="public-hero-lead">
+                TCOLE compliance management built for
+                Texas law enforcement.
+              </p>
+
+              <p className="public-hero-description">
+                Import your agency's TCOLE records and PTM
+                automatically evaluates applicable training
+                requirements, identifies deficiencies,
+                tracks deadlines, and shows you exactly
+                where your agency stands.
+              </p>
+
+              <div className="public-hero-actions">
+                <a
+                  href="#how-it-works"
+                  className="public-primary-cta"
+                >
+                  See How PTM Works
+                </a>
+
+                <a
+                  href="#request-demo"
+                  className="public-secondary-cta"
+                >
+                  Request a Demo
+                </a>
+              </div>
+
+              <div className="public-outcome">
+                Compliance is the outcome.
+              </div>
+            </div>
+
+            <div
+              className="public-dashboard-preview"
+              aria-label="Paradigm Training Manager dashboard preview"
+            >
+              <div className="public-preview-topbar">
+                <div>
+                  <span>
+                    Executive Compliance Dashboard
+                  </span>
+                  <strong>
+                    Sample Agency
+                  </strong>
+                </div>
+
+                <span className="public-preview-period">
+                  Unit 1
+                </span>
+              </div>
+
+              <div className="public-preview-grid">
+                <div>
+                  <span>Licensed Employees</span>
+                  <strong>47</strong>
+                </div>
+
+                <div className="public-preview-good">
+                  <span>Compliant</span>
+                  <strong>43</strong>
+                </div>
+
+                <div className="public-preview-alert">
+                  <span>Attention Required</span>
+                  <strong>2</strong>
+                </div>
+
+                <div className="public-preview-due">
+                  <span>Upcoming Requirements</span>
+                  <strong>2</strong>
+                </div>
+              </div>
+
+              <div className="public-preview-list">
+                <div>
+                  <span className="public-preview-status good">
+                    Compliant
+                  </span>
+                  <div>
+                    <strong>Jordan Smith</strong>
+                    <span>
+                      Peace Officer · Master
+                    </span>
+                  </div>
+                  <span>None Due</span>
+                </div>
+
+                <div>
+                  <span className="public-preview-status due">
+                    Training Due
+                  </span>
+                  <div>
+                    <strong>Alex Martinez</strong>
+                    <span>
+                      Peace Officer · Advanced
+                    </span>
+                  </div>
+                  <span>8/31/2027</span>
+                </div>
+
+                <div>
+                  <span className="public-preview-status good">
+                    Compliant
+                  </span>
+                  <div>
+                    <strong>Taylor Morgan</strong>
+                    <span>
+                      Telecommunicator · Master
+                    </span>
+                  </div>
+                  <span>None Due</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="public-foundation-section"
+          id="why-ptm"
+        >
+          <div className="public-section-inner">
+            <div className="public-section-heading">
+              <span>THE CURRENT PROCESS</span>
+              <h2>
+                How much time are you spending just
+                figuring out who's compliant?
+              </h2>
+
+              <p>
+                You're already paying for TCOLE compliance
+                management. You're paying for it in staff
+                time.
+              </p>
+            </div>
+
+            <div className="public-pain-grid">
+              <article>
+                <span>01</span>
+                <h3>Reviewing TCOLE reports</h3>
+                <p>
+                  Sorting through individual training
+                  histories and course records.
+                </p>
+              </article>
+
+              <article>
+                <span>02</span>
+                <h3>Checking requirements</h3>
+                <p>
+                  Units, cycles, legislative mandates,
+                  certification levels and assignments.
+                </p>
+              </article>
+
+              <article>
+                <span>03</span>
+                <h3>Tracking spreadsheets</h3>
+                <p>
+                  Manually maintaining who's completed what
+                  and what's still required.
+                </p>
+              </article>
+
+              <article>
+                <span>04</span>
+                <h3>Following up</h3>
+                <p>
+                  Finding deficiencies, notifying employees,
+                  and checking everything again later.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="public-process-section"
+          id="how-it-works"
+        >
+          <div className="public-section-inner">
+            <div className="public-section-heading centered">
+              <span>HOW PTM WORKS</span>
+              <h2>
+                From TCOLE reports to answers.
+              </h2>
+            </div>
+
+            <div className="public-process-grid">
+              <article>
+                <div>1</div>
+                <h3>Import</h3>
+                <p>
+                  Download the reports you already use from
+                  TCOLE and import them into PTM.
+                </p>
+              </article>
+
+              <span className="public-process-arrow">
+                →
+              </span>
+
+              <article>
+                <div>2</div>
+                <h3>Analyze</h3>
+                <p>
+                  PTM evaluates each employee against the
+                  requirements that apply to them.
+                </p>
+              </article>
+
+              <span className="public-process-arrow">
+                →
+              </span>
+
+              <article>
+                <div>3</div>
+                <h3>Know</h3>
+                <p>
+                  See who's compliant, what's missing,
+                  what's due, and what needs your attention.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+
+        <section className="public-complexity-section">
+          <div className="public-section-inner">
+            <div className="public-section-heading">
+              <span>WHY IT GETS COMPLICATED</span>
+              <h2>
+                TCOLE compliance isn't just counting
+                training hours.
+              </h2>
+              <p>
+                Different employees can have different
+                requirements based on license type,
+                training period, certification level,
+                assignments, service time, and specific
+                mandated courses.
+              </p>
+            </div>
+
+            <div className="public-complexity-grid">
+              <article>
+                <span>License Type</span>
+                <strong>
+                  Peace Officer · County Jailer ·
+                  Telecommunicator
+                </strong>
+              </article>
+
+              <article>
+                <span>Training Period</span>
+                <strong>
+                  2-Year Unit · 4-Year Cycle
+                </strong>
+              </article>
+
+              <article>
+                <span>Certification</span>
+                <strong>
+                  Basic · Intermediate · Advanced · Master
+                </strong>
+              </article>
+
+              <article>
+                <span>Individual Requirements</span>
+                <strong>
+                  Courses · Hours · Service Time ·
+                  Equivalencies
+                </strong>
+              </article>
+
+              <article>
+                <span>Assignments</span>
+                <strong>
+                  Supervisor · PIO · Chief · Other Roles
+                </strong>
+              </article>
+
+              <article>
+                <span>Legislative Requirements</span>
+                <strong>
+                  ALERRT · Law Update · Protecting Your
+                  License · Other Mandates
+                </strong>
+              </article>
+            </div>
+
+            <div className="public-complexity-callout">
+              <strong>
+                PTM brings all of it together automatically.
+              </strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="public-product-section">
+          <div className="public-section-inner">
+            <div className="public-section-heading centered">
+              <span>WHAT CHANGES WITH PTM</span>
+              <h2>
+                Stop comparing records manually.
+              </h2>
+              <p>
+                PTM turns training records into an
+                actionable compliance picture for both the
+                agency and the individual employee.
+              </p>
+            </div>
+
+            <div className="public-product-grid">
+              <article>
+                <div className="public-product-card-heading">
+                  <span>Executive Dashboard</span>
+                  <strong>Agency-wide visibility</strong>
+                </div>
+
+                <div className="public-mini-dashboard">
+                  <div>
+                    <span>Active Employees</span>
+                    <strong>47</strong>
+                  </div>
+                  <div>
+                    <span>Compliant</span>
+                    <strong>43</strong>
+                  </div>
+                  <div>
+                    <span>Training Due</span>
+                    <strong>4</strong>
+                  </div>
+                </div>
+
+                <p>
+                  See the current compliance posture of the
+                  agency at a glance.
+                </p>
+              </article>
+
+              <article>
+                <div className="public-product-card-heading">
+                  <span>Individual Compliance</span>
+                  <strong>Know exactly what's missing</strong>
+                </div>
+
+                <div className="public-mini-requirements">
+                  <div>
+                    <span className="good">Complete</span>
+                    <strong>Current Unit Hours</strong>
+                  </div>
+                  <div>
+                    <span className="due">Due</span>
+                    <strong>
+                      State and Federal Law Update
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="due">Due</span>
+                    <strong>
+                      8 additional ALERRT hours
+                    </strong>
+                  </div>
+                </div>
+
+                <p>
+                  See exactly which requirements remain and
+                  when they are due.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section className="public-roi-section">
+          <div className="public-section-inner">
+            <div className="public-roi-copy">
+              <span>THE FINANCIAL CASE</span>
+              <h2>
+                What is your current process costing you?
+              </h2>
+              <p>
+                PTM does not need to eliminate a position to
+                create value. The real benefit is staff
+                capacity returned to the agency.
+              </p>
+            </div>
+
+            <RoiCalculator />
+          </div>
+        </section>
+
+        <section className="public-capacity-section">
+          <div className="public-section-inner">
+            <div className="public-section-heading centered">
+              <span>GIVE THE TIME BACK</span>
+              <h2>
+                What could your staff do with that time?
+              </h2>
+              <p>
+                Training coordinators were not hired to
+                spend their careers maintaining
+                spreadsheets.
+              </p>
+            </div>
+
+            <div className="public-capacity-grid">
+              <article>Finding better training opportunities</article>
+              <article>Scheduling and coordinating training</article>
+              <article>Conducting instruction</article>
+              <article>Accreditation and policy work</article>
+              <article>Officer development</article>
+              <article>Other agency priorities</article>
+            </div>
+
+            <div className="public-capacity-callout">
+              PTM doesn't just save time. It gives your
+              people time back.
+            </div>
+          </div>
+        </section>
+
+        <section className="public-feature-section">
+          <div className="public-section-inner">
+            <div className="public-section-heading">
+              <span>MORE VISIBILITY, LESS WORK</span>
+              <h2>
+                Save time without sacrificing oversight.
+              </h2>
+            </div>
+
+            <div className="public-feature-grid">
+              <article>
+                <h3>Executive Dashboard</h3>
+                <p>
+                  See agency-wide compliance status,
+                  deficiencies, and priorities.
+                </p>
+              </article>
+
+              <article>
+                <h3>Individual Compliance</h3>
+                <p>
+                  Know exactly what each employee has
+                  completed and what remains.
+                </p>
+              </article>
+
+              <article>
+                <h3>Upcoming Requirements</h3>
+                <p>
+                  Identify issues before the deadline
+                  arrives.
+                </p>
+              </article>
+
+              <article>
+                <h3>Compliance Communications</h3>
+                <p>
+                  Prepare individualized updates for
+                  employees and open them in the agency's
+                  default email application.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section className="public-not-lms-section">
+          <div className="public-section-inner">
+            <div className="public-not-lms-card">
+              <span>NOT ANOTHER LMS</span>
+              <h2>
+                You don't need another learning management
+                system.
+              </h2>
+              <h3>Neither do we.</h3>
+
+              <p>
+                PTM is not designed to sell courses, host
+                videos, administer tests, manage classrooms,
+                or replace the training resources your
+                agency already uses.
+              </p>
+
+              <div className="public-not-lms-question">
+                <span>It answers a different question:</span>
+                <strong>Is everyone compliant?</strong>
+                <span>And if the answer is no:</span>
+                <strong>Why not?</strong>
+              </div>
+
+              <p className="public-not-lms-close">
+                Use the training resources you already use.
+                Let PTM manage the compliance.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="public-trust-section">
+          <div className="public-section-inner">
+            <div className="public-section-heading centered">
+              <span>BUILT FOR THE JOB</span>
+              <h2>
+                Built specifically for Texas law
+                enforcement.
+              </h2>
+              <p>
+                PTM is not generic HR software with a
+                compliance label added to it.
+              </p>
+            </div>
+
+            <div className="public-trust-grid">
+              <article>TCOLE-specific rules</article>
+              <article>Published course equivalencies</article>
+              <article>
+                Peace officers, jailers, and
+                telecommunicators
+              </article>
+              <article>
+                Assignment-specific requirements
+              </article>
+              <article>
+                2-year units and 4-year cycles
+              </article>
+              <article>
+                Proficiency certification eligibility
+              </article>
+              <article>
+                Explainable compliance determinations
+              </article>
+              <article>
+                Defined, data-driven compliance rules
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section className="public-pricing-section" id="pricing">
+          <div className="public-section-inner">
+            <div className="public-section-heading centered">
+              <span>STRAIGHTFORWARD PRICING</span>
+              <h2>
+                Compliance shouldn't require a budget
+                meeting.
+              </h2>
+              <p>
+                Annual pricing based on the number of
+                licensed employees in the agency.
+              </p>
+            </div>
+
+            <div className="public-pricing-grid">
+              <PricingCard
+                name="Starter"
+                range="1–15 licensed employees"
+                logins="2 agency logins included"
+                price="$399/year"
+              />
+              <PricingCard
+                name="Small"
+                range="16–35 licensed employees"
+                logins="3 agency logins included"
+                price="$749/year"
+              />
+              <PricingCard
+                name="Medium"
+                range="36–75 licensed employees"
+                logins="5 agency logins included"
+                price="$1,199/year"
+                featured
+              />
+              <PricingCard
+                name="Large"
+                range="76–150 licensed employees"
+                logins="8 agency logins included"
+                price="$1,999/year"
+              />
+              <PricingCard
+                name="Enterprise"
+                range="151–300 licensed employees"
+                logins="12 agency logins included"
+                price="$2,999/year"
+              />
+              <PricingCard
+                name="Enterprise Plus"
+                range="301+ licensed employees"
+                logins="Custom agency access"
+                price="Custom"
+              />
+            </div>
+
+            <div className="public-pricing-note">
+              Additional agency administrator logins may be
+              added separately. Pilot terms may differ from
+              commercial pricing.
+            </div>
+          </div>
+        </section>
+
+        <section className="public-faq-section" id="faq">
+          <div className="public-section-inner">
+            <div className="public-section-heading">
+              <span>COMMON QUESTIONS</span>
+              <h2>Frequently asked questions.</h2>
+            </div>
+
+            <div className="public-faq-list">
+              <FaqItem
+                question="Does PTM replace TCOLE?"
+                answer="No. PTM uses agency-imported TCOLE records to help the agency evaluate and manage compliance."
+              />
+              <FaqItem
+                question="Is PTM an LMS?"
+                answer="No. PTM is a compliance management platform, not a learning management system."
+              />
+              <FaqItem
+                question="Do we have to manually enter all of our employees' training?"
+                answer="No. PTM is designed around importing the official TCOLE reports the agency already uses."
+              />
+              <FaqItem
+                question="Can PTM tell me why an employee is not compliant?"
+                answer="Yes. PTM identifies the applicable requirement and shows what remains outstanding."
+              />
+              <FaqItem
+                question="Does PTM support peace officers, jailers, and telecommunicators?"
+                answer="Yes. PTM evaluates supported TCOLE requirements for each applicable license track."
+              />
+              <FaqItem
+                question="Can one agency see another agency's information?"
+                answer="No. PTM is being built as a multi-tenant system with agency data isolated by design."
+              />
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="public-pilot-cta"
+          id="request-demo"
+        >
+          <div className="public-section-inner">
+            <div>
+              <span>PARADIGM TRAINING MANAGER™</span>
+              <h2>
+                Better compliance visibility.
+                <br />
+                Less administrative work.
+              </h2>
+              <p>
+                The complete public site is being prepared
+                for the trusted-user pilot.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={openApplication}
+            >
+              Agency Login
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+
+function App() {
+  const path = window.location.pathname;
+
+  const loginPath =
+    path === "/login" ||
+    path.startsWith("/login/");
+
+  const applicationPath =
+    path === "/app" ||
+    path.startsWith("/app/");
+
+  return (
+    <>
+      {loginPath ? (
+        <LoginPage />
+      ) : applicationPath ? (
+        <AuthenticatedApplication />
+      ) : (
+        <PublicLandingPage />
+      )}
+
+      <ProductFooter />
+    </>
+  );
+}
+
 
 export default App;
