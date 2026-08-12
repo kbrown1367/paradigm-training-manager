@@ -204,3 +204,26 @@ def test_frontend_default_path_targets_repo_dist():
         expected.parent.name
         == "frontend"
     )
+
+
+def test_migrations_do_not_assign_integer_zero_to_boolean_columns():
+    """Production PostgreSQL must receive Boolean SQL literals."""
+    project_root = Path(__file__).resolve().parents[2]
+    migration = (
+        project_root
+        / "backend"
+        / "migrations"
+        / "versions"
+        / "8ed47812a181_add_verified_jailer_cultural_diversity_.py"
+    )
+
+    contents = migration.read_text()
+
+    assert (
+        "SET verified_jailer_cultural_diversity_exemption = FALSE"
+        in contents
+    )
+    assert (
+        "SET verified_jailer_cultural_diversity_exemption = 0"
+        not in contents
+    )

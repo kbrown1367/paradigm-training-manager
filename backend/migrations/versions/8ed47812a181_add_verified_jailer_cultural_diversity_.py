@@ -34,7 +34,7 @@ def upgrade():
     op.execute(
         sa.text(
             "UPDATE officers "
-            "SET verified_jailer_cultural_diversity_exemption = 0 "
+            "SET verified_jailer_cultural_diversity_exemption = FALSE "
             "WHERE verified_jailer_cultural_diversity_exemption "
             "IS NULL"
         )
