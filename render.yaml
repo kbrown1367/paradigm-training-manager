@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: paradigm-training-manager
+    runtime: python
+    plan: starter
+    region: ohio
+    branch: main
+    autoDeployTrigger: commit
+
+    buildCommand: >-
+      pip install -r backend/requirements.txt
+      && npm ci --prefix frontend
+      && npm run build --prefix frontend
+
+    preDeployCommand: >-
+      cd backend
+      && flask --app app db upgrade
+
+    startCommand: >-
+      cd backend
+      && gunicorn "app:create_app()"
+      --workers 2
+      --threads 4
+      --timeout 120
+      --bind 0.0.0.0:$PORT
+
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: PTM_ENV
+        value: production
+
+      - key: SECRET_KEY
+        generateValue: true
+
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ptm-postgres
+          property: connectionString
+
+      - key: PYTHON_VERSION
+        value: 3.13.5
+
+      - key: NODE_VERSION
+        value: 24.14.1
+
+databases:
+  - name: ptm-postgres
+    plan: basic-256mb
+    region: ohio
+    postgresMajorVersion: "17"
+
+    # PTM uses Render's private database connection.
+    # No public PostgreSQL ingress is required.
+    ipAllowList: []

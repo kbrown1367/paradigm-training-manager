@@ -18,6 +18,7 @@ def create_app(config=None):
 
     from . import models
     from .auth_routes import auth_api
+    from .frontend_routes import frontend_web
     from .platform_routes import platform_api
     from .routes import api
 
@@ -32,6 +33,9 @@ def create_app(config=None):
     app.register_blueprint(
         api,
         url_prefix="/api",
+    )
+    app.register_blueprint(
+        frontend_web,
     )
 
     @app.get("/api/health")
