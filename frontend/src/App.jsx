@@ -3717,6 +3717,15 @@ function OperationalApp({
             </span>
           </div>
 
+          {currentUser?.role === "PLATFORM_ADMIN" && (
+            <a
+              href="/platform"
+              className="platform-app-link"
+            >
+              Platform Administration
+            </a>
+          )}
+
           <button
             type="button"
             onClick={onLogout}
@@ -4529,7 +4538,10 @@ function LoginPage() {
         );
       }
 
-      window.location.href = "/app";
+      window.location.href =
+        data.user?.role === "PLATFORM_ADMIN"
+          ? "/platform"
+          : "/app";
     } catch (err) {
       setError(err.message);
     } finally {
@@ -4657,6 +4669,13 @@ function AuthenticatedApplication() {
           );
         }
 
+        if (
+          data.user?.role === "PLATFORM_ADMIN"
+        ) {
+          window.location.replace("/platform");
+          return;
+        }
+
         if (active) {
           setAuthState({
             loading: false,
@@ -4715,6 +4734,1253 @@ function AuthenticatedApplication() {
     />
   );
 }
+
+
+function formatPlatformDate(value) {
+  if (!value) {
+    return "Never";
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString();
+}
+
+
+function PlatformAdministration({
+  currentUser,
+  onLogout,
+}) {
+  const [agencies, setAgencies] = useState([]);
+  const [selectedAgency, setSelectedAgency] =
+    useState(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const [newAgencyOpen, setNewAgencyOpen] =
+    useState(false);
+
+  const [newAgency, setNewAgency] = useState({
+    name: "",
+    tcole_agency_number: "",
+    ori: "",
+    email_domain: "",
+    email_pattern: "",
+  });
+
+  const [newAdminOpen, setNewAdminOpen] =
+    useState(false);
+
+  const [newAdmin, setNewAdmin] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    password: "",
+    password_confirm: "",
+  });
+
+  const [resetUser, setResetUser] =
+    useState(null);
+
+  const [resetPassword, setResetPassword] =
+    useState("");
+
+  const [resetPasswordConfirm, setResetPasswordConfirm] =
+    useState("");
+
+  async function fetchJson(
+    url,
+    options = {},
+  ) {
+    const response = await fetch(
+      url,
+      {
+        credentials: "same-origin",
+        ...options,
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+          "Unable to complete the request."
+      );
+    }
+
+    return data;
+  }
+
+  async function loadAgencies() {
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await fetchJson(
+        "/api/platform/agencies"
+      );
+
+      setAgencies(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function openAgency(agencyId) {
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const data = await fetchJson(
+        `/api/platform/agencies/${agencyId}`
+      );
+
+      setSelectedAgency(data);
+      setNewAdminOpen(false);
+      setResetUser(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function refreshSelectedAgency() {
+    if (!selectedAgency?.id) {
+      return;
+    }
+
+    const data = await fetchJson(
+      `/api/platform/agencies/${selectedAgency.id}`
+    );
+
+    setSelectedAgency(data);
+
+    setAgencies((current) =>
+      current.map((agency) =>
+        agency.id === data.id
+          ? {
+              ...agency,
+              ...data,
+              administrators: undefined,
+            }
+          : agency
+      )
+    );
+  }
+
+  useEffect(() => {
+    loadAgencies();
+  }, []);
+
+  async function handleCreateAdmin(event) {
+    event.preventDefault();
+
+    setError("");
+    setNotice("");
+
+    if (
+      newAdmin.password !==
+      newAdmin.password_confirm
+    ) {
+      setError(
+        "The administrator passwords do not match."
+      );
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      await fetchJson(
+        `/api/platform/agencies/${selectedAgency.id}/administrators`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            first_name:
+              newAdmin.first_name,
+            last_name:
+              newAdmin.last_name,
+            email:
+              newAdmin.email,
+            password:
+              newAdmin.password,
+          }),
+        }
+      );
+
+      await refreshSelectedAgency();
+
+      setNewAdmin({
+        first_name: "",
+        last_name: "",
+        email: "",
+        password: "",
+        password_confirm: "",
+      });
+
+      setNewAdminOpen(false);
+
+      setNotice(
+        "Administrator account created."
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAdminStatus(
+    user,
+    status,
+  ) {
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await fetchJson(
+        `/api/platform/agencies/${selectedAgency.id}/administrators/${user.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status,
+          }),
+        }
+      );
+
+      await refreshSelectedAgency();
+
+      setNotice(
+        status === "active"
+          ? "Administrator activated."
+          : "Administrator deactivated."
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePasswordReset(event) {
+    event.preventDefault();
+
+    setError("");
+    setNotice("");
+
+    if (
+      resetPassword !==
+      resetPasswordConfirm
+    ) {
+      setError(
+        "The new passwords do not match."
+      );
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      await fetchJson(
+        `/api/platform/agencies/${selectedAgency.id}/administrators/${resetUser.id}/reset-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            password: resetPassword,
+          }),
+        }
+      );
+
+      setResetUser(null);
+      setResetPassword("");
+      setResetPasswordConfirm("");
+
+      setNotice(
+        "Administrator password reset."
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (currentUser?.role !== "PLATFORM_ADMIN") {
+    return (
+      <div className="platform-denied">
+        <h1>Resource not found.</h1>
+        <a href="/app">
+          Return to PTM
+        </a>
+      </div>
+    );
+  }
+
+  async function handleCreateAgency(event) {
+    event.preventDefault();
+
+    const name = newAgency.name.trim();
+
+    if (!name) {
+      setError("Agency name is required.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const data = await fetchJson(
+        "/api/platform/agencies",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            tcole_agency_number:
+              newAgency.tcole_agency_number.trim() ||
+              null,
+            ori:
+              newAgency.ori.trim() ||
+              null,
+            email_domain:
+              newAgency.email_domain.trim() ||
+              null,
+            email_pattern:
+              newAgency.email_pattern ||
+              null,
+          }),
+        }
+      );
+
+      setAgencies((current) =>
+        [...current, data].sort((a, b) =>
+          a.name.localeCompare(b.name)
+        )
+      );
+
+      setNewAgency({
+        name: "",
+        tcole_agency_number: "",
+        ori: "",
+        email_domain: "",
+        email_pattern: "",
+      });
+
+      setNewAgencyOpen(false);
+      setSelectedAgency(data);
+
+      setNotice(
+        `${data.name} was created successfully. ` +
+        "You can now add agency administrators."
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+
+  return (
+    <div className="platform-shell">
+      <header className="topbar platform-topbar">
+        <div>
+          <div className="brand-kicker">
+            Paradigm Strategic Partners
+          </div>
+
+          <h1>
+            Paradigm Training Manager
+            <sup className="product-mark">™</sup>
+          </h1>
+        </div>
+
+        <div className="authenticated-user">
+          <div>
+            <strong>
+              {currentUser?.first_name}{" "}
+              {currentUser?.last_name}
+            </strong>
+
+            <span>
+              Platform Administrator
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onLogout}
+          >
+            Log Out
+          </button>
+        </div>
+      </header>
+
+      <main className="platform-page">
+        <div className="platform-heading">
+          <div>
+            <span>
+              PARADIGM ADMINISTRATION
+            </span>
+
+            <h2>
+              {selectedAgency
+                ? selectedAgency.name
+                : "Agency Management"}
+            </h2>
+
+            <p>
+              {selectedAgency
+                ? "Manage this PTM agency and its administrator accounts."
+                : "Manage PTM agencies and agency administrator access."}
+            </p>
+          </div>
+
+          <div className="platform-heading-actions">
+            {!selectedAgency && (
+              <button
+                type="button"
+                className="platform-primary-button"
+                onClick={() => {
+                  setError("");
+                  setNotice("");
+                  setNewAgencyOpen(true);
+                }}
+              >
+                + Add Agency
+              </button>
+            )}
+
+            {selectedAgency && (
+              <button
+                type="button"
+                className="platform-secondary-button"
+                onClick={() => {
+                  setSelectedAgency(null);
+                  setError("");
+                  setNotice("");
+                }}
+              >
+                ← All Agencies
+              </button>
+            )}
+          </div>
+        </div>
+
+        {error && (
+          <div className="platform-message error">
+            {error}
+          </div>
+        )}
+
+        {notice && (
+          <div className="platform-message success">
+            {notice}
+          </div>
+        )}
+
+        {newAgencyOpen && (
+          <div
+            className="platform-modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setNewAgencyOpen(false);
+              }
+            }}
+          >
+            <section
+              className="platform-create-agency-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="create-agency-title"
+            >
+              <div className="platform-modal-heading">
+                <div>
+                  <span>NEW PTM TENANT</span>
+                  <h2 id="create-agency-title">
+                    Add Agency
+                  </h2>
+                  <p>
+                    Create a new agency tenant. After
+                    creation, you can assign one or more
+                    agency administrators.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="platform-modal-close"
+                  aria-label="Close"
+                  onClick={() =>
+                    setNewAgencyOpen(false)
+                  }
+                >
+                  ×
+                </button>
+              </div>
+
+              <form
+                className="platform-agency-form"
+                onSubmit={handleCreateAgency}
+              >
+                <label className="platform-form-wide">
+                  <span>Agency Name *</span>
+                  <input
+                    type="text"
+                    required
+                    value={newAgency.name}
+                    disabled={busy}
+                    placeholder="Example Police Department"
+                    onChange={(event) =>
+                      setNewAgency((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span>TCOLE Agency Number</span>
+                  <input
+                    type="text"
+                    value={
+                      newAgency.tcole_agency_number
+                    }
+                    disabled={busy}
+                    onChange={(event) =>
+                      setNewAgency((current) => ({
+                        ...current,
+                        tcole_agency_number:
+                          event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span>ORI</span>
+                  <input
+                    type="text"
+                    value={newAgency.ori}
+                    disabled={busy}
+                    onChange={(event) =>
+                      setNewAgency((current) => ({
+                        ...current,
+                        ori: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span>Email Domain</span>
+                  <input
+                    type="text"
+                    value={newAgency.email_domain}
+                    disabled={busy}
+                    placeholder="example.gov"
+                    onChange={(event) =>
+                      setNewAgency((current) => ({
+                        ...current,
+                        email_domain:
+                          event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span>Email Pattern</span>
+                  <select
+                    value={newAgency.email_pattern}
+                    disabled={busy}
+                    onChange={(event) =>
+                      setNewAgency((current) => ({
+                        ...current,
+                        email_pattern:
+                          event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">
+                      Not configured
+                    </option>
+                    <option value="FIRST_INITIAL_LAST">
+                      First initial + last name
+                    </option>
+                    <option value="FIRST_DOT_LAST">
+                      First name . last name
+                    </option>
+                    <option value="FIRST_LAST">
+                      First name + last name
+                    </option>
+                    <option value="LAST_FIRST_INITIAL">
+                      Last name + first initial
+                    </option>
+                  </select>
+                </label>
+
+                <div className="platform-modal-actions">
+                  <button
+                    type="button"
+                    className="platform-secondary-button"
+                    disabled={busy}
+                    onClick={() =>
+                      setNewAgencyOpen(false)
+                    }
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="platform-primary-button"
+                    disabled={busy}
+                  >
+                    {busy
+                      ? "Creating Agency..."
+                      : "Create Agency"}
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
+        )}
+
+        {!selectedAgency ? (
+          <>
+            {loading ? (
+              <div className="platform-loading">
+                Loading agencies...
+              </div>
+            ) : (
+              <section className="platform-panel">
+                <div className="platform-table-wrap">
+                  <table className="platform-table">
+                    <thead>
+                      <tr>
+                        <th>Agency</th>
+                        <th>Status</th>
+                        <th>
+                          Licensed Employees
+                        </th>
+                        <th>
+                          Administrators
+                        </th>
+                        <th></th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {agencies.map((agency) => (
+                        <tr key={agency.id}>
+                          <td>
+                            <strong>
+                              {agency.name}
+                            </strong>
+
+                            {agency.tcole_agency_number && (
+                              <span>
+                                TCOLE{" "}
+                                {
+                                  agency.tcole_agency_number
+                                }
+                              </span>
+                            )}
+                          </td>
+
+                          <td>
+                            <span
+                              className={
+                                "platform-status " +
+                                agency.status
+                              }
+                            >
+                              {agency.status}
+                            </span>
+                          </td>
+
+                          <td>
+                            {
+                              agency.active_employee_count
+                            }
+                          </td>
+
+                          <td>
+                            {
+                              agency.active_administrator_count
+                            }
+                            {" active / "}
+                            {
+                              agency.administrator_count
+                            }
+                            {" total"}
+                          </td>
+
+                          <td>
+                            <button
+                              type="button"
+                              className="platform-link-button"
+                              disabled={busy}
+                              onClick={() =>
+                                openAgency(
+                                  agency.id
+                                )
+                              }
+                            >
+                              Manage Agency
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+          </>
+        ) : (
+          <>
+            <section className="platform-agency-summary">
+              <div>
+                <span>Status</span>
+                <strong>
+                  {selectedAgency.status}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Active Employees
+                </span>
+                <strong>
+                  {
+                    selectedAgency.active_employee_count
+                  }
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Archived Employees
+                </span>
+                <strong>
+                  {
+                    selectedAgency.archived_employee_count
+                  }
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Administrators
+                </span>
+                <strong>
+                  {
+                    selectedAgency.administrator_count
+                  }
+                </strong>
+              </div>
+            </section>
+
+            <section className="platform-panel">
+              <div className="platform-panel-heading">
+                <div>
+                  <h3>
+                    Agency Information
+                  </h3>
+
+                  <p>
+                    Basic tenant configuration.
+                  </p>
+                </div>
+              </div>
+
+              <div className="platform-agency-details">
+                <div>
+                  <span>
+                    TCOLE Agency Number
+                  </span>
+                  <strong>
+                    {
+                      selectedAgency.tcole_agency_number ||
+                      "Not configured"
+                    }
+                  </strong>
+                </div>
+
+                <div>
+                  <span>ORI</span>
+                  <strong>
+                    {
+                      selectedAgency.ori ||
+                      "Not configured"
+                    }
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Email Domain</span>
+                  <strong>
+                    {
+                      selectedAgency.email_domain ||
+                      "Not configured"
+                    }
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Email Pattern</span>
+                  <strong>
+                    {
+                      selectedAgency.email_pattern ||
+                      "Not configured"
+                    }
+                  </strong>
+                </div>
+              </div>
+            </section>
+
+            <section className="platform-panel">
+              <div className="platform-panel-heading">
+                <div>
+                  <h3>
+                    Agency Administrators
+                  </h3>
+
+                  <p>
+                    Each administrator has an
+                    independent PTM login and
+                    access to this agency only.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="platform-primary-button"
+                  onClick={() =>
+                    setNewAdminOpen(
+                      (current) => !current
+                    )
+                  }
+                >
+                  {newAdminOpen
+                    ? "Cancel"
+                    : "+ Add Administrator"}
+                </button>
+              </div>
+
+              {newAdminOpen && (
+                <form
+                  className="platform-admin-form"
+                  onSubmit={handleCreateAdmin}
+                >
+                  <label>
+                    <span>First Name</span>
+                    <input
+                      required
+                      value={
+                        newAdmin.first_name
+                      }
+                      disabled={busy}
+                      onChange={(event) =>
+                        setNewAdmin({
+                          ...newAdmin,
+                          first_name:
+                            event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    <span>Last Name</span>
+                    <input
+                      required
+                      value={
+                        newAdmin.last_name
+                      }
+                      disabled={busy}
+                      onChange={(event) =>
+                        setNewAdmin({
+                          ...newAdmin,
+                          last_name:
+                            event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    <span>
+                      Login Email
+                    </span>
+                    <input
+                      type="email"
+                      required
+                      value={newAdmin.email}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setNewAdmin({
+                          ...newAdmin,
+                          email:
+                            event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    <span>
+                      Temporary Password
+                    </span>
+                    <input
+                      type="password"
+                      required
+                      minLength="12"
+                      value={
+                        newAdmin.password
+                      }
+                      disabled={busy}
+                      onChange={(event) =>
+                        setNewAdmin({
+                          ...newAdmin,
+                          password:
+                            event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    <span>
+                      Confirm Password
+                    </span>
+                    <input
+                      type="password"
+                      required
+                      minLength="12"
+                      value={
+                        newAdmin.password_confirm
+                      }
+                      disabled={busy}
+                      onChange={(event) =>
+                        setNewAdmin({
+                          ...newAdmin,
+                          password_confirm:
+                            event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+
+                  <div className="platform-form-actions">
+                    <button
+                      type="submit"
+                      className="platform-primary-button"
+                      disabled={busy}
+                    >
+                      {busy
+                        ? "Creating..."
+                        : "Create Administrator"}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <div className="platform-admin-list">
+                {selectedAgency.administrators?.map(
+                  (user) => (
+                    <article
+                      className="platform-admin-card"
+                      key={user.id}
+                    >
+                      <div className="platform-admin-identity">
+                        <strong>
+                          {user.first_name}{" "}
+                          {user.last_name}
+                        </strong>
+
+                        <span>
+                          {user.email}
+                        </span>
+                      </div>
+
+                      <div className="platform-admin-meta">
+                        <span
+                          className={
+                            "platform-status " +
+                            user.status
+                          }
+                        >
+                          {user.status}
+                        </span>
+
+                        <span>
+                          Last login:{" "}
+                          {formatPlatformDate(
+                            user.last_login_at
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="platform-admin-actions">
+                        <button
+                          type="button"
+                          className="platform-link-button"
+                          disabled={busy}
+                          onClick={() => {
+                            setResetUser(user);
+                            setResetPassword("");
+                            setResetPasswordConfirm("");
+                            setError("");
+                          }}
+                        >
+                          Reset Password
+                        </button>
+
+                        <button
+                          type="button"
+                          className="platform-link-button"
+                          disabled={busy}
+                          onClick={() =>
+                            handleAdminStatus(
+                              user,
+                              user.status === "active"
+                                ? "inactive"
+                                : "active"
+                            )
+                          }
+                        >
+                          {user.status === "active"
+                            ? "Deactivate"
+                            : "Activate"}
+                        </button>
+                      </div>
+                    </article>
+                  )
+                )}
+              </div>
+            </section>
+
+            {resetUser && (
+              <section className="platform-panel platform-reset-panel">
+                <div className="platform-panel-heading">
+                  <div>
+                    <h3>
+                      Reset Password
+                    </h3>
+
+                    <p>
+                      Set a new password for{" "}
+                      {resetUser.first_name}{" "}
+                      {resetUser.last_name}.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="platform-secondary-button"
+                    onClick={() =>
+                      setResetUser(null)
+                    }
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <form
+                  className="platform-reset-form"
+                  onSubmit={
+                    handlePasswordReset
+                  }
+                >
+                  <label>
+                    <span>
+                      New Password
+                    </span>
+
+                    <input
+                      type="password"
+                      required
+                      minLength="12"
+                      value={resetPassword}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setResetPassword(
+                          event.target.value
+                        )
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    <span>
+                      Confirm Password
+                    </span>
+
+                    <input
+                      type="password"
+                      required
+                      minLength="12"
+                      value={
+                        resetPasswordConfirm
+                      }
+                      disabled={busy}
+                      onChange={(event) =>
+                        setResetPasswordConfirm(
+                          event.target.value
+                        )
+                      }
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    className="platform-primary-button"
+                    disabled={busy}
+                  >
+                    {busy
+                      ? "Resetting..."
+                      : "Reset Password"}
+                  </button>
+                </form>
+              </section>
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+
+
+function PlatformAuthenticatedApplication() {
+  const [authState, setAuthState] = useState({
+    loading: true,
+    user: null,
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCurrentUser() {
+      try {
+        const response = await fetch(
+          "/api/auth/me",
+          {
+            credentials: "same-origin",
+          }
+        );
+
+        if (response.status === 401) {
+          window.location.replace("/login");
+          return;
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              "Unable to verify your PTM session."
+          );
+        }
+
+        if (
+          data.user?.role !==
+          "PLATFORM_ADMIN"
+        ) {
+          window.location.replace("/app");
+          return;
+        }
+
+        if (active) {
+          setAuthState({
+            loading: false,
+            user: data.user,
+          });
+        }
+      } catch {
+        if (active) {
+          window.location.replace("/login");
+        }
+      }
+    }
+
+    loadCurrentUser();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleLogout() {
+    try {
+      await fetch(
+        "/api/auth/logout",
+        {
+          method: "POST",
+          credentials: "same-origin",
+        }
+      );
+    } finally {
+      window.location.replace("/login");
+    }
+  }
+
+  if (authState.loading) {
+    return (
+      <div className="auth-loading">
+        <div>
+          <strong>
+            Paradigm Training Manager
+            <sup className="product-mark">™</sup>
+          </strong>
+
+          <span>
+            Loading platform administration...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <PlatformAdministration
+      currentUser={authState.user}
+      onLogout={handleLogout}
+    />
+  );
+}
+
 
 
 function PublicLandingPage() {
@@ -5476,6 +6742,10 @@ function App() {
     path === "/login" ||
     path.startsWith("/login/");
 
+  const platformPath =
+    path === "/platform" ||
+    path.startsWith("/platform/");
+
   const applicationPath =
     path === "/app" ||
     path.startsWith("/app/");
@@ -5484,6 +6754,8 @@ function App() {
     <>
       {loginPath ? (
         <LoginPage />
+      ) : platformPath ? (
+        <PlatformAuthenticatedApplication />
       ) : applicationPath ? (
         <AuthenticatedApplication />
       ) : (

@@ -1,0 +1,487 @@
+import pytest
+
+from app import create_app
+from app.auth import (
+    ROLE_AGENCY_ADMIN,
+    ROLE_PLATFORM_ADMIN,
+    hash_password,
+    verify_password,
+)
+from app.extensions import db
+from app.models import (
+    Agency,
+    Officer,
+    User,
+)
+
+
+@pytest.fixture()
+def app():
+    app = create_app(
+        {
+            "TESTING": True,
+            "SECRET_KEY":
+                "platform-admin-test-secret",
+            "SQLALCHEMY_DATABASE_URI":
+                "sqlite:///:memory:",
+        }
+    )
+
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+@pytest.fixture()
+def data(app):
+    with app.app_context():
+        agency = Agency(
+            name="Pilot Police Department"
+        )
+
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="100001",
+            first_name="Pilot",
+            last_name="Officer",
+        )
+
+        agency_admin = User(
+            agency_id=agency.id,
+            email="agency@example.gov",
+            password_hash=hash_password(
+                "AgencyPassword123!"
+            ),
+            first_name="Agency",
+            last_name="Admin",
+            role=ROLE_AGENCY_ADMIN,
+            status="active",
+        )
+
+        platform_admin = User(
+            agency_id=None,
+            email="platform@paradigm.local",
+            password_hash=hash_password(
+                "PlatformPassword123!"
+            ),
+            first_name="Platform",
+            last_name="Admin",
+            role=ROLE_PLATFORM_ADMIN,
+            status="active",
+        )
+
+        db.session.add_all(
+            [
+                officer,
+                agency_admin,
+                platform_admin,
+            ]
+        )
+
+        db.session.commit()
+
+        return {
+            "agency_id":
+                str(agency.id),
+            "agency_admin_id":
+                str(agency_admin.id),
+        }
+
+
+def login(
+    client,
+    email,
+    password,
+):
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+
+    assert response.status_code == 200
+
+
+def test_platform_routes_require_authentication(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    response = client.get(
+        "/api/platform/agencies"
+    )
+
+    assert response.status_code == 401
+
+
+def test_agency_admin_cannot_access_platform_routes(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "agency@example.gov",
+        "AgencyPassword123!",
+    )
+
+    response = client.get(
+        "/api/platform/agencies"
+    )
+
+    assert response.status_code == 404
+
+
+def test_platform_admin_can_list_agencies(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.get(
+        "/api/platform/agencies"
+    )
+
+    assert response.status_code == 200
+
+    agencies = response.get_json()
+
+    assert len(agencies) == 1
+    assert agencies[0]["name"] == (
+        "Pilot Police Department"
+    )
+    assert agencies[0][
+        "active_employee_count"
+    ] == 1
+    assert agencies[0][
+        "administrator_count"
+    ] == 1
+
+
+def test_platform_admin_can_create_agency(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.post(
+        "/api/platform/agencies",
+        json={
+            "name":
+                "Second Police Department",
+            "tcole_agency_number":
+                "123456",
+            "ori":
+                "TX1234567",
+        },
+    )
+
+    assert response.status_code == 201
+
+    result = response.get_json()
+
+    assert result["name"] == (
+        "Second Police Department"
+    )
+    assert result[
+        "administrator_count"
+    ] == 0
+
+
+def test_platform_admin_can_create_multiple_agency_admins(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    agency_id = data["agency_id"]
+
+    for index in range(
+        2,
+        5,
+    ):
+        response = client.post(
+            f"/api/platform/agencies/{agency_id}"
+            "/administrators",
+            json={
+                "first_name":
+                    f"Admin{index}",
+                "last_name":
+                    "User",
+                "email":
+                    f"admin{index}@example.gov",
+                "password":
+                    "PilotPassword123!",
+            },
+        )
+
+        assert response.status_code == 201
+
+    response = client.get(
+        f"/api/platform/agencies/{agency_id}"
+    )
+
+    assert response.status_code == 200
+
+    result = response.get_json()
+
+    assert result[
+        "administrator_count"
+    ] == 4
+
+    assert len(
+        result["administrators"]
+    ) == 4
+
+
+def test_new_agency_admin_can_log_in_and_is_bound_to_agency(
+    app,
+    data,
+):
+    platform_client = app.test_client()
+
+    login(
+        platform_client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    agency_id = data["agency_id"]
+
+    response = platform_client.post(
+        f"/api/platform/agencies/{agency_id}"
+        "/administrators",
+        json={
+            "first_name": "Second",
+            "last_name": "Admin",
+            "email":
+                "second@example.gov",
+            "password":
+                "SecondPassword123!",
+        },
+    )
+
+    assert response.status_code == 201
+
+    agency_client = app.test_client()
+
+    login(
+        agency_client,
+        "second@example.gov",
+        "SecondPassword123!",
+    )
+
+    response = agency_client.get(
+        "/api/auth/me"
+    )
+
+    assert response.status_code == 200
+
+    user = response.get_json()["user"]
+
+    assert user["agency_id"] == agency_id
+    assert (
+        user["role"]
+        == ROLE_AGENCY_ADMIN
+    )
+
+
+def test_duplicate_admin_email_is_rejected(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.post(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/administrators",
+        json={
+            "first_name": "Duplicate",
+            "last_name": "User",
+            "email":
+                "agency@example.gov",
+            "password":
+                "DuplicatePassword123!",
+        },
+    )
+
+    assert response.status_code == 409
+
+
+def test_platform_admin_can_deactivate_agency_admin(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.patch(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/administrators/"
+        f"{data['agency_admin_id']}",
+        json={
+            "status": "inactive",
+        },
+    )
+
+    assert response.status_code == 200
+    assert (
+        response.get_json()["status"]
+        == "inactive"
+    )
+
+    login_response = app.test_client().post(
+        "/api/auth/login",
+        json={
+            "email":
+                "agency@example.gov",
+            "password":
+                "AgencyPassword123!",
+        },
+    )
+
+    assert login_response.status_code == 401
+
+
+def test_platform_admin_can_reset_admin_password(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.post(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/administrators/"
+        f"{data['agency_admin_id']}"
+        "/reset-password",
+        json={
+            "password":
+                "NewPassword123!",
+        },
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        user = User.query.filter_by(
+            email="agency@example.gov"
+        ).one()
+
+        assert verify_password(
+            user.password_hash,
+            "NewPassword123!",
+        )
+
+
+def test_platform_admin_can_update_agency(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.patch(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}",
+        json={
+            "tcole_agency_number":
+                "987654",
+            "ori":
+                "TX7654321",
+            "status":
+                "inactive",
+        },
+    )
+
+    assert response.status_code == 200
+
+    result = response.get_json()
+
+    assert result[
+        "tcole_agency_number"
+    ] == "987654"
+
+    assert result["status"] == (
+        "inactive"
+    )
+
+
+def test_short_password_is_rejected(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.post(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/administrators",
+        json={
+            "first_name": "Short",
+            "last_name": "Password",
+            "email":
+                "short@example.gov",
+            "password":
+                "short",
+        },
+    )
+
+    assert response.status_code == 400

@@ -18,11 +18,16 @@ def create_app(config=None):
 
     from . import models
     from .auth_routes import auth_api
+    from .platform_routes import platform_api
     from .routes import api
 
     app.register_blueprint(
         auth_api,
         url_prefix="/api/auth",
+    )
+    app.register_blueprint(
+        platform_api,
+        url_prefix="/api/platform",
     )
     app.register_blueprint(
         api,
