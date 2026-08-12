@@ -7052,32 +7052,32 @@ function PublicLandingPage() {
               <PricingCard
                 name="Starter"
                 range="1–15 licensed employees"
-                logins="2 agency logins included"
+                logins="1 agency login included"
                 price="$399/year"
               />
               <PricingCard
                 name="Small"
                 range="16–35 licensed employees"
-                logins="3 agency logins included"
+                logins="1 agency login included"
                 price="$749/year"
               />
               <PricingCard
                 name="Medium"
                 range="36–75 licensed employees"
-                logins="5 agency logins included"
+                logins="2 agency logins included"
                 price="$1,199/year"
                 featured
               />
               <PricingCard
                 name="Large"
                 range="76–150 licensed employees"
-                logins="8 agency logins included"
+                logins="3 agency logins included"
                 price="$1,999/year"
               />
               <PricingCard
                 name="Enterprise"
                 range="151–300 licensed employees"
-                logins="12 agency logins included"
+                logins="4 agency logins included"
                 price="$2,999/year"
               />
               <PricingCard
