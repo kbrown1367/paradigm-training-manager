@@ -4845,3 +4845,60 @@
     flex-direction: column;
   }
 }
+
+/* v0.3.3 platform administration editing */
+
+.platform-edit-form {
+  padding: 20px 22px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.platform-edit-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.platform-edit-form label > span {
+  color: #344054;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.platform-edit-form input {
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid #cfd5df;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #101828;
+  font: inherit;
+}
+
+.platform-edit-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+@media (max-width: 620px) {
+  .platform-edit-form {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-edit-form .platform-form-wide,
+  .platform-edit-actions {
+    grid-column: auto;
+  }
+
+  .platform-edit-actions {
+    flex-direction: column-reverse;
+  }
+
+  .platform-edit-actions button {
+    width: 100%;
+  }
+}

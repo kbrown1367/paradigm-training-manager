@@ -5417,6 +5417,26 @@ function PlatformAdministration({
   const [resetPasswordConfirm, setResetPasswordConfirm] =
     useState("");
 
+  const [editAgencyOpen, setEditAgencyOpen] =
+    useState(false);
+
+  const [editAgency, setEditAgency] = useState({
+    name: "",
+    tcole_agency_number: "",
+    ori: "",
+    email_domain: "",
+    email_pattern: "",
+  });
+
+  const [editAdminUser, setEditAdminUser] =
+    useState(null);
+
+  const [editAdmin, setEditAdmin] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+  });
+
   async function fetchJson(
     url,
     options = {},
@@ -5471,6 +5491,8 @@ function PlatformAdministration({
       setSelectedAgency(data);
       setNewAdminOpen(false);
       setResetUser(null);
+      setEditAgencyOpen(false);
+      setEditAdminUser(null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -5595,6 +5617,110 @@ function PlatformAdministration({
         status === "active"
           ? "Administrator activated."
           : "Administrator deactivated."
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function beginAgencyEdit() {
+    setEditAgency({
+      name: selectedAgency.name || "",
+      tcole_agency_number:
+        selectedAgency.tcole_agency_number || "",
+      ori: selectedAgency.ori || "",
+      email_domain:
+        selectedAgency.email_domain || "",
+      email_pattern:
+        selectedAgency.email_pattern || "",
+    });
+
+    setEditAgencyOpen(true);
+    setError("");
+    setNotice("");
+  }
+
+  async function handleAgencyUpdate(event) {
+    event.preventDefault();
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await fetchJson(
+        `/api/platform/agencies/${selectedAgency.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: editAgency.name,
+            tcole_agency_number:
+              editAgency.tcole_agency_number,
+            ori: editAgency.ori,
+            email_domain:
+              editAgency.email_domain,
+            email_pattern:
+              editAgency.email_pattern,
+          }),
+        }
+      );
+
+      await refreshSelectedAgency();
+      setEditAgencyOpen(false);
+      setNotice("Agency information updated.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function beginAdminEdit(user) {
+    setEditAdminUser(user);
+
+    setEditAdmin({
+      first_name: user.first_name || "",
+      last_name: user.last_name || "",
+      email: user.email || "",
+    });
+
+    setResetUser(null);
+    setError("");
+    setNotice("");
+  }
+
+  async function handleAdminUpdate(event) {
+    event.preventDefault();
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await fetchJson(
+        `/api/platform/agencies/${selectedAgency.id}/administrators/${editAdminUser.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            first_name: editAdmin.first_name,
+            last_name: editAdmin.last_name,
+            email: editAdmin.email,
+          }),
+        }
+      );
+
+      await refreshSelectedAgency();
+      setEditAdminUser(null);
+      setNotice(
+        "Administrator information updated."
       );
     } catch (err) {
       setError(err.message);
@@ -6144,51 +6270,175 @@ function PlatformAdministration({
                     Basic tenant configuration.
                   </p>
                 </div>
+
+                {!editAgencyOpen && (
+                  <button
+                    type="button"
+                    className="platform-secondary-button"
+                    disabled={busy}
+                    onClick={beginAgencyEdit}
+                  >
+                    Edit Agency
+                  </button>
+                )}
               </div>
 
-              <div className="platform-agency-details">
-                <div>
-                  <span>
-                    TCOLE Agency Number
-                  </span>
-                  <strong>
-                    {
-                      selectedAgency.tcole_agency_number ||
-                      "Not configured"
-                    }
-                  </strong>
-                </div>
+              {editAgencyOpen ? (
+                <form
+                  className="platform-edit-form"
+                  onSubmit={handleAgencyUpdate}
+                >
+                  <label className="platform-form-wide">
+                    <span>Agency Name</span>
+                    <input
+                      required
+                      value={editAgency.name}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setEditAgency((current) => ({
+                          ...current,
+                          name: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
 
-                <div>
-                  <span>ORI</span>
-                  <strong>
-                    {
-                      selectedAgency.ori ||
-                      "Not configured"
-                    }
-                  </strong>
-                </div>
+                  <label>
+                    <span>TCOLE Agency Number</span>
+                    <input
+                      value={
+                        editAgency.tcole_agency_number
+                      }
+                      disabled={busy}
+                      onChange={(event) =>
+                        setEditAgency((current) => ({
+                          ...current,
+                          tcole_agency_number:
+                            event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
 
-                <div>
-                  <span>Email Domain</span>
-                  <strong>
-                    {
-                      selectedAgency.email_domain ||
-                      "Not configured"
-                    }
-                  </strong>
-                </div>
+                  <label>
+                    <span>ORI</span>
+                    <input
+                      value={editAgency.ori}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setEditAgency((current) => ({
+                          ...current,
+                          ori: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
 
-                <div>
-                  <span>Email Pattern</span>
-                  <strong>
-                    {
-                      selectedAgency.email_pattern ||
-                      "Not configured"
-                    }
-                  </strong>
+                  <label>
+                    <span>Email Domain</span>
+                    <input
+                      value={editAgency.email_domain}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setEditAgency((current) => ({
+                          ...current,
+                          email_domain:
+                            event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    <span>Email Pattern</span>
+                    <input
+                      value={editAgency.email_pattern}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setEditAgency((current) => ({
+                          ...current,
+                          email_pattern:
+                            event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <div className="platform-edit-actions">
+                    <button
+                      type="button"
+                      className="platform-secondary-button"
+                      disabled={busy}
+                      onClick={() =>
+                        setEditAgencyOpen(false)
+                      }
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="platform-primary-button"
+                      disabled={busy}
+                    >
+                      {busy
+                        ? "Saving..."
+                        : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="platform-agency-details">
+                  <div>
+                    <span>Agency Name</span>
+                    <strong>
+                      {selectedAgency.name}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      TCOLE Agency Number
+                    </span>
+                    <strong>
+                      {
+                        selectedAgency.tcole_agency_number ||
+                        "Not configured"
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>ORI</span>
+                    <strong>
+                      {
+                        selectedAgency.ori ||
+                        "Not configured"
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Email Domain</span>
+                    <strong>
+                      {
+                        selectedAgency.email_domain ||
+                        "Not configured"
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Email Pattern</span>
+                    <strong>
+                      {
+                        selectedAgency.email_pattern ||
+                        "Not configured"
+                      }
+                    </strong>
+                  </div>
                 </div>
-              </div>
+              )}
             </section>
 
             <section className="platform-panel">
@@ -6379,8 +6629,20 @@ function PlatformAdministration({
                           type="button"
                           className="platform-link-button"
                           disabled={busy}
+                          onClick={() =>
+                            beginAdminEdit(user)
+                          }
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          className="platform-link-button"
+                          disabled={busy}
                           onClick={() => {
                             setResetUser(user);
+                            setEditAdminUser(null);
                             setResetPassword("");
                             setResetPasswordConfirm("");
                             setError("");
@@ -6412,6 +6674,100 @@ function PlatformAdministration({
                 )}
               </div>
             </section>
+
+            {editAdminUser && (
+              <section className="platform-panel">
+                <div className="platform-panel-heading">
+                  <div>
+                    <h3>
+                      Edit Administrator
+                    </h3>
+
+                    <p>
+                      Update the administrator's
+                      name or login email.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="platform-secondary-button"
+                    disabled={busy}
+                    onClick={() =>
+                      setEditAdminUser(null)
+                    }
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <form
+                  className="platform-admin-form"
+                  onSubmit={handleAdminUpdate}
+                >
+                  <label>
+                    <span>First Name</span>
+                    <input
+                      required
+                      value={editAdmin.first_name}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setEditAdmin((current) => ({
+                          ...current,
+                          first_name:
+                            event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    <span>Last Name</span>
+                    <input
+                      required
+                      value={editAdmin.last_name}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setEditAdmin((current) => ({
+                          ...current,
+                          last_name:
+                            event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className="platform-form-wide">
+                    <span>Login Email</span>
+                    <input
+                      type="email"
+                      required
+                      value={editAdmin.email}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setEditAdmin((current) => ({
+                          ...current,
+                          email:
+                            event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <div className="platform-form-actions platform-form-wide">
+                    <button
+                      type="submit"
+                      className="platform-primary-button"
+                      disabled={busy}
+                    >
+                      {busy
+                        ? "Saving..."
+                        : "Save Administrator"}
+                    </button>
+                  </div>
+                </form>
+              </section>
+            )}
 
             {resetUser && (
               <section className="platform-panel platform-reset-panel">
