@@ -940,3 +940,61 @@ def test_satisfied_pathway_is_also_best_available_pathway(
         assert pathway["training_hours"] == 1200
         assert pathway["service_years_short"] == 0
         assert pathway["training_hours_short"] == 0.0
+
+
+def test_master_peace_officer_certificate_is_not_academic_education(
+    app,
+):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Master Peace Officer",
+        )
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 12),
+        )
+
+        assert result["education_level"] is None
+
+
+def test_generic_academic_recognition_does_not_invent_degree(
+    app,
+):
+    with app.app_context():
+        officer = make_officer()
+
+        db.session.add(
+            OfficerAward(
+                agency_id=officer.agency_id,
+                officer_id=officer.id,
+                award_type="Academic Recognition",
+                award_name="Academic Recognition Award",
+                award_date=date(2020, 1, 1),
+            )
+        )
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 12),
+        )
+
+        assert result["education_level"] is None
+
+
+def test_explicit_tcole_master_degree_remains_academic_education(
+    app,
+):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Advanced Peace Officer",
+            education="Master Degree",
+        )
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 12),
+        )
+
+        assert result["education_level"] == "MASTER"

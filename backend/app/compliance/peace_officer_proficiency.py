@@ -179,22 +179,35 @@ def _training_hours(officer):
 
 
 def _education_level(officer):
+    recognized = {
+        "academic recognition award - associate degree":
+            "ASSOCIATE",
+        "academic recognition award - bachelor degree":
+            "BACHELOR",
+        "academic recognition award - master degree":
+            "MASTER",
+        "academic recognition award - doctorate degree":
+            "DOCTORATE",
+        "academic recognition award - juris doctor":
+            "DOCTORATE",
+    }
+
     level = None
 
-    # TCOLE academic recognition is authoritative when present.
+    # Only explicit TCOLE academic recognition awards
+    # establish a college education level. Proficiency
+    # certificates such as Master Peace Officer must not
+    # be interpreted as academic degrees.
     for award in officer.awards:
-        name = (award.award_name or "").lower()
+        name = (
+            award.award_name
+            or ""
+        ).strip().lower()
 
-        candidate = None
+        candidate = recognized.get(name)
 
-        if "doctorate" in name or "juris doctor" in name:
-            candidate = "DOCTORATE"
-        elif "master" in name:
-            candidate = "MASTER"
-        elif "bachelor" in name:
-            candidate = "BACHELOR"
-        elif "associate" in name:
-            candidate = "ASSOCIATE"
+        if candidate is None:
+            continue
 
         if (
             EDUCATION_RANK[candidate]
@@ -206,7 +219,7 @@ def _education_level(officer):
         return level
 
     # Agency verification is a fallback only when TCOLE
-    # does not report an academic recognition.
+    # does not report a specific academic recognition.
     verified = officer.verified_education_level
 
     if verified in EDUCATION_RANK:
