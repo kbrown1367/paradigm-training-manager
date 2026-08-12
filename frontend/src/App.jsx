@@ -1008,6 +1008,9 @@ function EmployeeWorkspace({
   onRevokeTdem,
   onEditEmail,
   onEmailEmployee,
+  onArchiveEmployee,
+  onRestoreEmployee,
+  lifecycleBusy,
 }) {
   if (loading) {
     return (
@@ -1068,6 +1071,9 @@ function EmployeeWorkspace({
       (assignment) => assignment.active
     ) || [];
 
+  const employeeArchived =
+    officer.employment_status === "archived";
+
   return (
     <section className="employee-workspace">
       <div className="workspace-top-actions">
@@ -1088,8 +1094,9 @@ function EmployeeWorkspace({
             justifyContent: "flex-end",
           }}
         >
-          {workspace.proficiency_advancement
-            ?.peace_officer && (
+          {!employeeArchived &&
+            workspace.proficiency_advancement
+              ?.peace_officer && (
             <button
               type="button"
               className="workspace-email-button"
@@ -1109,8 +1116,9 @@ function EmployeeWorkspace({
             </button>
           )}
 
-          {workspace.proficiency_advancement
-            ?.jailer && (
+          {!employeeArchived &&
+            workspace.proficiency_advancement
+              ?.jailer && (
             <button
               type="button"
               className="workspace-email-button"
@@ -1131,8 +1139,9 @@ function EmployeeWorkspace({
           )}
 
 
-          {workspace.proficiency_advancement
-            ?.telecommunicator && (
+          {!employeeArchived &&
+            workspace.proficiency_advancement
+              ?.telecommunicator && (
             <button
               type="button"
               className="workspace-email-button"
@@ -1154,7 +1163,7 @@ function EmployeeWorkspace({
             </button>
           )}
 
-          {[
+          {!employeeArchived && [
             workspace.proficiency_advancement
               ?.peace_officer,
             workspace.proficiency_advancement
@@ -1180,6 +1189,29 @@ function EmployeeWorkspace({
                 Email Combined Update
               </button>
             )}
+          {officer.employment_status === "archived" ? (
+            <button
+              type="button"
+              className="workspace-lifecycle-button restore"
+              disabled={lifecycleBusy}
+              onClick={onRestoreEmployee}
+            >
+              {lifecycleBusy
+                ? "Restoring..."
+                : "Restore Employee"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="workspace-lifecycle-button archive"
+              disabled={lifecycleBusy}
+              onClick={onArchiveEmployee}
+            >
+              {lifecycleBusy
+                ? "Archiving..."
+                : "Archive Employee"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1191,10 +1223,37 @@ function EmployeeWorkspace({
 
           <div className="workspace-name-row">
             <h2>{name}</h2>
-            <WorkspaceStatus
-              status={workspace.overall_status}
-            />
+
+            {officer.employment_status === "archived" ? (
+              <span className="employee-status archived">
+                ARCHIVED
+              </span>
+            ) : (
+              <WorkspaceStatus
+                status={workspace.overall_status}
+              />
+            )}
           </div>
+
+          {officer.employment_status === "archived" && (
+            <div className="workspace-archive-banner">
+              <strong>
+                This employee is archived.
+              </strong>
+
+              <span>
+                Archived{" "}
+                {officer.archived_at
+                  ? formatPlatformDate(
+                      officer.archived_at
+                    )
+                  : ""}
+                {officer.archived_reason
+                  ? ` · ${officer.archived_reason}`
+                  : ""}
+              </span>
+            </div>
+          )}
 
           <div className="workspace-identity">
             <span>PID {officer.tcole_pid}</span>
@@ -1236,13 +1295,15 @@ function EmployeeWorkspace({
               )}
             </span>
 
-            <button
-              type="button"
-              className="workspace-email-edit"
-              onClick={onEditEmail}
-            >
-              Edit Email
-            </button>
+            {!employeeArchived && (
+              <button
+                type="button"
+                className="workspace-email-edit"
+                onClick={onEditEmail}
+              >
+                Edit Email
+              </button>
+            )}
           </div>
         </div>
 
@@ -2770,6 +2831,18 @@ function OperationalApp({
   const [loadingWorkspace, setLoadingWorkspace] = useState(false);
   const [workspaceError, setWorkspaceError] = useState("");
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [archivedEmployeesOpen, setArchivedEmployeesOpen] =
+    useState(false);
+  const [archivedEmployees, setArchivedEmployees] =
+    useState([]);
+  const [archivedEmployeesLoading, setArchivedEmployeesLoading] =
+    useState(false);
+  const [archivedEmployeesError, setArchivedEmployeesError] =
+    useState("");
+  const [archivedEmployeeSearch, setArchivedEmployeeSearch] =
+    useState("");
+  const [lifecycleBusy, setLifecycleBusy] =
+    useState(false);
   const [
     communicationsOpen,
     setCommunicationsOpen,
@@ -2950,6 +3023,181 @@ function OperationalApp({
       setLoadingWorkspace(false);
     }
   }
+
+  async function loadArchivedEmployees() {
+    if (!agency?.id) {
+      return;
+    }
+
+    setArchivedEmployeesLoading(true);
+    setArchivedEmployeesError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}/officers?include_archived=true`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to load archived employees."
+        );
+      }
+
+      setArchivedEmployees(
+        data.filter(
+          (employee) =>
+            employee.employment_status === "archived"
+        )
+      );
+    } catch (err) {
+      setArchivedEmployeesError(err.message);
+    } finally {
+      setArchivedEmployeesLoading(false);
+    }
+  }
+
+
+  async function openArchivedEmployees() {
+    setArchivedEmployeesOpen(true);
+    setArchivedEmployeeSearch("");
+
+    await loadArchivedEmployees();
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+
+  function closeArchivedEmployees() {
+    setArchivedEmployeesOpen(false);
+    setArchivedEmployees([]);
+    setArchivedEmployeesError("");
+    setArchivedEmployeeSearch("");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+
+  async function handleArchiveEmployee() {
+    if (!agency?.id || !selectedOfficerId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Archive this employee? Their historical training, awards, certifications, and agency-managed information will be retained."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const reason = window.prompt(
+      "Optional archive reason:",
+      ""
+    );
+
+    if (reason === null) {
+      return;
+    }
+
+    setLifecycleBusy(true);
+    setWorkspaceError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+          `/officers/${selectedOfficerId}/archive`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            reason,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to archive employee."
+        );
+      }
+
+      await Promise.all([
+        loadDashboard(agency.id),
+        openEmployeeWorkspace({
+          id: selectedOfficerId,
+        }),
+        loadArchivedEmployees(),
+      ]);
+    } catch (err) {
+      setWorkspaceError(err.message);
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
+
+
+  async function handleRestoreEmployee() {
+    if (!agency?.id || !selectedOfficerId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Restore this employee to active status?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setLifecycleBusy(true);
+    setWorkspaceError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+          `/officers/${selectedOfficerId}/restore`,
+        {
+          method: "POST",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to restore employee."
+        );
+      }
+
+      await Promise.all([
+        loadDashboard(agency.id),
+        openEmployeeWorkspace({
+          id: selectedOfficerId,
+        }),
+        loadArchivedEmployees(),
+      ]);
+    } catch (err) {
+      setWorkspaceError(err.message);
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
+
 
   function closeEmployeeWorkspace() {
     setWorkspaceOpen(false);
@@ -3736,7 +3984,150 @@ function OperationalApp({
       </header>
 
       <main className="page">
-        {communicationsOpen ? (
+        {archivedEmployeesOpen ? (
+          <section className="archived-employees-workspace">
+            <div className="archived-employees-heading">
+              <div>
+                <div className="dashboard-kicker">
+                  Employee Lifecycle Management
+                </div>
+
+                <h2>Archived Employees</h2>
+
+                <p>
+                  Archived employees remain in PTM with
+                  their historical records preserved.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="workspace-back"
+                onClick={closeArchivedEmployees}
+              >
+                ← Back to Dashboard
+              </button>
+            </div>
+
+            <div className="archived-employees-toolbar">
+              <input
+                type="search"
+                placeholder="Search archived employees..."
+                value={archivedEmployeeSearch}
+                onChange={(event) =>
+                  setArchivedEmployeeSearch(
+                    event.target.value
+                  )
+                }
+              />
+
+              <strong>
+                {
+                  archivedEmployees.filter(
+                    (employee) => {
+                      const search =
+                        archivedEmployeeSearch
+                          .trim()
+                          .toLowerCase();
+
+                      if (!search) {
+                        return true;
+                      }
+
+                      const value = [
+                        employee.first_name,
+                        employee.middle_name,
+                        employee.last_name,
+                        employee.tcole_pid,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")
+                        .toLowerCase();
+
+                      return value.includes(search);
+                    }
+                  ).length
+                }{" "}
+                archived
+              </strong>
+            </div>
+
+            {archivedEmployeesError && (
+              <div className="message error-message">
+                {archivedEmployeesError}
+              </div>
+            )}
+
+            {archivedEmployeesLoading ? (
+              <div className="dashboard-loading">
+                Loading archived employees...
+              </div>
+            ) : (
+              <div className="archived-employees-list">
+                {archivedEmployees
+                  .filter((employee) => {
+                    const search =
+                      archivedEmployeeSearch
+                        .trim()
+                        .toLowerCase();
+
+                    if (!search) {
+                      return true;
+                    }
+
+                    const value = [
+                      employee.first_name,
+                      employee.middle_name,
+                      employee.last_name,
+                      employee.tcole_pid,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
+                      .toLowerCase();
+
+                    return value.includes(search);
+                  })
+                  .map((employee) => (
+                    <button
+                      key={employee.id}
+                      type="button"
+                      className="archived-employee-row"
+                      onClick={() =>
+                        openEmployeeWorkspace(employee)
+                      }
+                    >
+                      <div>
+                        <strong>
+                          {[
+                            employee.first_name,
+                            employee.middle_name,
+                            employee.last_name,
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        </strong>
+
+                        <span>
+                          PID {employee.tcole_pid}
+                        </span>
+                      </div>
+
+                      <span className="employee-status archived">
+                        ARCHIVED
+                      </span>
+                    </button>
+                  ))}
+
+                {!archivedEmployeesLoading &&
+                  archivedEmployees.length === 0 && (
+                    <div className="dashboard-empty">
+                      No archived employees.
+                    </div>
+                  )}
+              </div>
+            )}
+          </section>
+        ) : communicationsOpen ? (
           <ComplianceCommunicationsWorkspace
             preflight={communicationsPreflight}
             loading={communicationsLoading}
@@ -3765,14 +4156,44 @@ function OperationalApp({
             qualificationBusy={qualificationBusy}
             qualificationError={qualificationError}
             onSaveQualificationFacts={
-              handleSaveQualificationFacts
+              employeeWorkspace?.officer
+                ?.employment_status === "archived"
+                ? undefined
+                : handleSaveQualificationFacts
             }
-            onActivateAssignment={handleActivate}
-            onEndAssignment={handleEnd}
-            onVerifyTdem={handleVerifyTdem}
-            onRevokeTdem={handleRevokeTdem}
+            onActivateAssignment={
+              employeeWorkspace?.officer
+                ?.employment_status === "archived"
+                ? undefined
+                : handleActivate
+            }
+            onEndAssignment={
+              employeeWorkspace?.officer
+                ?.employment_status === "archived"
+                ? undefined
+                : handleEnd
+            }
+            onVerifyTdem={
+              employeeWorkspace?.officer
+                ?.employment_status === "archived"
+                ? undefined
+                : handleVerifyTdem
+            }
+            onRevokeTdem={
+              employeeWorkspace?.officer
+                ?.employment_status === "archived"
+                ? undefined
+                : handleRevokeTdem
+            }
             onEditEmail={handleEditEmployeeEmail}
             onEmailEmployee={handleEmailEmployee}
+            onArchiveEmployee={
+              handleArchiveEmployee
+            }
+            onRestoreEmployee={
+              handleRestoreEmployee
+            }
+            lifecycleBusy={lifecycleBusy}
           />
         ) : (
           <>
@@ -3795,6 +4216,14 @@ function OperationalApp({
             </div>
 
             <div className="dashboard-header-actions">
+              <button
+                type="button"
+                className="archived-employees-button"
+                onClick={openArchivedEmployees}
+              >
+                Archived Employees
+              </button>
+
               <button
                 type="button"
                 className="communications-launch-button"

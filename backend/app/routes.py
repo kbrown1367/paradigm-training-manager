@@ -44,6 +44,11 @@ from app.compliance.officer_profile import (
 from app.services.employee_workspace import (
     get_employee_workspace,
 )
+from app.services.employee_lifecycle import (
+    EmployeeLifecycleError,
+    archive_employee,
+    restore_employee,
+)
 from app.services.qualification_facts import (
     QualificationFactsError,
     get_qualification_facts,
@@ -635,6 +640,73 @@ def update_officer_qualification_facts(
     if result is None:
         return jsonify(
             {"error": "Officer not found."}
+        ), 404
+
+    return jsonify(result), 200
+
+
+@api.post(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/archive"
+)
+def archive_agency_employee(
+    agency_id,
+    officer_id,
+):
+    payload = request.get_json(
+        silent=True
+    ) or {}
+
+    try:
+        result = archive_employee(
+            agency_id,
+            officer_id,
+            reason=payload.get("reason"),
+        )
+    except EmployeeLifecycleError as exc:
+        return jsonify(
+            {
+                "error": str(exc),
+            }
+        ), 400
+
+    if result is None:
+        return jsonify(
+            {
+                "error": "Resource not found.",
+            }
+        ), 404
+
+    return jsonify(result), 200
+
+
+@api.post(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/restore"
+)
+def restore_agency_employee(
+    agency_id,
+    officer_id,
+):
+    try:
+        result = restore_employee(
+            agency_id,
+            officer_id,
+        )
+    except EmployeeLifecycleError as exc:
+        return jsonify(
+            {
+                "error": str(exc),
+            }
+        ), 400
+
+    if result is None:
+        return jsonify(
+            {
+                "error": "Resource not found.",
+            }
         ), 404
 
     return jsonify(result), 200

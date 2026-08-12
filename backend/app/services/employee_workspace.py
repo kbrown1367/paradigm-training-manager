@@ -166,6 +166,15 @@ def build_employee_workspace(
             **profile["officer"],
             "email_override":
                 officer.email_override,
+            "employment_status":
+                officer.employment_status,
+            "archived_at": (
+                officer.archived_at.isoformat()
+                if officer.archived_at
+                else None
+            ),
+            "archived_reason":
+                officer.archived_reason,
         },
         "resolved_email": email,
         "evaluation_date":
