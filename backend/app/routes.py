@@ -44,6 +44,10 @@ from app.compliance.officer_profile import (
 from app.services.employee_workspace import (
     get_employee_workspace,
 )
+from app.services.license_tracking import (
+    LicenseTrackingError,
+    set_license_tracking,
+)
 from app.services.employee_lifecycle import (
     EmployeeLifecycleError,
     archive_employee,
@@ -273,6 +277,59 @@ def list_agency_officers(agency_id):
             }
             for officer in officers
         ]
+    ), 200
+
+
+@api.patch(
+    "/agencies/<uuid:agency_id>"
+    "/officers/<uuid:officer_id>"
+    "/license-tracking/<license_type>"
+)
+def update_officer_license_tracking(
+    agency_id,
+    officer_id,
+    license_type,
+):
+    payload = request.get_json(
+        silent=True
+    ) or {}
+
+    user = g.current_user
+
+    changed_by = " ".join(
+        part
+        for part in [
+            getattr(user, "first_name", None),
+            getattr(user, "last_name", None),
+        ]
+        if part
+    ).strip()
+
+    if not changed_by:
+        changed_by = getattr(
+            user,
+            "email",
+            None,
+        )
+
+    try:
+        result = set_license_tracking(
+            agency_id=agency_id,
+            officer_id=officer_id,
+            license_type=license_type,
+            tracking_enabled=payload.get(
+                "tracking_enabled"
+            ),
+            changed_by=changed_by,
+            reason=payload.get("reason"),
+        )
+    except LicenseTrackingError as exc:
+        return jsonify(
+            {"error": str(exc)}
+        ), 400
+
+    return jsonify(
+        {"license_tracking": result}
     ), 200
 
 

@@ -12,6 +12,9 @@ from app.compliance.proficiency_tracks import (
 )
 from app.compliance.training_calendar import get_unit
 from app.models import Officer
+from app.services.license_tracking import (
+    serialize_license_tracking,
+)
 
 
 def _serialize_assignment(assignment):
@@ -177,6 +180,8 @@ def build_employee_workspace(
                 officer.archived_reason,
         },
         "resolved_email": email,
+        "license_tracking":
+            serialize_license_tracking(officer),
         "evaluation_date":
             evaluation_date.isoformat(),
         "overall_status":

@@ -57,6 +57,12 @@ class Agency(db.Model):
         cascade="save-update, merge",
     )
 
+    license_tracking_records = db.relationship(
+        "OfficerLicenseTracking",
+        back_populates="agency",
+        cascade="save-update, merge",
+    )
+
 
 
 class User(db.Model):
@@ -214,11 +220,95 @@ class Officer(db.Model):
         cascade="save-update, merge",
     )
 
+    license_tracking_records = db.relationship(
+        "OfficerLicenseTracking",
+        back_populates="officer",
+        cascade="save-update, merge",
+    )
+
     __table_args__ = (
         db.UniqueConstraint(
             "agency_id",
             "tcole_pid",
             name="uq_officers_agency_tcole_pid",
+        ),
+    )
+
+
+class OfficerLicenseTracking(db.Model):
+    __tablename__ = "officer_license_tracking"
+
+    id = db.Column(
+        db.Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    agency_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("agencies.id"),
+        nullable=False,
+        index=True,
+    )
+    officer_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("officers.id"),
+        nullable=False,
+        index=True,
+    )
+    license_type = db.Column(
+        db.String(30),
+        nullable=False,
+        index=True,
+    )
+    tracking_enabled = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True,
+    )
+    last_disabled_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=True,
+    )
+    last_disabled_by = db.Column(
+        db.String(255),
+        nullable=True,
+    )
+    last_disabled_reason = db.Column(
+        db.Text,
+        nullable=True,
+    )
+    updated_by = db.Column(
+        db.String(255),
+        nullable=True,
+    )
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=utcnow,
+    )
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+    agency = db.relationship(
+        "Agency",
+        back_populates="license_tracking_records",
+    )
+
+    officer = db.relationship(
+        "Officer",
+        back_populates="license_tracking_records",
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "agency_id",
+            "officer_id",
+            "license_type",
+            name="uq_officer_license_tracking",
         ),
     )
 

@@ -1010,6 +1010,7 @@ function EmployeeWorkspace({
   onEmailEmployee,
   onArchiveEmployee,
   onRestoreEmployee,
+  onSetLicenseTracking,
   lifecycleBusy,
 }) {
   if (loading) {
@@ -1057,6 +1058,20 @@ function EmployeeWorkspace({
 
   const officer = workspace.officer;
 
+  const licenseTracking =
+    workspace.license_tracking || [];
+
+  const isLicenseTracked = (licenseType) => {
+    const item = licenseTracking.find(
+      (license) =>
+        license.license_type === licenseType
+    );
+
+    return item
+      ? item.tracking_enabled
+      : true;
+  };
+
   const name = [
     officer.first_name,
     officer.middle_name,
@@ -1095,6 +1110,7 @@ function EmployeeWorkspace({
           }}
         >
           {!employeeArchived &&
+            isLicenseTracked("PEACE_OFFICER") &&
             workspace.proficiency_advancement
               ?.peace_officer && (
             <button
@@ -1117,6 +1133,7 @@ function EmployeeWorkspace({
           )}
 
           {!employeeArchived &&
+            isLicenseTracked("COUNTY_JAILER") &&
             workspace.proficiency_advancement
               ?.jailer && (
             <button
@@ -1140,6 +1157,7 @@ function EmployeeWorkspace({
 
 
           {!employeeArchived &&
+            isLicenseTracked("TELECOMMUNICATOR") &&
             workspace.proficiency_advancement
               ?.telecommunicator && (
             <button
@@ -1164,12 +1182,15 @@ function EmployeeWorkspace({
           )}
 
           {!employeeArchived && [
-            workspace.proficiency_advancement
-              ?.peace_officer,
-            workspace.proficiency_advancement
-              ?.jailer,
-            workspace.proficiency_advancement
-              ?.telecommunicator,
+            isLicenseTracked("PEACE_OFFICER") &&
+              workspace.proficiency_advancement
+                ?.peace_officer,
+            isLicenseTracked("COUNTY_JAILER") &&
+              workspace.proficiency_advancement
+                ?.jailer,
+            isLicenseTracked("TELECOMMUNICATOR") &&
+              workspace.proficiency_advancement
+                ?.telecommunicator,
           ].filter(Boolean).length > 1 && (
               <button
                 type="button"
@@ -1391,6 +1412,85 @@ function EmployeeWorkspace({
           items={workspace.agency_review_requirements}
           emptyMessage="No agency review items."
         />
+      )}
+
+      {licenseTracking.length > 1 && (
+        <section className="workspace-panel">
+          <div className="workspace-panel-heading">
+            <div>
+              <h3>License Compliance Tracking</h3>
+              <p>
+                Choose which TCOLE license requirements
+                this agency intends to maintain for this
+                employee. Turning tracking off does not
+                remove or change the TCOLE license.
+              </p>
+            </div>
+          </div>
+
+          <div className="workspace-assignment-controls">
+            {licenseTracking.map((license) => (
+              <div
+                className="workspace-assignment-control"
+                key={license.license_type}
+              >
+                <div className="workspace-assignment-copy">
+                  <strong>
+                    {license.license_name}
+                  </strong>
+
+                  <span>
+                    {license.tracking_enabled
+                      ? "Compliance requirements are being tracked."
+                      : "License remains on record. Compliance tracking is off."}
+                  </span>
+
+                  {!license.tracking_enabled &&
+                    license.last_disabled_reason && (
+                    <span>
+                      Reason:{" "}
+                      {license.last_disabled_reason}
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={
+                    license.tracking_enabled
+                  }
+                  className={
+                    "assignment-toggle" +
+                    (license.tracking_enabled
+                      ? " active"
+                      : "")
+                  }
+                  disabled={
+                    !onSetLicenseTracking
+                  }
+                  title={
+                    license.tracking_enabled
+                      ? `Stop tracking ${license.license_name} compliance`
+                      : `Resume tracking ${license.license_name} compliance`
+                  }
+                  onClick={() =>
+                    onSetLicenseTracking(
+                      license
+                    )
+                  }
+                >
+                  <span className="assignment-toggle-knob" />
+                  <span className="assignment-toggle-label">
+                    {license.tracking_enabled
+                      ? "On"
+                      : "Off"}
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       <section className="workspace-panel">
@@ -3618,6 +3718,94 @@ function OperationalApp({
     setEmployeeWorkspace(data);
   }
 
+  async function handleSetLicenseTracking(
+    license
+  ) {
+    if (
+      !agency?.id ||
+      !selectedOfficerId ||
+      !license
+    ) {
+      return;
+    }
+
+    const turningOff =
+      license.tracking_enabled;
+
+    let reason = null;
+
+    if (turningOff) {
+      const confirmed = window.confirm(
+        `Stop tracking ${license.license_name} compliance?\n\n` +
+        "The license and all historical records will remain visible. " +
+        "Its requirements will no longer affect this employee's PTM " +
+        "compliance status, dashboard, reports, or normal compliance " +
+        "notifications. This does not change the employee's TCOLE " +
+        "license status."
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      reason = window.prompt(
+        "Reason for stopping compliance tracking (optional):",
+        ""
+      );
+
+      if (reason === null) {
+        return;
+      }
+    } else {
+      const confirmed = window.confirm(
+        `Resume tracking ${license.license_name} compliance?`
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setWorkspaceError("");
+
+    try {
+      const response = await fetch(
+        `/api/agencies/${agency.id}` +
+          `/officers/${selectedOfficerId}` +
+          `/license-tracking/${license.license_type}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tracking_enabled: turningOff
+              ? false
+              : true,
+            reason,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to update license compliance tracking."
+        );
+      }
+
+      await Promise.all([
+        refreshEmployeeWorkspace(),
+        loadDashboard(agency.id),
+      ]);
+    } catch (err) {
+      setWorkspaceError(err.message);
+    }
+  }
+
+
   async function refreshAssignments() {
     if (!agency || !selectedOfficerId) {
       return;
@@ -4192,6 +4380,12 @@ function OperationalApp({
             }
             onRestoreEmployee={
               handleRestoreEmployee
+            }
+            onSetLicenseTracking={
+              employeeWorkspace?.officer
+                ?.employment_status === "archived"
+                ? undefined
+                : handleSetLicenseTracking
             }
             lifecycleBusy={lifecycleBusy}
           />

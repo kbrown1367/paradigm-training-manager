@@ -26,6 +26,9 @@ from app.compliance.telecommunicator_unit import (
 from app.compliance.telecommunicator_proficiency import (
     has_telecommunicator_license,
 )
+from app.services.license_tracking import (
+    is_license_tracking_enabled,
+)
 
 
 def _raw_component_status(component_name, result):
@@ -173,7 +176,35 @@ def evaluate_officer_compliance_profile(
     if evaluation_date is None:
         evaluation_date = date.today()
 
-    if has_peace_officer_license(officer):
+    has_peace = has_peace_officer_license(officer)
+    has_jailer = has_county_jailer_license(officer)
+    has_telecommunicator = (
+        has_telecommunicator_license(officer)
+    )
+
+    track_peace = (
+        has_peace
+        and is_license_tracking_enabled(
+            officer,
+            "PEACE_OFFICER",
+        )
+    )
+    track_jailer = (
+        has_jailer
+        and is_license_tracking_enabled(
+            officer,
+            "COUNTY_JAILER",
+        )
+    )
+    track_telecommunicator = (
+        has_telecommunicator
+        and is_license_tracking_enabled(
+            officer,
+            "TELECOMMUNICATOR",
+        )
+    )
+
+    if track_peace:
         peace_officer = evaluate_peace_officer_unit(
             officer,
             evaluation_date=evaluation_date,
@@ -184,9 +215,11 @@ def evaluate_officer_compliance_profile(
             "unit_status": "NOT_APPLICABLE",
             "requirements": [],
             "deficiencies": [],
+            "tracking_disabled":
+                has_peace and not track_peace,
         }
 
-    if has_county_jailer_license(officer):
+    if track_jailer:
         county_jailer = evaluate_county_jailer(
             officer,
             evaluation_date=evaluation_date,
@@ -197,9 +230,11 @@ def evaluate_officer_compliance_profile(
             "status": "NOT_APPLICABLE",
             "requirements": [],
             "deficiencies": [],
+            "tracking_disabled":
+                has_jailer and not track_jailer,
         }
 
-    if has_telecommunicator_license(officer):
+    if track_telecommunicator:
         telecommunicator = (
             evaluate_telecommunicator_unit(
                 officer,
@@ -212,22 +247,48 @@ def evaluate_officer_compliance_profile(
             "unit_status": "NOT_APPLICABLE",
             "requirements": [],
             "deficiencies": [],
+            "tracking_disabled": (
+                has_telecommunicator
+                and not track_telecommunicator
+            ),
         }
 
-    police_chief = evaluate_police_chief(
-        officer,
-        evaluation_date=evaluation_date,
+    peace_tracking_explicitly_disabled = (
+        has_peace and not track_peace
     )
 
-    supervisor = evaluate_supervisor(
-        officer,
-        evaluation_date=evaluation_date,
-    )
-
-    pio = evaluate_public_information_officer(
-        officer,
-        evaluation_date=evaluation_date,
-    )
+    if not peace_tracking_explicitly_disabled:
+        police_chief = evaluate_police_chief(
+            officer,
+            evaluation_date=evaluation_date,
+        )
+        supervisor = evaluate_supervisor(
+            officer,
+            evaluation_date=evaluation_date,
+        )
+        pio = evaluate_public_information_officer(
+            officer,
+            evaluation_date=evaluation_date,
+        )
+    else:
+        police_chief = {
+            "applicable": False,
+            "chief_status": "NOT_APPLICABLE",
+            "requirements": [],
+            "deficiencies": [],
+        }
+        supervisor = {
+            "applicable": False,
+            "status": "NOT_APPLICABLE",
+            "requirements": [],
+            "deficiencies": [],
+        }
+        pio = {
+            "applicable": False,
+            "status": "NOT_APPLICABLE",
+            "requirements": [],
+            "deficiencies": [],
+        }
 
     components = [
         _normalize_component(
