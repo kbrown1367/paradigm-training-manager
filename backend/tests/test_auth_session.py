@@ -193,3 +193,197 @@ def test_logout_destroys_session(app):
     )
 
     assert response.status_code == 401
+
+
+
+def test_change_password_requires_authenticated_session(app):
+    client = app.test_client()
+
+    response = client.post(
+        "/api/auth/change-password",
+        json={
+            "current_password":
+                "PilotPassword123!",
+            "new_password":
+                "ChangedPassword123!",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.get_json()["error"] == (
+        "Authentication required."
+    )
+
+
+def test_change_password_rejects_wrong_current_password(app):
+    seed_user(app)
+
+    client = app.test_client()
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={
+            "email":
+                "admin@pilotpd.gov",
+            "password":
+                "PilotPassword123!",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    response = client.post(
+        "/api/auth/change-password",
+        json={
+            "current_password":
+                "WrongPassword123!",
+            "new_password":
+                "ChangedPassword123!",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == (
+        "Current password is incorrect."
+    )
+
+
+def test_change_password_rejects_short_new_password(app):
+    seed_user(app)
+
+    client = app.test_client()
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={
+            "email":
+                "admin@pilotpd.gov",
+            "password":
+                "PilotPassword123!",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    response = client.post(
+        "/api/auth/change-password",
+        json={
+            "current_password":
+                "PilotPassword123!",
+            "new_password":
+                "short",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == (
+        "New password must be at least "
+        "12 characters."
+    )
+
+
+def test_change_password_rejects_same_password(app):
+    seed_user(app)
+
+    client = app.test_client()
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={
+            "email":
+                "admin@pilotpd.gov",
+            "password":
+                "PilotPassword123!",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    response = client.post(
+        "/api/auth/change-password",
+        json={
+            "current_password":
+                "PilotPassword123!",
+            "new_password":
+                "PilotPassword123!",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == (
+        "New password must be different "
+        "from the current password."
+    )
+
+
+def test_change_password_updates_credentials_and_keeps_session(app):
+    seed_user(app)
+
+    client = app.test_client()
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={
+            "email":
+                "admin@pilotpd.gov",
+            "password":
+                "PilotPassword123!",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    response = client.post(
+        "/api/auth/change-password",
+        json={
+            "current_password":
+                "PilotPassword123!",
+            "new_password":
+                "ChangedPassword123!",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["message"] == (
+        "Password changed successfully."
+    )
+
+    me_response = client.get(
+        "/api/auth/me"
+    )
+
+    assert me_response.status_code == 200
+    assert (
+        me_response.get_json()["authenticated"]
+        is True
+    )
+
+    logout_response = client.post(
+        "/api/auth/logout"
+    )
+
+    assert logout_response.status_code == 200
+
+    old_login = client.post(
+        "/api/auth/login",
+        json={
+            "email":
+                "admin@pilotpd.gov",
+            "password":
+                "PilotPassword123!",
+        },
+    )
+
+    assert old_login.status_code == 401
+
+    new_login = client.post(
+        "/api/auth/login",
+        json={
+            "email":
+                "admin@pilotpd.gov",
+            "password":
+                "ChangedPassword123!",
+        },
+    )
+
+    assert new_login.status_code == 200

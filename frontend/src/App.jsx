@@ -2921,6 +2921,14 @@ function OperationalApp({
   const [emailSettingsBusy, setEmailSettingsBusy] = useState(false);
   const [emailSettingsError, setEmailSettingsError] = useState("");
 
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordNotice, setPasswordNotice] = useState("");
+
   const [dashboard, setDashboard] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
@@ -4127,6 +4135,78 @@ function OperationalApp({
       return searchable.includes(search);
     }) || [];
 
+  async function handleSelfPasswordChange(event) {
+    event.preventDefault();
+
+    setPasswordError("");
+    setPasswordNotice("");
+
+    if (!currentPassword) {
+      setPasswordError(
+        "Enter your current password."
+      );
+      return;
+    }
+
+    if (newPassword.length < 12) {
+      setPasswordError(
+        "New password must be at least 12 characters."
+      );
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError(
+        "New password and confirmation do not match."
+      );
+      return;
+    }
+
+    setPasswordBusy(true);
+
+    try {
+      const response = await fetch(
+        "/api/auth/change-password",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            current_password: currentPassword,
+            new_password: newPassword,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to change your password."
+        );
+      }
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+
+      setPasswordNotice(
+        data.message ||
+          "Password changed successfully."
+      );
+    } catch (err) {
+      setPasswordError(
+        err.message ||
+          "Unable to change your password."
+      );
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -4164,12 +4244,175 @@ function OperationalApp({
 
           <button
             type="button"
+            onClick={() => {
+              setPasswordError("");
+              setPasswordNotice("");
+              setAccountOpen(true);
+            }}
+          >
+            Account
+          </button>
+
+          <button
+            type="button"
             onClick={onLogout}
           >
             Log Out
           </button>
         </div>
       </header>
+
+      {accountOpen && (
+        <div
+          className="account-modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setAccountOpen(false);
+              setPasswordError("");
+              setPasswordNotice("");
+              setCurrentPassword("");
+              setNewPassword("");
+              setConfirmPassword("");
+            }
+          }}
+        >
+          <section
+            className="account-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="account-password-title"
+          >
+            <div className="account-modal-heading">
+              <div>
+                <span>ACCOUNT SECURITY</span>
+                <h2 id="account-password-title">
+                  Change Password
+                </h2>
+                <p>
+                  Update the password used to sign in to
+                  Paradigm Training Manager.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="account-modal-close"
+                aria-label="Close account settings"
+                onClick={() => {
+                  setAccountOpen(false);
+                  setPasswordError("");
+                  setPasswordNotice("");
+                  setCurrentPassword("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {passwordError && (
+              <div className="account-message error">
+                {passwordError}
+              </div>
+            )}
+
+            {passwordNotice && (
+              <div className="account-message success">
+                {passwordNotice}
+              </div>
+            )}
+
+            <form
+              className="account-password-form"
+              onSubmit={handleSelfPasswordChange}
+            >
+              <label>
+                <span>Current Password</span>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(event) =>
+                    setCurrentPassword(
+                      event.target.value
+                    )
+                  }
+                  disabled={passwordBusy}
+                  required
+                />
+              </label>
+
+              <label>
+                <span>New Password</span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(event) =>
+                    setNewPassword(
+                      event.target.value
+                    )
+                  }
+                  disabled={passwordBusy}
+                  minLength={12}
+                  required
+                />
+
+                <small>
+                  Minimum 12 characters.
+                </small>
+              </label>
+
+              <label>
+                <span>Confirm New Password</span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) =>
+                    setConfirmPassword(
+                      event.target.value
+                    )
+                  }
+                  disabled={passwordBusy}
+                  minLength={12}
+                  required
+                />
+              </label>
+
+              <div className="account-modal-actions">
+                <button
+                  type="button"
+                  className="account-secondary-button"
+                  disabled={passwordBusy}
+                  onClick={() => {
+                    setAccountOpen(false);
+                    setPasswordError("");
+                    setPasswordNotice("");
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="account-primary-button"
+                  disabled={passwordBusy}
+                >
+                  {passwordBusy
+                    ? "Changing Password..."
+                    : "Change Password"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
 
       <main className="page">
         {archivedEmployeesOpen ? (
