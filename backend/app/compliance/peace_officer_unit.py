@@ -134,6 +134,24 @@ def evaluate_peace_officer_unit(
         Decimal("0"),
     )
 
+    embedded_alerrt_hours = {
+        str(course_number): Decimal(str(hours))
+        for course_number, hours
+        in rule["alerrt"].get(
+            "embedded_alerrt_hours",
+            {},
+        ).items()
+    }
+
+    for course_number, embedded_hours in (
+        embedded_alerrt_hours.items()
+    ):
+        if any(
+            record.course_number == course_number
+            for record in training
+        ):
+            alerrt_hours += embedded_hours
+
     historical_level_one_courses = set(
         rule["alerrt"]["level_one_historical_courses"]
     )
@@ -149,8 +167,16 @@ def evaluate_peace_officer_unit(
         "alerrt"
     ]["current_level_one_course"]
 
+    current_level_one_courses = {
+        current_level_one_course,
+        *rule["alerrt"].get(
+            "current_level_one_equivalent_courses",
+            [],
+        ),
+    }
+
     has_current_level_one = any(
-        record.course_number == current_level_one_course
+        record.course_number in current_level_one_courses
         for record in training
     )
 

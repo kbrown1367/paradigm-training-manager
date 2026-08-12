@@ -276,6 +276,84 @@ def test_prior_3313_satisfies_level_one_history(app):
         assert result["unit_status"] == "COMPLETE"
 
 
+def test_bpoc_736_prior_completion_satisfies_level_one(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_training(
+            agency, officer, "1000736",
+            date(2024, 12, 3), 736
+        )
+        add_training(
+            agency, officer, "3189",
+            date(2026, 1, 10), 8
+        )
+        add_training(
+            agency, officer, "7006",
+            date(2026, 2, 10), 8
+        )
+        add_training(
+            agency, officer, "3369",
+            date(2026, 3, 10), 16
+        )
+        add_training(
+            agency, officer, "9999",
+            date(2026, 4, 10), 8
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        assert result["prior_level_one_found"] is True
+        assert result["alerrt_level_one_satisfied"] is True
+        assert not any(
+            item["type"] == "ALERRT_LEVEL_ONE"
+            for item in result["requirements"]
+        )
+
+
+def test_bpoc_736_current_unit_supplies_embedded_alerrt(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_training(
+            agency, officer, "1000736",
+            date(2025, 12, 4), 736
+        )
+        add_training(
+            agency, officer, "3189",
+            date(2026, 1, 10), 8
+        )
+        add_training(
+            agency, officer, "7006",
+            date(2026, 2, 10), 8
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        assert result["alerrt_level_one_satisfied"] is True
+        assert result["alerrt_hours"] == 16.0
+        assert result["remaining_alerrt_hours"] == 0.0
+
+        assert not any(
+            item["type"] in {
+                "ALERRT_LEVEL_ONE",
+                "ALERRT_HOURS",
+            }
+            for item in result["requirements"]
+        )
+
+
+
 def test_training_outside_unit_does_not_count(app):
     with app.app_context():
         agency, officer = make_officer()

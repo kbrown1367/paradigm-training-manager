@@ -19,7 +19,8 @@
     "level_one_historical_courses": [
       "3311",
       "3313",
-      "3315"
+      "3315",
+      "1000736"
     ],
     "current_level_one_course": "3311",
     "approved_courses": [
@@ -49,6 +50,12 @@
       "33111",
       "78052",
       "667371"
-    ]
+    ],
+    "current_level_one_equivalent_courses": [
+      "1000736"
+    ],
+    "embedded_alerrt_hours": {
+      "1000736": 16
+    }
   }
 }
