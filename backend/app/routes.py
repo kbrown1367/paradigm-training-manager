@@ -673,6 +673,11 @@ def update_officer_qualification_facts(
             verified_college_credit_hours=payload.get(
                 "verified_college_credit_hours"
             ),
+            verified_military_training_credit_hours=(
+                payload.get(
+                    "verified_military_training_credit_hours"
+                )
+            ),
             verified_military_months=payload.get(
                 "verified_military_months"
             ),
@@ -681,6 +686,10 @@ def update_officer_qualification_facts(
             ),
             college_hours_supplied=(
                 "verified_college_credit_hours" in payload
+            ),
+            military_training_credit_supplied=(
+                "verified_military_training_credit_hours"
+                in payload
             ),
             military_supplied=(
                 "verified_military_months" in payload

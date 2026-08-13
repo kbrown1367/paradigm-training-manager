@@ -21,6 +21,8 @@ def _serialize(officer):
             officer.verified_education_level,
         "verified_college_credit_hours":
             officer.verified_college_credit_hours,
+        "verified_military_training_credit_hours":
+            officer.verified_military_training_credit_hours,
         "verified_military_months":
             officer.verified_military_months,
         "verified_jailer_cultural_diversity_exemption":
@@ -49,9 +51,11 @@ def update_qualification_facts(
     *,
     verified_education_level=None,
     verified_college_credit_hours=None,
+    verified_military_training_credit_hours=None,
     verified_military_months=None,
     education_supplied=False,
     college_hours_supplied=False,
+    military_training_credit_supplied=False,
     military_supplied=False,
     verified_jailer_cultural_diversity_exemption=None,
     jailer_exemption_supplied=False,
@@ -113,6 +117,43 @@ def update_qualification_facts(
 
         officer.verified_college_credit_hours = (
             college_hours
+        )
+
+    if military_training_credit_supplied:
+        military_training_credit = (
+            verified_military_training_credit_hours
+        )
+
+        if military_training_credit in {None, ""}:
+            military_training_credit = None
+        else:
+            if isinstance(
+                military_training_credit,
+                bool,
+            ):
+                raise QualificationFactsError(
+                    "verified_military_training_credit_hours "
+                    "must be a non-negative integer or null."
+                )
+
+            try:
+                military_training_credit = int(
+                    military_training_credit
+                )
+            except (TypeError, ValueError):
+                raise QualificationFactsError(
+                    "verified_military_training_credit_hours "
+                    "must be a non-negative integer or null."
+                )
+
+            if military_training_credit < 0:
+                raise QualificationFactsError(
+                    "verified_military_training_credit_hours "
+                    "must be a non-negative integer or null."
+                )
+
+        officer.verified_military_training_credit_hours = (
+            military_training_credit
         )
 
     if military_supplied:

@@ -1071,3 +1071,96 @@ def test_college_hours_do_not_create_degree_level(app):
 
         assert result["college_credit_hours"] == 90
         assert result["education_level"] is None
+
+
+def test_military_training_credit_is_added_to_career_professional_hours(
+    app,
+):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Master Peace Officer",
+            training_hours=2417,
+        )
+        officer.verified_college_credit_hours = 73
+        officer.verified_military_training_credit_hours = (
+            12395
+        )
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+        )
+
+        assert result["training_hours"] == 2417.0
+        assert result["college_credit_hours"] == 73
+        assert (
+            result["military_training_credit_hours"]
+            == 12395
+        )
+        assert (
+            result["career_professional_hours"]
+            == 13855.0
+        )
+        assert result["total_hours"] == 16272.0
+
+
+def test_military_training_credit_without_college_hours(
+    app,
+):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Advanced Peace Officer",
+            training_hours=1000,
+        )
+        officer.verified_college_credit_hours = None
+        officer.verified_military_training_credit_hours = (
+            3000
+        )
+        officer.peace_officer_service_start_date = date(
+            2014,
+            1,
+            1,
+        )
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 13),
+        )
+
+        assert result["college_credit_hours"] is None
+        assert (
+            result["career_professional_hours"]
+            == 3000.0
+        )
+        assert result["total_hours"] == 4000.0
+
+        service_training = result[
+            "pathway_results"
+        ]["service_training"]
+
+        assert service_training["satisfied"] is True
+
+
+def test_military_training_credit_does_not_create_military_service_duration(
+    app,
+):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Intermediate Peace Officer",
+        )
+        officer.verified_military_months = 0
+        officer.verified_military_training_credit_hours = (
+            5000
+        )
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+        )
+
+        assert (
+            result["military_training_credit_hours"]
+            == 5000
+        )
+        assert result["verified_military_months"] == 0

@@ -796,6 +796,10 @@ function QualificationInformationPanel({
 }) {
   const [education, setEducation] = useState("");
   const [collegeHours, setCollegeHours] = useState("");
+  const [
+    militaryTrainingCreditHours,
+    setMilitaryTrainingCreditHours,
+  ] = useState("");
   const [militaryEnabled, setMilitaryEnabled] =
     useState(false);
   const [militaryYears, setMilitaryYears] =
@@ -818,6 +822,14 @@ function QualificationInformationPanel({
         : ""
     );
 
+    setMilitaryTrainingCreditHours(
+      facts.verified_military_training_credit_hours != null
+        ? String(
+            facts.verified_military_training_credit_hours
+          )
+        : ""
+    );
+
     const totalMonths = Number(
       facts.verified_military_months || 0
     );
@@ -833,6 +845,7 @@ function QualificationInformationPanel({
     facts?.officer_id,
     facts?.verified_education_level,
     facts?.verified_college_credit_hours,
+    facts?.verified_military_training_credit_hours,
     facts?.verified_military_months,
   ]);
 
@@ -893,6 +906,16 @@ function QualificationInformationPanel({
           : Math.max(
               0,
               Number.parseInt(collegeHours, 10) || 0
+            ),
+      verified_military_training_credit_hours:
+        militaryTrainingCreditHours === ""
+          ? null
+          : Math.max(
+              0,
+              Number.parseInt(
+                militaryTrainingCreditHours,
+                10
+              ) || 0
             ),
       verified_military_months:
         totalMilitaryMonths,
@@ -994,13 +1017,44 @@ function QualificationInformationPanel({
         <div className="qualification-block">
           <div className="qualification-heading">
             <div>
+              <strong>Military</strong>
+              <span>
+                PSR military training credit and qualifying
+                military service duration are separate TCOLE
+                qualification facts.
+              </span>
+            </div>
+          </div>
+
+          <label className="qualification-field">
+            <span>
+              Military Service Training Credit from PSR
+            </span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={militaryTrainingCreditHours}
+              disabled={busy}
+              placeholder="Not reported"
+              onChange={(event) =>
+                setMilitaryTrainingCreditHours(
+                  event.target.value
+                )
+              }
+            />
+          </label>
+
+          <div className="qualification-heading">
+            <div>
               <strong>
                 Qualifying Military Service
               </strong>
               <span>
                 Defaults to no qualifying military
                 service. Turn this on only when military
-                service applies to the officer.
+                service duration applies to an alternate
+                proficiency pathway.
               </span>
             </div>
 

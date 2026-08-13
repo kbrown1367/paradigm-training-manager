@@ -291,3 +291,93 @@ def test_college_hours_can_be_cleared(
         data["verified_college_credit_hours"]
         is None
     )
+
+
+def test_update_military_training_credit_from_psr(
+    app,
+    client,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+        agency_id = str(agency.id)
+        officer_id = str(officer.id)
+
+    response = client.patch(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/qualification-facts",
+        json={
+            "verified_military_training_credit_hours":
+                12395
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert (
+        data[
+            "verified_military_training_credit_hours"
+        ]
+        == 12395
+    )
+
+
+def test_negative_military_training_credit_rejected(
+    app,
+    client,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+        agency_id = str(agency.id)
+        officer_id = str(officer.id)
+
+    response = client.patch(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/qualification-facts",
+        json={
+            "verified_military_training_credit_hours":
+                -1
+        },
+    )
+
+    assert response.status_code == 400
+
+
+def test_military_training_credit_can_be_cleared(
+    app,
+    client,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        officer.verified_military_training_credit_hours = (
+            12000
+        )
+        db.session.commit()
+
+        agency_id = str(agency.id)
+        officer_id = str(officer.id)
+
+    response = client.patch(
+        f"/api/agencies/{agency_id}"
+        f"/officers/{officer_id}"
+        "/qualification-facts",
+        json={
+            "verified_military_training_credit_hours":
+                None
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert (
+        data[
+            "verified_military_training_credit_hours"
+        ]
+        is None
+    )

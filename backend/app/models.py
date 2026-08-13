@@ -205,6 +205,10 @@ class Officer(db.Model):
         db.Integer,
         nullable=True,
     )
+    verified_military_training_credit_hours = db.Column(
+        db.Integer,
+        nullable=True,
+    )
     verified_jailer_cultural_diversity_exemption = db.Column(
         db.Boolean,
         nullable=False,

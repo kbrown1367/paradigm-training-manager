@@ -187,16 +187,40 @@ def _college_credit_hours(officer):
     return max(0, int(hours))
 
 
+def _military_training_credit_hours(officer):
+    hours = (
+        officer.verified_military_training_credit_hours
+    )
+
+    if hours is None:
+        return None
+
+    return max(0, int(hours))
+
+
 def _career_professional_hours(officer):
     college_hours = _college_credit_hours(officer)
+    military_training_credit = (
+        _military_training_credit_hours(officer)
+    )
 
-    if college_hours is None:
-        return Decimal("0")
+    higher_education_points = Decimal(
+        (college_hours or 0) * 20
+    )
 
-    # TCOLE Personal Status Report conversion:
-    # one college credit hour equals 20
-    # Career/Professional Hours.
-    return Decimal(college_hours * 20)
+    military_points = Decimal(
+        military_training_credit or 0
+    )
+
+    # TCOLE Personal Status Report:
+    #
+    # Total Career/Professional Hours =
+    # Higher Education Points
+    # + Military Service Training Credit.
+    return (
+        higher_education_points
+        + military_points
+    )
 
 
 def _education_level(officer):
@@ -490,6 +514,9 @@ def evaluate_peace_officer_proficiency(
     college_credit_hours = _college_credit_hours(
         officer
     )
+    military_training_credit_hours = (
+        _military_training_credit_hours(officer)
+    )
     career_professional_hours = (
         _career_professional_hours(officer)
     )
@@ -516,6 +543,8 @@ def evaluate_peace_officer_proficiency(
             "service_years": service_years,
             "training_hours": float(training_hours),
             "college_credit_hours": college_credit_hours,
+            "military_training_credit_hours":
+                military_training_credit_hours,
             "career_professional_hours":
                 float(career_professional_hours),
             "total_hours": float(total_hours),
@@ -580,6 +609,8 @@ def evaluate_peace_officer_proficiency(
             "service_years": service_years,
             "training_hours": float(training_hours),
             "college_credit_hours": college_credit_hours,
+            "military_training_credit_hours":
+                military_training_credit_hours,
             "career_professional_hours":
                 float(career_professional_hours),
             "total_hours": float(total_hours),
@@ -701,6 +732,8 @@ def evaluate_peace_officer_proficiency(
         "service_years": service_years,
         "training_hours": float(training_hours),
         "college_credit_hours": college_credit_hours,
+        "military_training_credit_hours":
+            military_training_credit_hours,
         "career_professional_hours":
             float(career_professional_hours),
         "total_hours": float(total_hours),
