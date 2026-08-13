@@ -4288,14 +4288,24 @@ function OperationalApp({
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div>
-          <div className="brand-kicker">
-            Paradigm Strategic Partners
+        <div className="authenticated-brand">
+          <img
+            src="/ptm-logo.png"
+            alt=""
+            className="authenticated-brand-logo"
+            aria-hidden="true"
+          />
+
+          <div className="authenticated-brand-copy">
+            <h1>
+              Paradigm Training Manager
+              <sup className="product-mark">™</sup>
+            </h1>
+
+            <div className="authenticated-brand-company">
+              by Paradigm Strategic Partners, LLC
+            </div>
           </div>
-          <h1>
-            Paradigm Training Manager
-            <sup className="product-mark">™</sup>
-          </h1>
         </div>
 
         <div className="authenticated-user">
@@ -6506,15 +6516,24 @@ function PlatformAdministration({
   return (
     <div className="platform-shell">
       <header className="topbar platform-topbar">
-        <div>
-          <div className="brand-kicker">
-            Paradigm Strategic Partners
-          </div>
+        <div className="authenticated-brand">
+          <img
+            src="/ptm-logo.png"
+            alt=""
+            className="authenticated-brand-logo"
+            aria-hidden="true"
+          />
 
-          <h1>
-            Paradigm Training Manager
-            <sup className="product-mark">™</sup>
-          </h1>
+          <div className="authenticated-brand-copy">
+            <h1>
+              Paradigm Training Manager
+              <sup className="product-mark">™</sup>
+            </h1>
+
+            <div className="authenticated-brand-company">
+              by Paradigm Strategic Partners, LLC
+            </div>
+          </div>
         </div>
 
         <div className="authenticated-user">

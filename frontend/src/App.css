@@ -6235,3 +6235,1007 @@ body:has(.public-site) .product-footer strong {
 }
 
 /* ===== PTM PUBLIC LOGO LOCKUP END ===== */
+
+
+/* ============================================================
+   PTM AUTHENTICATED BRAND SYSTEM
+   Visual only
+   ============================================================
+
+   Midnight Navy    #0B132B
+   Steel Blue       #1E3A5F
+   Compliance Teal  #00B2A9
+   Copper           #B87A33
+   Slate Gray       #6B7280
+   Light Gray       #E5E7EB
+   White            #FFFFFF
+*/
+
+
+:root {
+  --ptm-midnight: #0B132B;
+  --ptm-steel: #1E3A5F;
+  --ptm-teal: #00B2A9;
+  --ptm-teal-dark: #009D96;
+  --ptm-copper: #B87A33;
+  --ptm-slate: #6B7280;
+  --ptm-light: #E5E7EB;
+  --ptm-white: #FFFFFF;
+  --ptm-surface: #F7F9FB;
+  --ptm-text: #0B132B;
+}
+
+
+/* ============================================================
+   AUTHENTICATED TOP BAR
+   ============================================================ */
+
+.app-shell > .topbar,
+.platform-shell > .topbar {
+  min-height: 86px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+
+  background:
+    linear-gradient(
+      100deg,
+      #081225 0%,
+      var(--ptm-midnight) 58%,
+      #101F3B 100%
+    );
+
+  border-bottom:
+    1px solid rgba(255, 255, 255, 0.10);
+
+  box-shadow:
+    0 5px 18px rgba(11, 19, 43, 0.10);
+}
+
+
+.authenticated-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+
+.authenticated-brand-logo {
+  display: block;
+
+  width: 52px;
+  height: 52px;
+
+  flex: 0 0 52px;
+
+  object-fit: cover;
+
+  border-radius: 7px;
+}
+
+
+.authenticated-brand-copy {
+  min-width: 0;
+}
+
+
+.authenticated-brand-copy h1 {
+  margin: 0;
+
+  color: var(--ptm-white);
+
+  font-size: 1.13rem;
+  font-weight: 800;
+
+  line-height: 1.15;
+}
+
+
+.authenticated-brand-copy .brand-kicker {
+  margin-top: 5px;
+
+  color: var(--ptm-copper);
+
+  font-size: 0.58rem;
+  font-weight: 800;
+
+  letter-spacing: 0.055em;
+  text-transform: none;
+}
+
+
+.app-shell .authenticated-user strong,
+.platform-shell .authenticated-user strong {
+  color: var(--ptm-white);
+}
+
+
+.app-shell .authenticated-user span,
+.platform-shell .authenticated-user span {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+
+.app-shell .authenticated-user > button,
+.platform-shell .authenticated-user > button,
+.platform-app-link {
+  border-color: rgba(255, 255, 255, 0.28);
+
+  background: transparent;
+
+  color: var(--ptm-white);
+}
+
+
+.app-shell .authenticated-user > button:hover,
+.platform-shell .authenticated-user > button:hover,
+.platform-app-link:hover {
+  border-color: var(--ptm-teal);
+
+  background: rgba(0, 178, 169, 0.09);
+
+  color: var(--ptm-white);
+}
+
+
+/* ============================================================
+   AUTHENTICATED APPLICATION SURFACES
+   ============================================================ */
+
+.app-shell,
+.platform-shell {
+  background: var(--ptm-surface);
+}
+
+
+.page,
+.platform-page {
+  color: var(--ptm-text);
+}
+
+
+.dashboard-kicker,
+.platform-heading > div > span,
+.communications-heading .dashboard-kicker {
+  color: var(--ptm-teal);
+}
+
+
+.dashboard-heading h2,
+.platform-heading h2,
+.workspace-hero h2,
+.communications-heading h2,
+.archived-employees-heading h2 {
+  color: var(--ptm-midnight);
+}
+
+
+.dashboard-heading p,
+.platform-heading p,
+.communications-heading p,
+.archived-employees-heading p {
+  color: var(--ptm-slate);
+}
+
+
+/* ============================================================
+   CARDS / PANELS
+   ============================================================ */
+
+.dashboard-summary-card,
+.workspace-panel,
+.workspace-summary-card,
+.platform-panel,
+.platform-agency-summary > div,
+.communications-summary-card,
+.result-card {
+  border-color: var(--ptm-light);
+
+  background: var(--ptm-white);
+
+  box-shadow:
+    0 5px 18px rgba(11, 19, 43, 0.035);
+}
+
+
+.dashboard-summary-card:hover {
+  border-color: rgba(0, 178, 169, 0.48);
+
+  box-shadow:
+    0 8px 22px rgba(0, 178, 169, 0.07);
+}
+
+
+.dashboard-summary-card.active {
+  border-color: var(--ptm-teal);
+
+  box-shadow:
+    0 0 0 2px rgba(0, 178, 169, 0.09);
+}
+
+
+.dashboard-summary-value,
+.workspace-summary-card strong,
+.result-value,
+.communications-summary-card strong,
+.platform-agency-summary strong {
+  color: var(--ptm-midnight);
+}
+
+
+/* ============================================================
+   PRIMARY BUTTONS
+   ============================================================ */
+
+.settings-primary-button,
+.credential-button.verify,
+.account-primary-button,
+.getting-started-primary,
+.communications-open-email-button,
+.public-primary-button {
+  border-color: var(--ptm-teal);
+
+  background: var(--ptm-teal);
+
+  color: var(--ptm-white);
+
+  box-shadow:
+    0 6px 16px rgba(0, 178, 169, 0.13);
+}
+
+
+.settings-primary-button:hover,
+.credential-button.verify:hover,
+.account-primary-button:hover,
+.getting-started-primary:hover,
+.communications-open-email-button:hover {
+  border-color: var(--ptm-teal-dark);
+
+  background: var(--ptm-teal-dark);
+}
+
+
+/* ============================================================
+   SECONDARY BUTTONS
+   ============================================================ */
+
+.settings-secondary-button,
+.account-secondary-button,
+.communications-secondary-button,
+.workspace-back,
+.workspace-email-button,
+.communications-preview-button {
+  border-color: #CFD6E0;
+
+  background: var(--ptm-white);
+
+  color: var(--ptm-steel);
+}
+
+
+.settings-secondary-button:hover,
+.account-secondary-button:hover,
+.communications-secondary-button:hover,
+.workspace-back:hover,
+.workspace-email-button:hover,
+.communications-preview-button:hover {
+  border-color: var(--ptm-teal);
+
+  color: var(--ptm-teal-dark);
+}
+
+
+/* ============================================================
+   LINKS
+   ============================================================ */
+
+.platform-link-button,
+.workspace-email-edit {
+  color: var(--ptm-teal-dark);
+}
+
+
+.platform-link-button:hover,
+.workspace-email-edit:hover {
+  color: var(--ptm-copper);
+}
+
+
+/* ============================================================
+   FORMS
+   ============================================================ */
+
+.app-shell input,
+.app-shell select,
+.platform-shell input,
+.platform-shell select,
+.login-card input {
+  border-color: #CBD3DE;
+}
+
+
+.app-shell input:focus,
+.app-shell select:focus,
+.platform-shell input:focus,
+.platform-shell select:focus,
+.login-card input:focus {
+  outline: none;
+
+  border-color: var(--ptm-teal);
+
+  box-shadow:
+    0 0 0 3px rgba(0, 178, 169, 0.12);
+}
+
+
+/* ============================================================
+   TABLES
+   ============================================================ */
+
+.training-table,
+.platform-table,
+.communications-table,
+.communications-batch-table {
+  color: var(--ptm-text);
+}
+
+
+.training-table thead,
+.platform-table thead,
+.communications-table thead,
+.communications-batch-table thead {
+  background: #F3F6F8;
+}
+
+
+.training-table th,
+.platform-table th,
+.communications-table th,
+.communications-batch-table th {
+  color: var(--ptm-steel);
+}
+
+
+.training-table td,
+.training-table th,
+.platform-table td,
+.platform-table th,
+.communications-table td,
+.communications-table th,
+.communications-batch-table td,
+.communications-batch-table th {
+  border-color: var(--ptm-light);
+}
+
+
+/* ============================================================
+   TOGGLES
+   ============================================================ */
+
+.assignment-toggle.active {
+  background: var(--ptm-teal);
+
+  border-color: var(--ptm-teal);
+}
+
+
+/* ============================================================
+   PLATFORM ADMINISTRATION
+   ============================================================ */
+
+.platform-page {
+  width: min(1180px, calc(100% - 48px));
+}
+
+
+.platform-heading > div > span {
+  letter-spacing: 0.11em;
+}
+
+
+.platform-panel-heading h3,
+.platform-admin-identity strong,
+.platform-agency-details strong {
+  color: var(--ptm-midnight);
+}
+
+
+.platform-panel-heading p,
+.platform-admin-identity span,
+.platform-admin-meta > span:not(.platform-status),
+.platform-agency-details span {
+  color: var(--ptm-slate);
+}
+
+
+.platform-primary-button {
+  border-color: var(--ptm-teal);
+
+  background: var(--ptm-teal);
+
+  color: var(--ptm-white);
+}
+
+
+.platform-primary-button:hover {
+  background: var(--ptm-teal-dark);
+}
+
+
+.platform-secondary-button {
+  border-color: #CDD4DE;
+
+  background: var(--ptm-white);
+
+  color: var(--ptm-steel);
+}
+
+
+/* ============================================================
+   LOGIN PAGE
+   ============================================================ */
+
+.login-page {
+  min-height: calc(100vh - 70px);
+
+  padding: 54px 24px 64px;
+
+  background:
+    radial-gradient(
+      circle at 50% 18%,
+      rgba(30, 58, 95, 0.10),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      #F8FAFC 0%,
+      #EEF2F6 100%
+    );
+}
+
+
+.login-shell {
+  width: min(440px, 100%);
+}
+
+
+.login-brand {
+  margin: 0 auto 27px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  color: var(--ptm-midnight);
+
+  text-align: center;
+
+  text-decoration: none;
+}
+
+
+.login-brand-logo {
+  display: block;
+
+  width: 116px;
+  height: 116px;
+
+  margin-bottom: 15px;
+
+  object-fit: cover;
+
+  border-radius: 12px;
+
+  box-shadow:
+    0 15px 34px rgba(11, 19, 43, 0.14);
+}
+
+
+.login-brand-name {
+  color: var(--ptm-midnight);
+
+  font-size: 1.72rem;
+  font-weight: 800;
+
+  line-height: 1;
+
+  letter-spacing: 0.13em;
+}
+
+
+.login-brand-product {
+  margin-top: 8px;
+
+  color: var(--ptm-steel);
+
+  font-size: 0.81rem;
+  font-weight: 700;
+
+  letter-spacing: 0.26em;
+}
+
+
+.login-brand-company {
+  margin-top: 11px;
+
+  color: var(--ptm-copper) !important;
+
+  font-size: 0.66rem !important;
+  font-weight: 750 !important;
+
+  letter-spacing: 0.025em !important;
+
+  text-transform: none !important;
+}
+
+
+.login-card {
+  border-color: #D8DEE7;
+
+  border-radius: 14px;
+
+  background: var(--ptm-white);
+
+  box-shadow:
+    0 22px 50px rgba(11, 19, 43, 0.09);
+}
+
+
+.login-heading > span {
+  color: var(--ptm-teal);
+
+  font-weight: 850;
+}
+
+
+.login-heading h1 {
+  color: var(--ptm-midnight);
+}
+
+
+.login-heading p,
+.login-help,
+.login-return {
+  color: var(--ptm-slate);
+}
+
+
+.login-card label > span {
+  color: var(--ptm-steel);
+}
+
+
+.login-card form > button {
+  background: var(--ptm-teal);
+
+  color: var(--ptm-white);
+
+  box-shadow:
+    0 7px 18px rgba(0, 178, 169, 0.15);
+}
+
+
+.login-card form > button:hover {
+  background: var(--ptm-teal-dark);
+}
+
+
+.login-return:hover {
+  color: var(--ptm-teal-dark);
+}
+
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+
+.account-modal,
+.getting-started-modal,
+.communications-preview-modal,
+.communications-batch-modal {
+  border-color: var(--ptm-light);
+
+  box-shadow:
+    0 28px 72px rgba(11, 19, 43, 0.18);
+}
+
+
+.account-modal-heading > div > span,
+.getting-started-heading > div > span {
+  color: var(--ptm-teal);
+}
+
+
+.account-modal-heading h2,
+.getting-started-heading h2,
+.communications-preview-header h3 {
+  color: var(--ptm-midnight);
+}
+
+
+/* ============================================================
+   BRAND ACCENTS
+   ============================================================ */
+
+.workspace-unit-banner {
+  border-color: rgba(0, 178, 169, 0.22);
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 178, 169, 0.07),
+      rgba(30, 58, 95, 0.035)
+    );
+}
+
+
+.workspace-unit-banner strong {
+  color: var(--ptm-midnight);
+}
+
+
+.proficiency-preview .workspace-panel-heading > div > p {
+  color: var(--ptm-slate);
+}
+
+
+/* ============================================================
+   ACCESSIBILITY
+   ============================================================ */
+
+.app-shell button,
+.app-shell a,
+.platform-shell button,
+.platform-shell a,
+.login-page button,
+.login-page a {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+
+.app-shell button:focus-visible,
+.app-shell a:focus-visible,
+.platform-shell button:focus-visible,
+.platform-shell a:focus-visible,
+.login-page button:focus-visible,
+.login-page a:focus-visible {
+  outline:
+    3px solid rgba(0, 178, 169, 0.28);
+
+  outline-offset: 3px;
+}
+
+
+/* ============================================================
+   MOBILE AUTHENTICATED HEADER
+   ============================================================ */
+
+@media (max-width: 720px) {
+
+  .authenticated-brand {
+    gap: 9px;
+  }
+
+  .authenticated-brand-logo {
+    width: 43px;
+    height: 43px;
+
+    flex-basis: 43px;
+  }
+
+  .authenticated-brand-copy h1 {
+    font-size: 0.91rem;
+  }
+
+  .authenticated-brand-copy .brand-kicker {
+    font-size: 0.49rem;
+  }
+
+  .login-brand-logo {
+    width: 100px;
+    height: 100px;
+  }
+
+}
+
+
+/* ===== END PTM AUTHENTICATED BRAND SYSTEM ===== */
+
+
+/* ============================================================
+   PTM LOGIN STACKED LOGO - AUTHORITATIVE OVERRIDE
+   ============================================================ */
+
+.login-brand {
+  width: 260px !important;
+  height: 250px !important;
+  margin: 0 auto 26px !important;
+
+  display: block !important;
+
+  background-image: url("/ptm-logo-stacked.png") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: contain !important;
+
+  font-size: 0 !important;
+  line-height: 0 !important;
+
+  text-decoration: none !important;
+}
+
+/* Hide the old text/image children.
+   The stacked PNG now provides the entire lockup. */
+.login-brand > * {
+  display: none !important;
+}
+
+@media (max-width: 520px) {
+  .login-brand {
+    width: 220px !important;
+    height: 212px !important;
+    margin-bottom: 22px !important;
+  }
+}
+
+/* ============================================================
+   END PTM LOGIN STACKED LOGO OVERRIDE
+   ============================================================ */
+
+/* ============================================================
+   PTM LOGIN BRAND ENVIRONMENT
+   Connect login visually to public site
+   ============================================================ */
+
+.login-page {
+  position: relative;
+
+  background:
+    radial-gradient(
+      circle at 72% 24%,
+      rgba(30, 58, 95, 0.72) 0%,
+      rgba(30, 58, 95, 0.20) 35%,
+      transparent 58%
+    ),
+    linear-gradient(
+      135deg,
+      #0B132B 0%,
+      #0E1D37 52%,
+      #1E3A5F 100%
+    ) !important;
+}
+
+/* Subtle PTM copper/teal signature along bottom */
+.login-page::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #B87A33 0 18%,
+      #00B2A9 18% 58%,
+      transparent 58%
+    );
+
+  pointer-events: none;
+}
+
+
+/* ---------- STACKED LOGO ---------- */
+
+.login-brand {
+  position: relative;
+  z-index: 1;
+
+  filter:
+    drop-shadow(0 16px 28px rgba(0, 0, 0, 0.22));
+}
+
+
+/* ---------- LOGIN CARD ---------- */
+
+.login-card {
+  position: relative;
+  z-index: 1;
+
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+
+  background: #FFFFFF !important;
+
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.28) !important;
+}
+
+
+/* Small copper brand accent on card */
+
+.login-card::before {
+  content: "";
+  position: absolute;
+
+  top: 0;
+  left: 28px;
+
+  width: 72px;
+  height: 3px;
+
+  background: #B87A33;
+
+  border-radius: 0 0 3px 3px;
+}
+
+
+/* ---------- RETURN LINK ---------- */
+
+.login-return {
+  position: relative;
+  z-index: 1;
+
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.login-return:hover {
+  color: #00B2A9 !important;
+}
+
+
+/* ---------- FOOTER ---------- */
+
+.login-page + .product-footer,
+body:has(.login-page) .product-footer {
+  border-top-color: rgba(255, 255, 255, 0.10);
+
+  background: #07101F;
+
+  color: rgba(255, 255, 255, 0.58);
+}
+
+body:has(.login-page) .product-footer strong {
+  color: #FFFFFF;
+}
+
+
+/* ---------- MOBILE ---------- */
+
+@media (max-width: 520px) {
+  .login-page {
+    background:
+      linear-gradient(
+        145deg,
+        #0B132B 0%,
+        #1E3A5F 100%
+      ) !important;
+  }
+}
+
+/* ===== END PTM LOGIN BRAND ENVIRONMENT ===== */
+
+/* ============================================================
+   PTM AUTHENTICATED HEADER BRAND LOCKUP
+   Matches public-facing PTM identity
+   ============================================================ */
+
+.topbar {
+  min-height: 82px;
+  padding: 12px 36px;
+
+  background:
+    linear-gradient(
+      100deg,
+      #0B132B 0%,
+      #101B34 100%
+    );
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.authenticated-brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.authenticated-brand-logo {
+  display: block;
+
+  width: 58px;
+  height: 58px;
+
+  flex: 0 0 58px;
+
+  object-fit: cover;
+
+  border-radius: 8px;
+}
+
+.authenticated-brand-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  min-width: 0;
+}
+
+.topbar .authenticated-brand-copy h1 {
+  margin: 0;
+
+  color: #FFFFFF;
+
+  font-size: 1.32rem;
+  font-weight: 800;
+
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+.authenticated-brand-company {
+  margin-top: 7px;
+
+  color: #B87A33;
+
+  font-size: 0.72rem;
+  font-weight: 750;
+
+  line-height: 1.1;
+  letter-spacing: 0.035em;
+}
+
+.topbar .product-mark {
+  color: #FFFFFF;
+}
+
+
+/* Keep authenticated user controls balanced with larger branding */
+
+.authenticated-user {
+  align-items: center;
+}
+
+.authenticated-user strong {
+  color: #FFFFFF;
+}
+
+.authenticated-user span {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+
+/* Mobile */
+
+@media (max-width: 720px) {
+
+  .topbar {
+    padding: 10px 18px;
+  }
+
+  .authenticated-brand {
+    gap: 9px;
+  }
+
+  .authenticated-brand-logo {
+    width: 46px;
+    height: 46px;
+
+    flex-basis: 46px;
+  }
+
+  .topbar .authenticated-brand-copy h1 {
+    font-size: 0.95rem;
+  }
+
+  .authenticated-brand-company {
+    margin-top: 4px;
+
+    font-size: 0.52rem;
+  }
+}
+
+/* ===== END PTM AUTHENTICATED HEADER BRAND LOCKUP ===== */
