@@ -7664,14 +7664,23 @@ function PublicLandingPage() {
             className="public-brand"
             aria-label="Paradigm Training Manager home"
           >
-            <span className="public-brand-company">
-              Paradigm Strategic Partners
-            </span>
+            <img
+              src="/ptm-logo.png"
+              alt=""
+              className="public-brand-logo"
+              aria-hidden="true"
+            />
 
-            <strong>
-              Paradigm Training Manager
-              <sup className="product-mark">™</sup>
-            </strong>
+            <span className="public-brand-copy">
+              <span className="public-brand-product">
+                Paradigm Training Manager
+                <sup className="product-mark">™</sup>
+              </span>
+
+              <span className="public-brand-company">
+                by Paradigm Strategic Partners, LLC
+              </span>
+            </span>
           </a>
 
           <nav

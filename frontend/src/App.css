@@ -5576,3 +5576,662 @@
     width: 100%;
   }
 }
+
+/* ===== PTM PUBLIC BRAND PALETTE START ===== */
+
+/*
+  Paradigm Training Manager public website palette
+
+  Midnight Navy    #0B132B
+  Steel Blue       #1E3A5F
+  Compliance Teal  #00B2A9
+  Copper           #B87A33
+  Slate Gray       #6B7280
+  Light Gray       #E5E7EB
+  White            #FFFFFF
+
+  Status colors remain distinct where necessary so
+  compliance warnings cannot be confused with brand colors.
+*/
+
+.public-site {
+  --ptm-midnight: #0B132B;
+  --ptm-steel: #1E3A5F;
+  --ptm-teal: #00B2A9;
+  --ptm-copper: #B87A33;
+  --ptm-slate: #6B7280;
+  --ptm-light: #E5E7EB;
+  --ptm-white: #FFFFFF;
+
+  --ptm-text: #0B132B;
+  --ptm-text-secondary: #6B7280;
+  --ptm-surface: #FFFFFF;
+  --ptm-surface-soft: #F7F9FB;
+  --ptm-border: #E5E7EB;
+
+  background: var(--ptm-white);
+  color: var(--ptm-text);
+}
+
+
+/* ---------- HEADER ---------- */
+
+.public-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(11, 19, 43, 0.97);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.public-brand {
+  color: var(--ptm-white);
+}
+
+.public-brand-company {
+  color: var(--ptm-copper);
+  opacity: 1;
+}
+
+.public-nav > a:not(.public-demo-button) {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.public-nav > a:not(.public-demo-button):hover {
+  color: var(--ptm-teal);
+}
+
+.public-login-button {
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 7px;
+  color: var(--ptm-white);
+}
+
+.public-login-button:hover {
+  border-color: var(--ptm-teal);
+  color: var(--ptm-teal);
+}
+
+.public-demo-button {
+  background: var(--ptm-teal);
+  color: var(--ptm-white);
+  box-shadow: 0 7px 20px rgba(0, 178, 169, 0.18);
+}
+
+.public-demo-button:hover {
+  background: #009D96;
+}
+
+
+/* ---------- HERO ---------- */
+
+.public-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 92px 0 100px;
+  background:
+    radial-gradient(
+      circle at 80% 25%,
+      rgba(30, 58, 95, 0.72) 0%,
+      rgba(30, 58, 95, 0.18) 35%,
+      transparent 58%
+    ),
+    linear-gradient(
+      135deg,
+      var(--ptm-midnight) 0%,
+      #0E1D37 52%,
+      var(--ptm-steel) 100%
+    );
+}
+
+.public-hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background:
+    linear-gradient(
+      90deg,
+      var(--ptm-copper) 0 18%,
+      var(--ptm-teal) 18% 58%,
+      transparent 58%
+    );
+  opacity: 0.95;
+}
+
+.public-hero-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.public-eyebrow {
+  color: var(--ptm-copper);
+}
+
+.public-hero h1 {
+  color: var(--ptm-white);
+}
+
+.public-hero h1 span {
+  color: var(--ptm-teal);
+}
+
+.public-hero-lead {
+  color: var(--ptm-white);
+}
+
+.public-hero-description {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.public-primary-cta {
+  background: var(--ptm-teal);
+  color: var(--ptm-white);
+  box-shadow: 0 10px 26px rgba(0, 178, 169, 0.20);
+}
+
+.public-primary-cta:hover {
+  background: #009D96;
+}
+
+.public-secondary-cta {
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  background: transparent;
+  color: var(--ptm-white);
+}
+
+.public-secondary-cta:hover {
+  border-color: var(--ptm-copper);
+  background: rgba(184, 122, 51, 0.10);
+  color: var(--ptm-white);
+}
+
+.public-outcome {
+  color: var(--ptm-copper);
+}
+
+
+/* ---------- DASHBOARD PREVIEW ---------- */
+
+.public-dashboard-preview {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.30);
+}
+
+.public-preview-topbar {
+  background: var(--ptm-midnight);
+}
+
+.public-preview-period {
+  border-color: rgba(0, 178, 169, 0.50);
+  color: var(--ptm-teal);
+}
+
+.public-preview-grid {
+  background: #F5F7FA;
+}
+
+.public-preview-grid > div {
+  border-color: var(--ptm-light);
+}
+
+.public-preview-good {
+  border-top-color: var(--ptm-teal) !important;
+}
+
+.public-preview-due {
+  border-top-color: var(--ptm-copper) !important;
+}
+
+.public-preview-status.good {
+  background: rgba(0, 178, 169, 0.10);
+  color: #007D77;
+}
+
+.public-preview-status.due {
+  background: rgba(184, 122, 51, 0.11);
+  color: #8A5822;
+}
+
+
+/* ---------- GLOBAL PUBLIC SECTIONS ---------- */
+
+.public-foundation-section,
+.public-complexity-section,
+.public-capacity-section,
+.public-trust-section,
+.public-faq-section {
+  background: var(--ptm-white);
+}
+
+.public-process-section,
+.public-product-section,
+.public-feature-section,
+.public-pricing-section {
+  background: #F7F9FB;
+}
+
+.public-section-heading > span {
+  color: var(--ptm-teal);
+}
+
+.public-section-heading h2 {
+  color: var(--ptm-midnight);
+}
+
+.public-section-heading p {
+  color: var(--ptm-slate);
+}
+
+
+/* ---------- CURRENT PROCESS / PAIN CARDS ---------- */
+
+.public-pain-grid article,
+.public-complexity-grid article,
+.public-product-grid article,
+.public-feature-grid article,
+.public-capacity-grid article,
+.public-trust-grid article {
+  border-color: var(--ptm-light);
+  background: var(--ptm-white);
+  box-shadow: 0 8px 24px rgba(11, 19, 43, 0.035);
+}
+
+.public-pain-grid article > span {
+  color: var(--ptm-copper);
+}
+
+.public-pain-grid h3,
+.public-product-card-heading strong,
+.public-feature-grid h3 {
+  color: var(--ptm-midnight);
+}
+
+.public-pain-grid p,
+.public-product-grid p,
+.public-feature-grid p {
+  color: var(--ptm-slate);
+}
+
+
+/* ---------- HOW IT WORKS ---------- */
+
+.public-process-grid article {
+  border-color: var(--ptm-light);
+  background: var(--ptm-white);
+  box-shadow: 0 8px 26px rgba(11, 19, 43, 0.04);
+}
+
+.public-process-grid article > div {
+  background: var(--ptm-teal);
+  color: var(--ptm-white);
+  box-shadow: 0 5px 14px rgba(0, 178, 169, 0.22);
+}
+
+.public-process-grid h3 {
+  color: var(--ptm-midnight);
+}
+
+.public-process-grid p {
+  color: var(--ptm-slate);
+}
+
+.public-process-arrow {
+  color: var(--ptm-copper);
+}
+
+
+/* ---------- COMPLEXITY ---------- */
+
+.public-complexity-grid span {
+  color: var(--ptm-teal);
+}
+
+.public-complexity-grid strong {
+  color: var(--ptm-midnight);
+}
+
+.public-complexity-callout {
+  border-left-color: var(--ptm-copper);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(184, 122, 51, 0.08),
+      rgba(0, 178, 169, 0.035)
+    );
+  color: var(--ptm-midnight);
+}
+
+
+/* ---------- PRODUCT PREVIEWS ---------- */
+
+.public-product-card-heading span {
+  color: var(--ptm-teal);
+}
+
+.public-mini-dashboard div,
+.public-mini-requirements > div {
+  border-color: var(--ptm-light);
+}
+
+.public-mini-dashboard strong {
+  color: var(--ptm-midnight);
+}
+
+.public-mini-requirements span.good {
+  color: #007D77;
+}
+
+.public-mini-requirements span.due {
+  color: #8A5822;
+}
+
+
+/* ---------- ROI ---------- */
+
+.public-roi-section {
+  background:
+    linear-gradient(
+      135deg,
+      var(--ptm-midnight) 0%,
+      var(--ptm-steel) 100%
+    );
+}
+
+.public-roi-copy > span {
+  color: var(--ptm-copper);
+}
+
+.public-roi-copy h2 {
+  color: var(--ptm-white);
+}
+
+.public-roi-copy p {
+  color: rgba(255, 255, 255, 0.70);
+}
+
+.public-roi-calculator {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--ptm-white);
+  box-shadow: 0 24px 58px rgba(0, 0, 0, 0.20);
+}
+
+.public-roi-inputs input {
+  border-color: var(--ptm-light);
+}
+
+.public-roi-inputs input:focus {
+  outline: 2px solid rgba(0, 178, 169, 0.20);
+  border-color: var(--ptm-teal);
+}
+
+.public-roi-results > div {
+  border-color: var(--ptm-light);
+}
+
+.public-roi-net {
+  border-color: var(--ptm-teal) !important;
+  background: rgba(0, 178, 169, 0.07);
+}
+
+
+/* ---------- NOT AN LMS ---------- */
+
+.public-not-lms-section {
+  background:
+    linear-gradient(
+      145deg,
+      #07101F 0%,
+      var(--ptm-midnight) 48%,
+      var(--ptm-steel) 100%
+    );
+}
+
+.public-not-lms-card > span {
+  color: var(--ptm-copper);
+}
+
+.public-not-lms-card h2 {
+  color: var(--ptm-white);
+}
+
+.public-not-lms-card h3 {
+  color: var(--ptm-teal);
+}
+
+.public-not-lms-card p {
+  color: rgba(255, 255, 255, 0.70);
+}
+
+.public-not-lms-question span {
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.public-not-lms-question strong {
+  color: var(--ptm-copper);
+}
+
+
+/* ---------- PRICING ---------- */
+
+.public-pricing-card {
+  border-color: var(--ptm-light);
+  box-shadow: 0 8px 24px rgba(11, 19, 43, 0.035);
+}
+
+.public-pricing-card.featured {
+  border-color: var(--ptm-teal);
+  box-shadow:
+    0 14px 34px rgba(0, 178, 169, 0.12);
+}
+
+.public-pricing-featured {
+  background: rgba(0, 178, 169, 0.10);
+  color: #007D77;
+}
+
+.public-pricing-card h3,
+.public-pricing-card > strong {
+  color: var(--ptm-midnight);
+}
+
+
+/* ---------- FAQ ---------- */
+
+.public-faq-list,
+.public-faq-item {
+  border-color: var(--ptm-light);
+}
+
+.public-faq-item button {
+  color: var(--ptm-midnight);
+}
+
+.public-faq-item button:hover {
+  color: var(--ptm-teal);
+}
+
+
+/* ---------- FINAL CTA ---------- */
+
+.public-pilot-cta {
+  position: relative;
+  background:
+    linear-gradient(
+      120deg,
+      var(--ptm-midnight) 0%,
+      var(--ptm-steel) 100%
+    );
+}
+
+.public-pilot-cta::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 180px;
+  height: 4px;
+  background: var(--ptm-copper);
+}
+
+.public-pilot-cta span {
+  color: var(--ptm-copper);
+}
+
+.public-pilot-cta h2 {
+  color: var(--ptm-white);
+}
+
+.public-pilot-cta p {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.public-pilot-cta button {
+  border-color: var(--ptm-teal);
+  background: var(--ptm-teal);
+  color: var(--ptm-white);
+}
+
+.public-pilot-cta button:hover {
+  background: #009D96;
+}
+
+
+/* ---------- PUBLIC FOOTER ---------- */
+
+.public-site ~ .product-footer,
+body:has(.public-site) .product-footer {
+  border-top-color: rgba(255, 255, 255, 0.08);
+  background: #07101F;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+body:has(.public-site) .product-footer strong {
+  color: var(--ptm-white, #FFFFFF);
+}
+
+
+/* ---------- LINKS / FOCUS ---------- */
+
+.public-site a,
+.public-site button {
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.public-primary-cta:hover,
+.public-demo-button:hover {
+  transform: translateY(-1px);
+}
+
+.public-site a:focus-visible,
+.public-site button:focus-visible,
+.public-site input:focus-visible {
+  outline: 3px solid rgba(0, 178, 169, 0.28);
+  outline-offset: 3px;
+}
+
+
+/* ---------- MOBILE ---------- */
+
+@media (max-width: 720px) {
+  .public-header {
+    background: var(--ptm-midnight);
+  }
+
+  .public-hero {
+    padding-top: 64px;
+  }
+
+  .public-hero h1 {
+    font-size: clamp(2.55rem, 12vw, 4rem);
+  }
+}
+
+/* ===== PTM PUBLIC BRAND PALETTE END ===== */
+
+/* ===== PTM PUBLIC LOGO LOCKUP START ===== */
+
+.public-brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.public-brand-logo {
+  width: 60px;
+  height: 60px;
+  flex: 0 0 60px;
+  display: block;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.public-brand-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.public-brand-product {
+  color: #FFFFFF;
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.public-brand-company {
+  margin: 5px 0 0;
+  color: #B87A33;
+  font-size: 0.66rem;
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: 0.055em;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .public-brand {
+    gap: 9px;
+  }
+
+  .public-brand-logo {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+    border-radius: 6px;
+  }
+
+  .public-brand-product {
+    font-size: 0.88rem;
+  }
+
+  .public-brand-company {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.50rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .public-brand-product {
+    font-size: 0.78rem;
+  }
+
+  .public-brand-company {
+    display: none;
+  }
+}
+
+/* ===== PTM PUBLIC LOGO LOCKUP END ===== */
