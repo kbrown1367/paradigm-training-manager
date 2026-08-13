@@ -201,6 +201,10 @@ class Officer(db.Model):
         db.String(30),
         nullable=True,
     )
+    verified_college_credit_hours = db.Column(
+        db.Integer,
+        nullable=True,
+    )
     verified_jailer_cultural_diversity_exemption = db.Column(
         db.Boolean,
         nullable=False,

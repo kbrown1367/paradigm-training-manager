@@ -19,6 +19,8 @@ def _serialize(officer):
         "officer_id": str(officer.id),
         "verified_education_level":
             officer.verified_education_level,
+        "verified_college_credit_hours":
+            officer.verified_college_credit_hours,
         "verified_military_months":
             officer.verified_military_months,
         "verified_jailer_cultural_diversity_exemption":
@@ -46,8 +48,10 @@ def update_qualification_facts(
     officer_id,
     *,
     verified_education_level=None,
+    verified_college_credit_hours=None,
     verified_military_months=None,
     education_supplied=False,
+    college_hours_supplied=False,
     military_supplied=False,
     verified_jailer_cultural_diversity_exemption=None,
     jailer_exemption_supplied=False,
@@ -80,6 +84,36 @@ def update_qualification_facts(
             )
 
         officer.verified_education_level = education
+
+    if college_hours_supplied:
+        college_hours = verified_college_credit_hours
+
+        if college_hours in {None, ""}:
+            college_hours = None
+        else:
+            if isinstance(college_hours, bool):
+                raise QualificationFactsError(
+                    "verified_college_credit_hours must be a "
+                    "non-negative integer or null."
+                )
+
+            try:
+                college_hours = int(college_hours)
+            except (TypeError, ValueError):
+                raise QualificationFactsError(
+                    "verified_college_credit_hours must be a "
+                    "non-negative integer or null."
+                )
+
+            if college_hours < 0:
+                raise QualificationFactsError(
+                    "verified_college_credit_hours must be a "
+                    "non-negative integer or null."
+                )
+
+        officer.verified_college_credit_hours = (
+            college_hours
+        )
 
     if military_supplied:
         months = verified_military_months

@@ -998,3 +998,76 @@ def test_explicit_tcole_master_degree_remains_academic_education(
         )
 
         assert result["education_level"] == "MASTER"
+
+
+def test_college_hours_create_psr_hour_totals(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Advanced Peace Officer",
+            training_hours=2634,
+        )
+        officer.verified_college_credit_hours = 204
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+        )
+
+        assert result["training_hours"] == 2634.0
+        assert result["college_credit_hours"] == 204
+        assert (
+            result["career_professional_hours"]
+            == 4080.0
+        )
+        assert result["total_hours"] == 6714.0
+
+
+def test_college_equivalent_counts_for_service_training_pathway(
+    app,
+):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Advanced Peace Officer",
+            training_hours=1000,
+        )
+        officer.verified_college_credit_hours = 150
+        officer.peace_officer_service_start_date = date(
+            2014,
+            1,
+            1,
+        )
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 13),
+        )
+
+        assert result["training_hours"] == 1000.0
+        assert (
+            result["career_professional_hours"]
+            == 3000.0
+        )
+        assert result["total_hours"] == 4000.0
+
+        service_training = result[
+            "pathway_results"
+        ]["service_training"]
+
+        assert service_training["satisfied"] is True
+
+
+def test_college_hours_do_not_create_degree_level(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Intermediate Peace Officer",
+        )
+        officer.verified_college_credit_hours = 90
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+        )
+
+        assert result["college_credit_hours"] == 90
+        assert result["education_level"] is None

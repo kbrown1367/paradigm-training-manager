@@ -536,45 +536,111 @@ function ProficiencyAdvancementPanel({
           )}
         </div>
 
-        <div
-          className={
-            trainingShort > 0
-              ? "proficiency-fact deficient"
-              : trainingRequirement != null
-                ? "proficiency-fact satisfied"
-                : "proficiency-fact"
-          }
-        >
-          <span>TCOLE Training Hours</span>
+        {trackLabel === "Peace Officer" ? (
+          <>
+            <div className="proficiency-fact">
+              <span>
+                Total Career/Professional Hours
+              </span>
+              <strong>
+                {Number(
+                  advancement
+                    .career_professional_hours || 0
+                ).toLocaleString()}
+              </strong>
+            </div>
 
-          <strong>
-            {advancement.training_hours != null
-              ? trainingRequirement != null
-                ? `${Number(
-                    advancement.training_hours
-                  ).toLocaleString()} / ${Number(
-                    trainingRequirement
-                  ).toLocaleString()} required`
-                : Number(
-                    advancement.training_hours
-                  ).toLocaleString()
-              : "Not available"}
-          </strong>
+            <div className="proficiency-fact">
+              <span>Total TCOLE Course Hours</span>
+              <strong>
+                {advancement.training_hours != null
+                  ? Number(
+                      advancement.training_hours
+                    ).toLocaleString()
+                  : "Not available"}
+              </strong>
+            </div>
 
-          {trainingRequirement != null && (
-            <small>
-              {trainingShort > 0
-                ? `${trainingShort.toLocaleString()} hours short`
-                : "✓ Training requirement met"}
-            </small>
-          )}
-        </div>
+            <div
+              className={
+                trainingShort > 0
+                  ? "proficiency-fact deficient"
+                  : trainingRequirement != null
+                    ? "proficiency-fact satisfied"
+                    : "proficiency-fact"
+              }
+            >
+              <span>Total Hours</span>
+
+              <strong>
+                {advancement.total_hours != null
+                  ? trainingRequirement != null
+                    ? `${Number(
+                        advancement.total_hours
+                      ).toLocaleString()} / ${Number(
+                        trainingRequirement
+                      ).toLocaleString()} required`
+                    : Number(
+                        advancement.total_hours
+                      ).toLocaleString()
+                  : "Not available"}
+              </strong>
+
+              {trainingRequirement != null && (
+                <small>
+                  {trainingShort > 0
+                    ? `${trainingShort.toLocaleString()} hours short`
+                    : "✓ Training requirement met"}
+                </small>
+              )}
+            </div>
+          </>
+        ) : (
+          <div
+            className={
+              trainingShort > 0
+                ? "proficiency-fact deficient"
+                : trainingRequirement != null
+                  ? "proficiency-fact satisfied"
+                  : "proficiency-fact"
+            }
+          >
+            <span>TCOLE Training Hours</span>
+
+            <strong>
+              {advancement.training_hours != null
+                ? trainingRequirement != null
+                  ? `${Number(
+                      advancement.training_hours
+                    ).toLocaleString()} / ${Number(
+                      trainingRequirement
+                    ).toLocaleString()} required`
+                  : Number(
+                      advancement.training_hours
+                    ).toLocaleString()
+                : "Not available"}
+            </strong>
+
+            {trainingRequirement != null && (
+              <small>
+                {trainingShort > 0
+                  ? `${trainingShort.toLocaleString()} hours short`
+                  : "✓ Training requirement met"}
+              </small>
+            )}
+          </div>
+        )}
 
         <div className="proficiency-fact">
           <span>Education</span>
           <strong>
             {advancement.education_level ||
-              "Not reported"}
+              (trackLabel === "Peace Officer" &&
+              advancement.college_credit_hours != null
+                ? `${Number(
+                    advancement.college_credit_hours
+                  ).toLocaleString()} COLLEGE HOURS`
+                : "Not reported")}
           </strong>
         </div>
 
@@ -729,6 +795,7 @@ function QualificationInformationPanel({
   onSave,
 }) {
   const [education, setEducation] = useState("");
+  const [collegeHours, setCollegeHours] = useState("");
   const [militaryEnabled, setMilitaryEnabled] =
     useState(false);
   const [militaryYears, setMilitaryYears] =
@@ -745,6 +812,12 @@ function QualificationInformationPanel({
       facts.verified_education_level || ""
     );
 
+    setCollegeHours(
+      facts.verified_college_credit_hours != null
+        ? String(facts.verified_college_credit_hours)
+        : ""
+    );
+
     const totalMonths = Number(
       facts.verified_military_months || 0
     );
@@ -759,6 +832,7 @@ function QualificationInformationPanel({
   }, [
     facts?.officer_id,
     facts?.verified_education_level,
+    facts?.verified_college_credit_hours,
     facts?.verified_military_months,
   ]);
 
@@ -813,6 +887,13 @@ function QualificationInformationPanel({
     await onSave({
       verified_education_level:
         education || null,
+      verified_college_credit_hours:
+        collegeHours === ""
+          ? null
+          : Math.max(
+              0,
+              Number.parseInt(collegeHours, 10) || 0
+            ),
       verified_military_months:
         totalMilitaryMonths,
     });
@@ -888,6 +969,26 @@ function QualificationInformationPanel({
               </option>
             </select>
           </label>
+
+          <label className="qualification-field">
+            <span>College hours from PSR</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={collegeHours}
+              disabled={busy}
+              placeholder="Not reported"
+              onChange={(event) =>
+                setCollegeHours(event.target.value)
+              }
+            />
+          </label>
+
+          <div className="qualification-no-military">
+            TCOLE calculates 20 Career/Professional Hours
+            for each college credit hour.
+          </div>
         </div>
 
         <div className="qualification-block">

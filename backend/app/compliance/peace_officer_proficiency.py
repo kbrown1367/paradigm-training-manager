@@ -178,6 +178,27 @@ def _training_hours(officer):
     )
 
 
+def _college_credit_hours(officer):
+    hours = officer.verified_college_credit_hours
+
+    if hours is None:
+        return None
+
+    return max(0, int(hours))
+
+
+def _career_professional_hours(officer):
+    college_hours = _college_credit_hours(officer)
+
+    if college_hours is None:
+        return Decimal("0")
+
+    # TCOLE Personal Status Report conversion:
+    # one college credit hour equals 20
+    # Career/Professional Hours.
+    return Decimal(college_hours * 20)
+
+
 def _education_level(officer):
     recognized = {
         "academic recognition award - associate degree":
@@ -466,6 +487,15 @@ def evaluate_peace_officer_proficiency(
     )
 
     training_hours = _training_hours(officer)
+    college_credit_hours = _college_credit_hours(
+        officer
+    )
+    career_professional_hours = (
+        _career_professional_hours(officer)
+    )
+    total_hours = (
+        training_hours + career_professional_hours
+    )
     education_level = _education_level(officer)
     service_years = _service_years(
         officer,
@@ -485,6 +515,10 @@ def evaluate_peace_officer_proficiency(
             "status": "TERMINAL",
             "service_years": service_years,
             "training_hours": float(training_hours),
+            "college_credit_hours": college_credit_hours,
+            "career_professional_hours":
+                float(career_professional_hours),
+            "total_hours": float(total_hours),
             "education_level": education_level,
             "verified_military_months": military_months,
             "qualifying_pathway": None,
@@ -545,6 +579,10 @@ def evaluate_peace_officer_proficiency(
             "status": status,
             "service_years": service_years,
             "training_hours": float(training_hours),
+            "college_credit_hours": college_credit_hours,
+            "career_professional_hours":
+                float(career_professional_hours),
+            "total_hours": float(total_hours),
             "education_level": education_level,
             "verified_military_months":
                 military_months,
@@ -582,14 +620,14 @@ def evaluate_peace_officer_proficiency(
     service_training = _evaluate_service_training(
         rules["service_training"],
         service_years,
-        training_hours,
+        total_hours,
     )
 
     best_available_pathway = (
         _best_service_training_pathway(
             rules["service_training"],
             service_years,
-            training_hours,
+            total_hours,
         )
     )
 
@@ -662,6 +700,10 @@ def evaluate_peace_officer_proficiency(
         "status": status,
         "service_years": service_years,
         "training_hours": float(training_hours),
+        "college_credit_hours": college_credit_hours,
+        "career_professional_hours":
+            float(career_professional_hours),
+        "total_hours": float(total_hours),
         "education_level": education_level,
         "verified_military_months": military_months,
         "qualifying_pathway": qualifying_pathway,
