@@ -140,6 +140,11 @@ class User(db.Model):
         nullable=True,
     )
 
+    onboarding_completed_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=True,
+    )
+
     created_at = db.Column(
         db.DateTime(timezone=True),
         nullable=False,

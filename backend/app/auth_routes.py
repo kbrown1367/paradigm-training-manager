@@ -295,6 +295,43 @@ def change_password():
     ), 200
 
 
+@auth_api.post("/complete-onboarding")
+def complete_onboarding():
+    user = get_session_user()
+
+    if user is None:
+        return jsonify(
+            {
+                "error":
+                    "Authentication required."
+            }
+        ), 401
+
+    if user.role != "AGENCY_ADMIN":
+        return jsonify(
+            {
+                "error":
+                    "Agency administrator access required."
+            }
+        ), 403
+
+    if user.onboarding_completed_at is None:
+        user.onboarding_completed_at = (
+            datetime.now(timezone.utc)
+        )
+
+        db.session.commit()
+
+    return jsonify(
+        {
+            "completed": True,
+            "onboarding_completed_at": (
+                user.onboarding_completed_at.isoformat()
+            ),
+        }
+    ), 200
+
+
 @auth_api.post("/logout")
 def logout():
     session.clear()

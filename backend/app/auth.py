@@ -122,6 +122,11 @@ def serialize_user(user):
         "last_name": user.last_name,
         "role": user.role,
         "status": user.status,
+        "onboarding_completed_at": (
+            user.onboarding_completed_at.isoformat()
+            if user.onboarding_completed_at
+            else None
+        ),
         "agency_id": (
             str(user.agency_id)
             if user.agency_id is not None

@@ -5287,3 +5287,292 @@
     padding: 24px 20px;
   }
 }
+
+/* v0.4.3 first-login Getting Started tutorial */
+
+.getting-started-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  padding: 28px;
+  background: rgba(16, 24, 40, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.getting-started-modal {
+  width: min(900px, 100%);
+  max-height: calc(100vh - 56px);
+  border: 1px solid #d0d5dd;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow:
+    0 24px 70px rgba(16, 24, 40, 0.28);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.getting-started-heading {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid #eaecf0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.getting-started-heading > div > span {
+  color: #175cd3;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+}
+
+.getting-started-heading h2 {
+  margin: 7px 0 0;
+  color: #101828;
+  font-size: 1.55rem;
+}
+
+.getting-started-heading p {
+  max-width: 690px;
+  margin: 8px 0 0;
+  color: #667085;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.getting-started-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #475467;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.getting-started-content {
+  padding: 8px 28px 24px;
+  overflow-y: auto;
+}
+
+.getting-started-step {
+  padding: 22px 0;
+  border-bottom: 1px solid #eaecf0;
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 16px;
+}
+
+.getting-started-step:last-child {
+  border-bottom: 0;
+}
+
+.getting-started-number {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #175cd3;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.getting-started-step h3 {
+  margin: 5px 0 0;
+  color: #101828;
+  font-size: 1rem;
+}
+
+.getting-started-step p {
+  margin: 9px 0 0;
+  color: #475467;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.getting-started-step ul,
+.getting-started-report-list {
+  margin: 12px 0 0;
+  padding-left: 22px;
+  color: #475467;
+  font-size: 0.8rem;
+  line-height: 1.65;
+}
+
+.getting-started-report-list {
+  font-weight: 700;
+  color: #344054;
+}
+
+.getting-started-image-wrap {
+  margin-top: 18px;
+  padding: 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.getting-started-image-wrap img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 5px;
+}
+
+.getting-started-warning {
+  margin-top: 14px;
+  padding: 11px 13px;
+  border: 1px solid #fedf89;
+  border-radius: 8px;
+  background: #fffaeb;
+  color: #93370d;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.getting-started-error {
+  margin-top: 18px;
+  padding: 11px 13px;
+  border: 1px solid #fecdca;
+  border-radius: 8px;
+  background: #fef3f2;
+  color: #b42318;
+  font-size: 0.78rem;
+}
+
+.getting-started-actions {
+  padding: 18px 28px;
+  border-top: 1px solid #eaecf0;
+  background: #ffffff;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.getting-started-primary {
+  padding: 10px 16px;
+  border: 1px solid #175cd3;
+  border-radius: 8px;
+  background: #175cd3;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.getting-started-primary:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.account-guide-section {
+  margin: 18px 24px 0;
+  padding: 14px 15px;
+  border: 1px solid #d6e4ff;
+  border-radius: 9px;
+  background: #f5f8ff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.account-guide-section > div {
+  display: grid;
+  gap: 4px;
+}
+
+.account-guide-section strong {
+  color: #101828;
+  font-size: 0.8rem;
+}
+
+.account-guide-section span {
+  color: #667085;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 620px) {
+  .getting-started-backdrop {
+    padding: 10px;
+  }
+
+  .getting-started-modal {
+    max-height: calc(100vh - 20px);
+  }
+
+  .getting-started-heading,
+  .getting-started-content,
+  .getting-started-actions {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .getting-started-step {
+    grid-template-columns: 32px 1fr;
+    gap: 12px;
+  }
+
+  .getting-started-number {
+    width: 30px;
+    height: 30px;
+  }
+
+  .account-guide-section {
+    margin-left: 20px;
+    margin-right: 20px;
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+/* v0.4.3 Getting Started UX refinement */
+
+.getting-started-image-wrap {
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.getting-started-image-wrap img {
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+}
+
+.getting-started-actions {
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.getting-started-dismiss {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #475467;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.getting-started-dismiss input {
+  margin: 0;
+}
+
+@media (max-width: 620px) {
+  .getting-started-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .getting-started-primary {
+    width: 100%;
+  }
+}

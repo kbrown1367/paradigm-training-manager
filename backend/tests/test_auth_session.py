@@ -387,3 +387,122 @@ def test_change_password_updates_credentials_and_keeps_session(app):
     )
 
     assert new_login.status_code == 200
+
+
+def test_me_returns_onboarding_completion_state(app):
+    seed_user(app)
+
+    client = app.test_client()
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={
+            "email": "admin@pilotpd.gov",
+            "password": "PilotPassword123!",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    response = client.get(
+        "/api/auth/me"
+    )
+
+    assert response.status_code == 200
+
+    assert (
+        response.get_json()["user"][
+            "onboarding_completed_at"
+        ]
+        is None
+    )
+
+
+def test_complete_onboarding_requires_authentication(app):
+    client = app.test_client()
+
+    response = client.post(
+        "/api/auth/complete-onboarding"
+    )
+
+    assert response.status_code == 401
+
+
+def test_agency_admin_can_complete_onboarding(app):
+    seed_user(app)
+
+    client = app.test_client()
+
+    login_response = client.post(
+        "/api/auth/login",
+        json={
+            "email": "admin@pilotpd.gov",
+            "password": "PilotPassword123!",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    response = client.post(
+        "/api/auth/complete-onboarding"
+    )
+
+    assert response.status_code == 200
+
+    result = response.get_json()
+
+    assert result["completed"] is True
+    assert (
+        result["onboarding_completed_at"]
+        is not None
+    )
+
+    me_response = client.get(
+        "/api/auth/me"
+    )
+
+    assert me_response.status_code == 200
+
+    assert (
+        me_response.get_json()["user"][
+            "onboarding_completed_at"
+        ]
+        is not None
+    )
+
+
+def test_complete_onboarding_is_idempotent(app):
+    seed_user(app)
+
+    client = app.test_client()
+
+    client.post(
+        "/api/auth/login",
+        json={
+            "email": "admin@pilotpd.gov",
+            "password": "PilotPassword123!",
+        },
+    )
+
+    first = client.post(
+        "/api/auth/complete-onboarding"
+    )
+
+    assert first.status_code == 200
+
+    first_value = first.get_json()[
+        "onboarding_completed_at"
+    ]
+
+    second = client.post(
+        "/api/auth/complete-onboarding"
+    )
+
+    assert second.status_code == 200
+
+    assert (
+        second.get_json()[
+            "onboarding_completed_at"
+        ]
+        == first_value
+    )

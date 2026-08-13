@@ -2922,6 +2922,38 @@ function OperationalApp({
   const [emailSettingsError, setEmailSettingsError] = useState("");
 
   const [accountOpen, setAccountOpen] = useState(false);
+
+  const [
+    onboardingComplete,
+    setOnboardingComplete,
+  ] = useState(
+    Boolean(
+      currentUser?.onboarding_completed_at
+    )
+  );
+
+  const [
+    gettingStartedOpen,
+    setGettingStartedOpen,
+  ] = useState(
+    currentUser?.role === "AGENCY_ADMIN" &&
+      !currentUser?.onboarding_completed_at
+  );
+
+  const [
+    gettingStartedBusy,
+    setGettingStartedBusy,
+  ] = useState(false);
+
+  const [
+    gettingStartedError,
+    setGettingStartedError,
+  ] = useState("");
+
+  const [
+    dismissGettingStarted,
+    setDismissGettingStarted,
+  ] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -4135,6 +4167,52 @@ function OperationalApp({
       return searchable.includes(search);
     }) || [];
 
+  async function handleCompleteGettingStarted() {
+    setGettingStartedError("");
+
+    if (
+      onboardingComplete ||
+      !dismissGettingStarted
+    ) {
+      setGettingStartedOpen(false);
+      setDismissGettingStarted(false);
+      return;
+    }
+
+    setGettingStartedBusy(true);
+
+    try {
+      const response = await fetch(
+        "/api/auth/complete-onboarding",
+        {
+          method: "POST",
+          credentials: "same-origin",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to save onboarding preference."
+        );
+      }
+
+      setOnboardingComplete(true);
+      setGettingStartedOpen(false);
+      setDismissGettingStarted(false);
+    } catch (err) {
+      setGettingStartedError(
+        err.message ||
+          "Unable to save onboarding preference."
+      );
+    } finally {
+      setGettingStartedBusy(false);
+    }
+  }
+
+
   async function handleSelfPasswordChange(event) {
     event.preventDefault();
 
@@ -4262,6 +4340,254 @@ function OperationalApp({
         </div>
       </header>
 
+      {gettingStartedOpen && (
+        <div
+          className="getting-started-backdrop"
+          role="presentation"
+        >
+          <section
+            className="getting-started-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="getting-started-title"
+          >
+            <div className="getting-started-heading">
+              <div>
+                <span>
+                  GETTING STARTED
+                </span>
+
+                <h2 id="getting-started-title">
+                  Set Up Your Agency in PTM
+                </h2>
+
+                <p>
+                  Follow these five simple steps to
+                  load your agency's TCOLE data and
+                  get Paradigm Training Manager ready
+                  to use.
+                </p>
+              </div>
+
+              {onboardingComplete && (
+                <button
+                  type="button"
+                  className="getting-started-close"
+                  aria-label="Close Getting Started Guide"
+                  onClick={() =>
+                    setGettingStartedOpen(false)
+                  }
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            <div className="getting-started-content">
+              {gettingStartedError && (
+                <div className="getting-started-error">
+                  {gettingStartedError}
+                </div>
+              )}
+
+              <section className="getting-started-step">
+                <div className="getting-started-number">
+                  1
+                </div>
+
+                <div>
+                  <h3>
+                    Log in to TCLEDDS
+                  </h3>
+
+                  <p>
+                    Log in to your agency's TCLEDDS
+                    account and scroll down to{" "}
+                    <strong>Reports</strong>.
+                  </p>
+                </div>
+              </section>
+
+              <section className="getting-started-step">
+                <div className="getting-started-number">
+                  2
+                </div>
+
+                <div>
+                  <h3>
+                    Download Four Reports
+                  </h3>
+
+                  <p>
+                    Download the following reports as
+                    CSV files:
+                  </p>
+
+                  <ol className="getting-started-report-list">
+                    <li>
+                      Licensees And Awards
+                    </li>
+                    <li>
+                      Licensees Taken Or Missing A Course
+                    </li>
+                    <li>
+                      Cycle Training - All Courses
+                    </li>
+                    <li>
+                      Department Licensee Search Report
+                    </li>
+                  </ol>
+
+                  <div className="getting-started-image-wrap">
+                    <img
+                      src="/tcledds-department-reports.png"
+                      alt="TCLEDDS Department Reports showing the four reports required for Paradigm Training Manager"
+                    />
+                  </div>
+
+                  <p>
+                    For each report:
+                  </p>
+
+                  <ul>
+                    <li>
+                      Select <strong>All</strong>{" "}
+                      employees/licensees.
+                    </li>
+                    <li>
+                      Set the Start Date to{" "}
+                      <strong>01/01/1900</strong>.
+                    </li>
+                    <li>
+                      Set the End Date to{" "}
+                      <strong>today's date</strong>.
+                    </li>
+                    <li>
+                      Leave other filters set to{" "}
+                      <strong>All</strong> unless
+                      TCLEDDS requires otherwise.
+                    </li>
+                    <li>
+                      Export/download the report as a
+                      CSV file.
+                    </li>
+                  </ul>
+
+                  <div className="getting-started-warning">
+                    Do not rename or modify the CSV files.
+                  </div>
+                </div>
+              </section>
+
+              <section className="getting-started-step">
+                <div className="getting-started-number">
+                  3
+                </div>
+
+                <div>
+                  <h3>
+                    Upload the Reports to PTM
+                  </h3>
+
+                  <p>
+                    Return to Paradigm Training Manager
+                    and find the{" "}
+                    <strong>TCOLE Data Import</strong>{" "}
+                    section on the main page. Upload all
+                    four CSV files.
+                  </p>
+
+                  <p>
+                    PTM will import your agency's
+                    employees, certifications, training
+                    history, and cycle information and
+                    automatically evaluate the applicable
+                    compliance requirements.
+                  </p>
+                </div>
+              </section>
+
+              <section className="getting-started-step">
+                <div className="getting-started-number">
+                  4
+                </div>
+
+                <div>
+                  <h3>
+                    Review Email Settings
+                  </h3>
+
+                  <p>
+                    Open <strong>Email Settings</strong>{" "}
+                    and confirm the information PTM
+                    should use when generating employee
+                    compliance notifications.
+                  </p>
+                </div>
+              </section>
+
+              <section className="getting-started-step">
+                <div className="getting-started-number">
+                  5
+                </div>
+
+                <div>
+                  <h3>
+                    You're Done
+                  </h3>
+
+                  <p>
+                    That's it. Your agency is now ready
+                    to use PTM.
+                  </p>
+
+                  <p>
+                    From here, PTM tells you who is
+                    compliant, who isn't, what each
+                    employee still needs, and when it is
+                    due.
+                  </p>
+                </div>
+              </section>
+            </div>
+
+            <div className="getting-started-actions">
+              {!onboardingComplete && (
+                <label className="getting-started-dismiss">
+                  <input
+                    type="checkbox"
+                    checked={dismissGettingStarted}
+                    onChange={(event) =>
+                      setDismissGettingStarted(
+                        event.target.checked
+                      )
+                    }
+                    disabled={gettingStartedBusy}
+                  />
+
+                  <span>
+                    Don't show this automatically again.
+                  </span>
+                </label>
+              )}
+
+              <button
+                type="button"
+                className="getting-started-primary"
+                disabled={gettingStartedBusy}
+                onClick={handleCompleteGettingStarted}
+              >
+                {gettingStartedBusy
+                  ? "Saving..."
+                  : onboardingComplete
+                    ? "Close Guide"
+                    : "Continue to PTM"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {accountOpen && (
         <div
           className="account-modal-backdrop"
@@ -4323,6 +4649,31 @@ function OperationalApp({
                 {passwordNotice}
               </div>
             )}
+
+            <div className="account-guide-section">
+              <div>
+                <strong>
+                  Getting Started Guide
+                </strong>
+
+                <span>
+                  Review the five-step TCLEDDS setup
+                  and import instructions.
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="account-secondary-button"
+                onClick={() => {
+                  setAccountOpen(false);
+                  setGettingStartedError("");
+                  setGettingStartedOpen(true);
+                }}
+              >
+                Open Guide
+              </button>
+            </div>
 
             <form
               className="account-password-form"
