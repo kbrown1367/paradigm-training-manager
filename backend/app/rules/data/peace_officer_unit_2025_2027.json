@@ -7,7 +7,11 @@
   "required_courses": [
     {
       "course_number": "3189",
-      "name": "State and Federal Law Update"
+      "name": "State and Federal Law Update",
+      "equivalent_courses": [
+        "1000736"
+      ],
+      "equivalency_window": "ANY_HISTORY"
     },
     {
       "course_number": "7006",

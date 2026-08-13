@@ -69,6 +69,15 @@ def evaluate_peace_officer_unit(
         for record in training
     }
 
+    historical_course_numbers = {
+        record.course_number
+        for record in officer.training_records
+        if (
+            record.course_date is not None
+            and record.course_date <= evaluation_date
+        )
+    }
+
     satisfied_course_overrides = set(
         satisfied_course_overrides or []
     )
@@ -82,8 +91,39 @@ def evaluate_peace_officer_unit(
             course_number in completed_course_numbers
         )
 
-        equivalency_completed = (
+        approved_equivalents = set(
+            required.get(
+                "equivalent_courses",
+                [],
+            )
+        )
+
+        equivalency_window = required.get(
+            "equivalency_window",
+            "CURRENT_UNIT",
+        )
+
+        if equivalency_window == "ANY_HISTORY":
+            equivalent_course_pool = (
+                historical_course_numbers
+            )
+        else:
+            equivalent_course_pool = (
+                completed_course_numbers
+            )
+
+        configured_equivalency_completed = bool(
+            approved_equivalents
+            & equivalent_course_pool
+        )
+
+        override_equivalency_completed = (
             course_number in satisfied_course_overrides
+        )
+
+        equivalency_completed = (
+            configured_equivalency_completed
+            or override_equivalency_completed
         )
 
         completed = (

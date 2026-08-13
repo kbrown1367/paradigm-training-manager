@@ -499,3 +499,223 @@ def test_compliance_engine_moves_into_next_four_year_cycle(app):
         assert result["unit_number"] == 1
         assert result["unit_start"] == "2029-09-01"
         assert result["unit_end"] == "2031-08-31"
+
+
+def test_bpoc_736_prior_completion_satisfies_3189(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_training(
+            agency,
+            officer,
+            "1000736",
+            date(2024, 12, 3),
+            736,
+        )
+        add_training(
+            agency,
+            officer,
+            "7006",
+            date(2026, 2, 10),
+            8,
+        )
+        add_training(
+            agency,
+            officer,
+            "3369",
+            date(2026, 3, 10),
+            16,
+        )
+        add_training(
+            agency,
+            officer,
+            "9999",
+            date(2026, 4, 10),
+            16,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        legislative_update = next(
+            item
+            for item in result["required_courses"]
+            if item["course_number"] == "3189"
+        )
+
+        assert legislative_update["completed"] is True
+        assert (
+            legislative_update["satisfaction_basis"]
+            == "EQUIVALENCY"
+        )
+
+        assert not any(
+            item.get("course_number") == "3189"
+            for item in result["requirements"]
+        )
+
+        # Historical BPOC must not add 736 hours
+        # to the current training-unit total.
+        assert result["total_hours"] == 40.0
+
+        # Preserve the existing BPOC/ALERRT behavior.
+        assert result["prior_level_one_found"] is True
+        assert (
+            result["alerrt_level_one_satisfied"]
+            is True
+        )
+
+
+def test_bpoc_736_current_unit_satisfies_3189(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_training(
+            agency,
+            officer,
+            "1000736",
+            date(2025, 12, 4),
+            736,
+        )
+        add_training(
+            agency,
+            officer,
+            "7006",
+            date(2026, 2, 10),
+            8,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        legislative_update = next(
+            item
+            for item in result["required_courses"]
+            if item["course_number"] == "3189"
+        )
+
+        assert legislative_update["completed"] is True
+        assert (
+            legislative_update["satisfaction_basis"]
+            == "EQUIVALENCY"
+        )
+
+        assert (
+            result["alerrt_level_one_satisfied"]
+            is True
+        )
+        assert result["alerrt_hours"] == 16.0
+
+
+def test_3189_remains_outstanding_without_direct_or_bpoc_credit(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_training(
+            agency,
+            officer,
+            "7006",
+            date(2026, 2, 10),
+            8,
+        )
+        add_training(
+            agency,
+            officer,
+            "3369",
+            date(2026, 3, 10),
+            16,
+        )
+        add_training(
+            agency,
+            officer,
+            "9999",
+            date(2026, 4, 10),
+            16,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        legislative_update = next(
+            item
+            for item in result["required_courses"]
+            if item["course_number"] == "3189"
+        )
+
+        assert legislative_update["completed"] is False
+        assert (
+            legislative_update["satisfaction_basis"]
+            is None
+        )
+
+        assert any(
+            item.get("course_number") == "3189"
+            for item in result["requirements"]
+        )
+
+
+def test_direct_3189_still_reports_direct_satisfaction(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_training(
+            agency,
+            officer,
+            "3189",
+            date(2026, 1, 10),
+            8,
+        )
+        add_training(
+            agency,
+            officer,
+            "7006",
+            date(2026, 2, 10),
+            8,
+        )
+        add_training(
+            agency,
+            officer,
+            "3369",
+            date(2026, 3, 10),
+            16,
+        )
+        add_training(
+            agency,
+            officer,
+            "9999",
+            date(2026, 4, 10),
+            8,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        legislative_update = next(
+            item
+            for item in result["required_courses"]
+            if item["course_number"] == "3189"
+        )
+
+        assert legislative_update["completed"] is True
+        assert (
+            legislative_update["satisfaction_basis"]
+            == "DIRECT"
+        )
