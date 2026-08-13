@@ -7731,7 +7731,7 @@ function PublicLandingPage() {
             </button>
 
             <a
-              href="https://paradigm-strategic-partners-llc.odoo.com/contactus"
+              href="https://paradigm-strategic-partners-llc.odoo.com/contact-request-ptm"
               className="public-demo-button"
             >
               Request a Demo
@@ -7778,7 +7778,7 @@ function PublicLandingPage() {
                 </a>
 
                 <a
-                  href="https://paradigm-strategic-partners-llc.odoo.com/contactus"
+                  href="https://paradigm-strategic-partners-llc.odoo.com/contact-request-ptm"
                   className="public-secondary-cta"
                 >
                   Request a Demo
