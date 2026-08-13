@@ -8,8 +8,10 @@ from flask import (
 
 from app.auth import (
     ROLE_AGENCY_ADMIN,
+    generate_invitation_token,
     get_session_user,
     hash_password,
+    invitation_expiration,
     normalize_login_email,
     user_is_platform_admin,
 )
@@ -70,6 +72,16 @@ def serialize_platform_user(user):
         "last_name": user.last_name,
         "role": user.role,
         "status": user.status,
+        "invitation_created_at": (
+            user.invitation_created_at.isoformat()
+            if user.invitation_created_at
+            else None
+        ),
+        "invitation_expires_at": (
+            user.invitation_expires_at.isoformat()
+            if user.invitation_expires_at
+            else None
+        ),
         "last_login_at": (
             user.last_login_at.isoformat()
             if user.last_login_at
@@ -418,27 +430,14 @@ def platform_create_agency_administrator(
         payload.get("email")
     )
 
-    password = (
-        payload.get("password")
-        or ""
-    )
-
     if (
         not first_name
         or not last_name
         or not email
-        or not password
     ):
         return platform_error(
             "First name, last name, "
-            "email, and password are required.",
-            400,
-        )
-
-    if len(password) < 12:
-        return platform_error(
-            "Password must be at least "
-            "12 characters.",
+            "and email are required.",
             400,
         )
 
@@ -455,26 +454,92 @@ def platform_create_agency_administrator(
             409,
         )
 
+    token, token_hash = (
+        generate_invitation_token()
+    )
+
     user = User(
         agency_id=agency.id,
         email=email,
-        password_hash=hash_password(
-            password
+        password_hash=None,
+        invitation_token_hash=token_hash,
+        invitation_created_at=db.func.now(),
+        invitation_expires_at=(
+            invitation_expiration()
         ),
         first_name=first_name,
         last_name=last_name,
         role=ROLE_AGENCY_ADMIN,
-        status="active",
+        status="pending_invitation",
     )
 
     db.session.add(user)
     db.session.commit()
 
-    return jsonify(
-        serialize_platform_user(
-            user
+    result = serialize_platform_user(
+        user
+    )
+
+    result["invitation_path"] = (
+        f"/activate?token={token}"
+    )
+
+    return jsonify(result), 201
+
+
+@platform_api.post(
+    "/agencies/<uuid:agency_id>"
+    "/administrators/<uuid:user_id>"
+    "/resend-invitation"
+)
+def platform_resend_agency_administrator_invitation(
+    agency_id,
+    user_id,
+):
+    user = get_agency_admin_or_none(
+        agency_id,
+        user_id,
+    )
+
+    if user is None:
+        return platform_error(
+            "Resource not found.",
+            404,
         )
-    ), 201
+
+    if user.status != "pending_invitation":
+        return platform_error(
+            "Only pending invitations may be regenerated.",
+            400,
+        )
+
+    token, token_hash = (
+        generate_invitation_token()
+    )
+
+    user.invitation_token_hash = (
+        token_hash
+    )
+
+    user.invitation_created_at = (
+        db.func.now()
+    )
+
+    user.invitation_expires_at = (
+        invitation_expiration()
+    )
+
+    db.session.commit()
+
+    result = serialize_platform_user(
+        user
+    )
+
+    result["invitation_path"] = (
+        f"/activate?token={token}"
+    )
+
+    return jsonify(result), 200
 
 
 @platform_api.patch(

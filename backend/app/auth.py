@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta, timezone
+import hashlib
+import secrets
 from uuid import UUID
 
 from flask import session
@@ -17,6 +20,52 @@ SUPPORTED_USER_ROLES = {
     ROLE_PLATFORM_ADMIN,
     ROLE_AGENCY_ADMIN,
 }
+
+INVITATION_EXPIRATION_HOURS = 72
+
+
+def hash_invitation_token(token):
+    if not token:
+        return ""
+
+    return hashlib.sha256(
+        token.encode("utf-8")
+    ).hexdigest()
+
+
+def generate_invitation_token():
+    token = secrets.token_urlsafe(32)
+
+    return (
+        token,
+        hash_invitation_token(token),
+    )
+
+
+def invitation_expiration():
+    return datetime.now(
+        timezone.utc
+    ) + timedelta(
+        hours=INVITATION_EXPIRATION_HOURS
+    )
+
+
+def invitation_is_expired(value):
+    if value is None:
+        return True
+
+    if value.tzinfo is None:
+        now = datetime.now(
+            timezone.utc
+        ).replace(
+            tzinfo=None
+        )
+    else:
+        now = datetime.now(
+            timezone.utc
+        )
+
+    return value <= now
 
 
 def hash_password(password):

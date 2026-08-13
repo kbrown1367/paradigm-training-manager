@@ -90,7 +90,25 @@ class User(db.Model):
 
     password_hash = db.Column(
         db.String(255),
-        nullable=False,
+        nullable=True,
+    )
+
+    invitation_token_hash = db.Column(
+        db.String(64),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+
+    invitation_created_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=True,
+    )
+
+    invitation_expires_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=True,
+        index=True,
     )
 
     first_name = db.Column(

@@ -5647,9 +5647,17 @@ function PlatformAdministration({
     first_name: "",
     last_name: "",
     email: "",
-    password: "",
-    password_confirm: "",
   });
+
+  const [
+    generatedInvitation,
+    setGeneratedInvitation,
+  ] = useState(null);
+
+  const [
+    invitationCopyNotice,
+    setInvitationCopyNotice,
+  ] = useState("");
 
   const [resetUser, setResetUser] =
     useState(null);
@@ -5776,21 +5784,12 @@ function PlatformAdministration({
 
     setError("");
     setNotice("");
-
-    if (
-      newAdmin.password !==
-      newAdmin.password_confirm
-    ) {
-      setError(
-        "The administrator passwords do not match."
-      );
-      return;
-    }
+    setInvitationCopyNotice("");
 
     setBusy(true);
 
     try {
-      await fetchJson(
+      const result = await fetchJson(
         `/api/platform/agencies/${selectedAgency.id}/administrators`,
         {
           method: "POST",
@@ -5804,8 +5803,6 @@ function PlatformAdministration({
               newAdmin.last_name,
             email:
               newAdmin.email,
-            password:
-              newAdmin.password,
           }),
         }
       );
@@ -5816,19 +5813,76 @@ function PlatformAdministration({
         first_name: "",
         last_name: "",
         email: "",
-        password: "",
-        password_confirm: "",
       });
 
       setNewAdminOpen(false);
 
+      setGeneratedInvitation({
+        user: result,
+        url:
+          `${window.location.origin}${result.invitation_path}`,
+      });
+
       setNotice(
-        "Administrator account created."
+        "Administrator invitation created."
       );
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleRegenerateInvitation(user) {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setInvitationCopyNotice("");
+
+    try {
+      const result = await fetchJson(
+        `/api/platform/agencies/${selectedAgency.id}/administrators/${user.id}/resend-invitation`,
+        {
+          method: "POST",
+        }
+      );
+
+      await refreshSelectedAgency();
+
+      setGeneratedInvitation({
+        user: result,
+        url:
+          `${window.location.origin}${result.invitation_path}`,
+      });
+
+      setNotice(
+        "A new invitation link was generated. "
+        + "The previous link is no longer valid."
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCopyInvitation() {
+    if (!generatedInvitation?.url) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        generatedInvitation.url
+      );
+
+      setInvitationCopyNotice(
+        "Invitation link copied."
+      );
+    } catch {
+      setInvitationCopyNotice(
+        "Copy failed. Select and copy the link manually."
+      );
     }
   }
 
@@ -6773,49 +6827,12 @@ function PlatformAdministration({
                     />
                   </label>
 
-                  <label>
-                    <span>
-                      Temporary Password
-                    </span>
-                    <input
-                      type="password"
-                      required
-                      minLength="12"
-                      value={
-                        newAdmin.password
-                      }
-                      disabled={busy}
-                      onChange={(event) =>
-                        setNewAdmin({
-                          ...newAdmin,
-                          password:
-                            event.target.value,
-                        })
-                      }
-                    />
-                  </label>
-
-                  <label>
-                    <span>
-                      Confirm Password
-                    </span>
-                    <input
-                      type="password"
-                      required
-                      minLength="12"
-                      value={
-                        newAdmin.password_confirm
-                      }
-                      disabled={busy}
-                      onChange={(event) =>
-                        setNewAdmin({
-                          ...newAdmin,
-                          password_confirm:
-                            event.target.value,
-                        })
-                      }
-                    />
-                  </label>
+                  <div className="platform-invitation-note">
+                    PTM will create a secure, one-time
+                    invitation link. The administrator
+                    will choose their own password when
+                    activating the account.
+                  </div>
 
                   <div className="platform-form-actions">
                     <button
@@ -6825,10 +6842,72 @@ function PlatformAdministration({
                     >
                       {busy
                         ? "Creating..."
-                        : "Create Administrator"}
+                        : "Create Invitation"}
                     </button>
                   </div>
                 </form>
+              )}
+
+              {generatedInvitation && (
+                <div className="platform-invitation-result">
+                  <div>
+                    <span>
+                      INVITATION LINK
+                    </span>
+
+                    <strong>
+                      {generatedInvitation.user.first_name}{" "}
+                      {generatedInvitation.user.last_name}
+                    </strong>
+
+                    <p>
+                      Send this link to the administrator
+                      using your normal email, text
+                      message, or another trusted method.
+                      It expires after 72 hours and can
+                      only be used once.
+                    </p>
+                  </div>
+
+                  <div className="platform-invitation-link-row">
+                    <input
+                      readOnly
+                      value={
+                        generatedInvitation.url
+                      }
+                      onFocus={(event) =>
+                        event.target.select()
+                      }
+                    />
+
+                    <button
+                      type="button"
+                      className="platform-primary-button"
+                      onClick={
+                        handleCopyInvitation
+                      }
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+
+                  {invitationCopyNotice && (
+                    <div className="platform-invitation-copy-notice">
+                      {invitationCopyNotice}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    className="platform-link-button"
+                    onClick={() => {
+                      setGeneratedInvitation(null);
+                      setInvitationCopyNotice("");
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
               )}
 
               <div className="platform-admin-list">
@@ -6879,20 +6958,35 @@ function PlatformAdministration({
                           Edit
                         </button>
 
-                        <button
-                          type="button"
-                          className="platform-link-button"
-                          disabled={busy}
-                          onClick={() => {
-                            setResetUser(user);
-                            setEditAdminUser(null);
-                            setResetPassword("");
-                            setResetPasswordConfirm("");
-                            setError("");
-                          }}
-                        >
-                          Reset Password
-                        </button>
+                        {user.status === "pending_invitation" ? (
+                          <button
+                            type="button"
+                            className="platform-link-button"
+                            disabled={busy}
+                            onClick={() =>
+                              handleRegenerateInvitation(
+                                user
+                              )
+                            }
+                          >
+                            Generate New Link
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="platform-link-button"
+                            disabled={busy}
+                            onClick={() => {
+                              setResetUser(user);
+                              setEditAdminUser(null);
+                              setResetPassword("");
+                              setResetPasswordConfirm("");
+                              setError("");
+                            }}
+                          >
+                            Reset Password
+                          </button>
+                        )}
 
                         <button
                           type="button"
@@ -7957,12 +8051,334 @@ function PublicLandingPage() {
 }
 
 
+function InvitationActivationPage() {
+  const params = new URLSearchParams(
+    window.location.search
+  );
+
+  const token = params.get("token") || "";
+
+  const [state, setState] = useState({
+    loading: true,
+    invitation: null,
+    error: "",
+  });
+
+  const [password, setPassword] =
+    useState("");
+
+  const [passwordConfirm, setPasswordConfirm] =
+    useState("");
+
+  const [busy, setBusy] =
+    useState(false);
+
+  const [activated, setActivated] =
+    useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadInvitation() {
+      if (!token) {
+        setState({
+          loading: false,
+          invitation: null,
+          error:
+            "This invitation link is invalid.",
+        });
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/auth/invitation?token=${encodeURIComponent(token)}`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              "Unable to validate this invitation."
+          );
+        }
+
+        if (active) {
+          setState({
+            loading: false,
+            invitation: data,
+            error: "",
+          });
+        }
+      } catch (err) {
+        if (active) {
+          setState({
+            loading: false,
+            invitation: null,
+            error:
+              err.message ||
+              "Unable to validate this invitation.",
+          });
+        }
+      }
+    }
+
+    loadInvitation();
+
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  async function handleActivation(event) {
+    event.preventDefault();
+
+    setState((current) => ({
+      ...current,
+      error: "",
+    }));
+
+    if (password.length < 12) {
+      setState((current) => ({
+        ...current,
+        error:
+          "Password must be at least 12 characters.",
+      }));
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      setState((current) => ({
+        ...current,
+        error:
+          "Password and confirmation do not match.",
+      }));
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      const response = await fetch(
+        "/api/auth/activate-invitation",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to activate your account."
+        );
+      }
+
+      setActivated(true);
+      setPassword("");
+      setPasswordConfirm("");
+    } catch (err) {
+      setState((current) => ({
+        ...current,
+        error:
+          err.message ||
+          "Unable to activate your account.",
+      }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (state.loading) {
+    return (
+      <div className="activation-page">
+        <div className="activation-card">
+          <strong>
+            Paradigm Training Manager
+            <sup className="product-mark">™</sup>
+          </strong>
+
+          <p>
+            Validating your invitation...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (activated) {
+    return (
+      <div className="activation-page">
+        <section className="activation-card">
+          <div className="activation-kicker">
+            ACCOUNT ACTIVATED
+          </div>
+
+          <h1>
+            Your PTM account is ready.
+          </h1>
+
+          <p>
+            Your password has been created
+            successfully. You can now sign in.
+          </p>
+
+          <a
+            href="/login"
+            className="activation-primary-link"
+          >
+            Continue to Sign In
+          </a>
+        </section>
+      </div>
+    );
+  }
+
+  if (state.error && !state.invitation) {
+    return (
+      <div className="activation-page">
+        <section className="activation-card">
+          <div className="activation-kicker">
+            INVITATION
+          </div>
+
+          <h1>
+            Unable to activate account
+          </h1>
+
+          <div className="activation-message error">
+            {state.error}
+          </div>
+
+          <p>
+            Ask your PTM administrator to
+            generate a new invitation link.
+          </p>
+
+          <a href="/login">
+            Return to Sign In
+          </a>
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <div className="activation-page">
+      <section className="activation-card">
+        <div className="activation-kicker">
+          PTM ACCOUNT INVITATION
+        </div>
+
+        <h1>
+          Create your password
+        </h1>
+
+        <p>
+          You have been invited to access
+          Paradigm Training Manager for{" "}
+          <strong>
+            {state.invitation?.agency}
+          </strong>.
+        </p>
+
+        <div className="activation-identity">
+          <strong>
+            {state.invitation?.first_name}{" "}
+            {state.invitation?.last_name}
+          </strong>
+
+          <span>
+            {state.invitation?.email}
+          </span>
+        </div>
+
+        {state.error && (
+          <div className="activation-message error">
+            {state.error}
+          </div>
+        )}
+
+        <form
+          onSubmit={handleActivation}
+          className="activation-form"
+        >
+          <label>
+            <span>Password</span>
+
+            <input
+              type="password"
+              required
+              minLength={12}
+              autoComplete="new-password"
+              value={password}
+              disabled={busy}
+              onChange={(event) =>
+                setPassword(
+                  event.target.value
+                )
+              }
+            />
+
+            <small>
+              Minimum 12 characters.
+            </small>
+          </label>
+
+          <label>
+            <span>
+              Confirm Password
+            </span>
+
+            <input
+              type="password"
+              required
+              minLength={12}
+              autoComplete="new-password"
+              value={passwordConfirm}
+              disabled={busy}
+              onChange={(event) =>
+                setPasswordConfirm(
+                  event.target.value
+                )
+              }
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={busy}
+          >
+            {busy
+              ? "Activating..."
+              : "Activate Account"}
+          </button>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+
 function App() {
   const path = window.location.pathname;
 
   const loginPath =
     path === "/login" ||
     path.startsWith("/login/");
+
+  const activationPath =
+    path === "/activate";
 
   const platformPath =
     path === "/platform" ||
@@ -7976,6 +8392,8 @@ function App() {
     <>
       {loginPath ? (
         <LoginPage />
+      ) : activationPath ? (
+        <InvitationActivationPage />
       ) : platformPath ? (
         <PlatformAuthenticatedApplication />
       ) : applicationPath ? (

@@ -9,7 +9,9 @@ from flask import (
 
 from app.auth import (
     get_session_user,
+    hash_invitation_token,
     hash_password,
+    invitation_is_expired,
     normalize_login_email,
     serialize_user,
     verify_password,
@@ -78,6 +80,137 @@ def login():
         {
             "authenticated": True,
             "user": serialize_user(user),
+        }
+    ), 200
+
+
+def get_pending_invitation_user(token):
+    token_hash = hash_invitation_token(
+        token
+    )
+
+    if not token_hash:
+        return None
+
+    return User.query.filter_by(
+        invitation_token_hash=token_hash,
+        status="pending_invitation",
+    ).one_or_none()
+
+
+@auth_api.get("/invitation")
+def invitation_details():
+    token = (
+        request.args.get("token")
+        or ""
+    )
+
+    user = get_pending_invitation_user(
+        token
+    )
+
+    if user is None:
+        return jsonify(
+            {
+                "error":
+                    "This invitation link is invalid "
+                    "or has already been used."
+            }
+        ), 404
+
+    if invitation_is_expired(
+        user.invitation_expires_at
+    ):
+        return jsonify(
+            {
+                "error":
+                    "This invitation link has expired."
+            }
+        ), 410
+
+    return jsonify(
+        {
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "agency": (
+                user.agency.name
+                if user.agency
+                else None
+            ),
+            "expires_at": (
+                user.invitation_expires_at.isoformat()
+                if user.invitation_expires_at
+                else None
+            ),
+        }
+    ), 200
+
+
+@auth_api.post("/activate-invitation")
+def activate_invitation():
+    payload = request.get_json(
+        silent=True
+    ) or {}
+
+    token = (
+        payload.get("token")
+        or ""
+    )
+
+    password = (
+        payload.get("password")
+        or ""
+    )
+
+    user = get_pending_invitation_user(
+        token
+    )
+
+    if user is None:
+        return jsonify(
+            {
+                "error":
+                    "This invitation link is invalid "
+                    "or has already been used."
+            }
+        ), 404
+
+    if invitation_is_expired(
+        user.invitation_expires_at
+    ):
+        return jsonify(
+            {
+                "error":
+                    "This invitation link has expired."
+            }
+        ), 410
+
+    if len(password) < 12:
+        return jsonify(
+            {
+                "error":
+                    "Password must be at least "
+                    "12 characters."
+            }
+        ), 400
+
+    user.password_hash = (
+        hash_password(password)
+    )
+
+    user.status = "active"
+
+    user.invitation_token_hash = None
+    user.invitation_created_at = None
+    user.invitation_expires_at = None
+
+    db.session.commit()
+
+    return jsonify(
+        {
+            "message":
+                "Your PTM account has been activated."
         }
     ), 200
 

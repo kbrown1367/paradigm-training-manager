@@ -261,7 +261,7 @@ def test_platform_admin_can_create_multiple_agency_admins(
     ) == 4
 
 
-def test_new_agency_admin_can_log_in_and_is_bound_to_agency(
+def test_new_agency_admin_can_activate_and_is_bound_to_agency(
     app,
     data,
 ):
@@ -283,12 +283,34 @@ def test_new_agency_admin_can_log_in_and_is_bound_to_agency(
             "last_name": "Admin",
             "email":
                 "second@example.gov",
+        },
+    )
+
+    assert response.status_code == 201
+
+    result = response.get_json()
+
+    assert result["status"] == (
+        "pending_invitation"
+    )
+
+    token = result[
+        "invitation_path"
+    ].split(
+        "?token=",
+        1,
+    )[1]
+
+    activation = platform_client.post(
+        "/api/auth/activate-invitation",
+        json={
+            "token": token,
             "password":
                 "SecondPassword123!",
         },
     )
 
-    assert response.status_code == 201
+    assert activation.status_code == 200
 
     agency_client = app.test_client()
 
@@ -298,18 +320,17 @@ def test_new_agency_admin_can_log_in_and_is_bound_to_agency(
         "SecondPassword123!",
     )
 
-    response = agency_client.get(
+    me = agency_client.get(
         "/api/auth/me"
     )
 
-    assert response.status_code == 200
+    assert me.status_code == 200
 
-    user = response.get_json()["user"]
+    user = me.get_json()["user"]
 
     assert user["agency_id"] == agency_id
-    assert (
-        user["role"]
-        == ROLE_AGENCY_ADMIN
+    assert user["role"] == (
+        ROLE_AGENCY_ADMIN
     )
 
 
@@ -458,7 +479,7 @@ def test_platform_admin_can_update_agency(
     )
 
 
-def test_short_password_is_rejected(
+def test_admin_creation_no_longer_accepts_password(
     app,
     data,
 ):
@@ -475,13 +496,21 @@ def test_short_password_is_rejected(
         f"{data['agency_id']}"
         "/administrators",
         json={
-            "first_name": "Short",
-            "last_name": "Password",
+            "first_name": "Invited",
+            "last_name": "Administrator",
             "email":
-                "short@example.gov",
+                "invited@example.gov",
             "password":
-                "short",
+                "IgnoredPassword123!",
         },
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 201
+
+    result = response.get_json()
+
+    assert result["status"] == (
+        "pending_invitation"
+    )
+
+    assert "invitation_path" in result
