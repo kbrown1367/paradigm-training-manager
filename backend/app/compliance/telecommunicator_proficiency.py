@@ -715,6 +715,10 @@ def evaluate_basic_telecommunicator_proficiency(
             minimum_service_years,
         "service_requirement_met":
             service_requirement_met,
+        "training_hours":
+            _training_hours(officer),
+        "minimum_training_hours":
+            None,
         "course_requirements":
             course_requirements,
         "missing_requirements":

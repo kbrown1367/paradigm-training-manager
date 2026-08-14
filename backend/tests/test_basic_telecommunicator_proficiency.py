@@ -583,3 +583,84 @@ def test_highest_certificate_detection(app):
             credential["certificate_level"]
             == "ADVANCED"
         )
+
+
+def test_basic_reports_all_imported_training_hours(app):
+    with app.app_context():
+        agency = Agency(
+            name="Basic Training Hours Agency"
+        )
+
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="777001",
+            first_name="Basic",
+            last_name="Dispatcher",
+            telecommunicator_service_start_date=
+                date(2020, 1, 1),
+        )
+
+        db.session.add(officer)
+        db.session.flush()
+
+        db.session.add(
+            OfficerAward(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                award_type="License",
+                award_name="Telecommunicator License",
+                award_date=date(2020, 1, 1),
+            )
+        )
+
+        db.session.add_all(
+            [
+                TrainingRecord(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    course_number="3854",
+                    course_title="Computer Operations",
+                    course_date=date(2026, 2, 22),
+                    credited_hours=Decimal("2"),
+                ),
+                TrainingRecord(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    course_number="4100",
+                    course_title="Information Technology",
+                    course_date=date(2026, 2, 18),
+                    credited_hours=Decimal("4"),
+                ),
+                TrainingRecord(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    course_number="2110",
+                    course_title="Spanish",
+                    course_date=date(2025, 9, 17),
+                    credited_hours=Decimal("22"),
+                ),
+                TrainingRecord(
+                    agency_id=agency.id,
+                    officer_id=officer.id,
+                    course_number="9998",
+                    course_title="Older Training",
+                    course_date=date(2024, 1, 15),
+                    credited_hours=Decimal("12"),
+                ),
+            ]
+        )
+
+        db.session.commit()
+
+        result = (
+            evaluate_basic_telecommunicator_proficiency(
+                officer,
+                evaluation_date=date(2026, 8, 14),
+            )
+        )
+
+        assert result["training_hours"] == 40.0
+        assert result["minimum_training_hours"] is None
