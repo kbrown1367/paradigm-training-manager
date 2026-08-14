@@ -7320,3 +7320,105 @@ body:has(.login-page) .product-footer strong {
     width: 100%;
   }
 }
+
+
+/* TCOLE source transparency notices */
+
+.dashboard-data-notice {
+  max-width: 760px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #667085;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.dashboard-data-notice strong {
+  color: #344054;
+  font-weight: 800;
+}
+
+.proficiency-source-note {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+@media (max-width: 620px) {
+  .dashboard-data-notice {
+    max-width: none;
+  }
+}
+
+/* v0.4.16 dashboard notice width and proficiency fact cards */
+
+/*
+ * Allow the dashboard TCOLE notice to use the full available
+ * dashboard width instead of stopping at the old 760px limit.
+ */
+.dashboard-data-notice {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+
+/*
+ * Present proficiency facts as distinct cards.
+ *
+ * These rules enhance the existing proficiency-fact components
+ * without changing any compliance calculations or JSX behavior.
+ */
+.proficiency-facts {
+  align-items: stretch;
+}
+
+.proficiency-fact {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid #d9dee7;
+  border-radius: 10px;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.proficiency-fact > span {
+  display: block;
+  margin-bottom: 7px;
+}
+
+.proficiency-fact > strong {
+  display: block;
+}
+
+/*
+ * Preserve the existing visual meaning of satisfied and
+ * deficient facts while giving them the same card geometry.
+ */
+.proficiency-fact.satisfied,
+.proficiency-fact.deficient {
+  padding: 14px 16px;
+  border-radius: 10px;
+}
+
+/*
+ * Source/explanation text stays visually connected to the
+ * number it describes while remaining secondary.
+ */
+.proficiency-fact .proficiency-source-note {
+  margin-top: 7px;
+}
+
+
+/* Mobile: cards remain readable without forcing narrow columns. */
+@media (max-width: 760px) {
+  .proficiency-fact {
+    width: 100%;
+  }
+}

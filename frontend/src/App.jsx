@@ -596,6 +596,12 @@ function ProficiencyAdvancementPanel({
               : "Not available"}
           </strong>
 
+          <small className="proficiency-source-note">
+            Source: TCOLE rptCycleT_All.csv
+          </small>
+
+
+
           {trackLabel === "Telecommunicator" &&
             trainingRequirement != null && (
               <small>
@@ -633,6 +639,10 @@ function ProficiencyAdvancementPanel({
                   ).toLocaleString()
               : "Not available"}
           </strong>
+
+          <small className="proficiency-source-note">
+            Calculated from the values shown
+          </small>
 
           {trackLabel === "Peace Officer" &&
             trainingRequirement != null && (
@@ -5223,6 +5233,18 @@ function OperationalApp({
                 Current TCOLE compliance posture and
                 prioritized training requirements.
               </p>
+
+              <div className="dashboard-data-notice">
+                <strong>TCOLE Data Notice:</strong>{" "}
+                PTM is a compliance management tool designed
+                to organize and evaluate TCOLE-reported data.
+                TCOLE reports may occasionally contain
+                differing information. When a discrepancy
+                exists, the applicable TCOLE record should be
+                treated as the authoritative source.
+              </div>
+
+
             </div>
 
             <div className="dashboard-heading-footer">
