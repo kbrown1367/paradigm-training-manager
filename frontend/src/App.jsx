@@ -431,23 +431,43 @@ function ProficiencyAdvancementPanel({
     formatProficiencyPathway(displayPathway);
 
   const serviceRequirement =
-    displayPathway?.type === "SERVICE_TRAINING"
-      ? displayPathway.service_years
-      : null;
+    displayPathway?.service_years ?? null;
 
   const trainingRequirement =
     displayPathway?.type === "SERVICE_TRAINING"
       ? displayPathway.training_hours
       : null;
 
+  const militaryRequirement =
+    displayPathway?.type === "MILITARY"
+      ? displayPathway.military_years
+      : null;
+
   const serviceShort =
-    bestPathway?.type === "SERVICE_TRAINING"
-      ? Number(bestPathway.service_years_short || 0)
+    displayPathway?.service_years_short != null
+      ? Number(displayPathway.service_years_short)
       : 0;
 
   const trainingShort =
-    bestPathway?.type === "SERVICE_TRAINING"
-      ? Number(bestPathway.training_hours_short || 0)
+    displayPathway?.type === "SERVICE_TRAINING"
+      ? Number(
+          displayPathway.training_hours_short || 0
+        )
+      : 0;
+
+  const militaryMonths =
+    Number(
+      advancement.verified_military_months || 0
+    );
+
+  const militaryYears =
+    militaryMonths / 12;
+
+  const militaryMonthsShort =
+    displayPathway?.type === "MILITARY"
+      ? Number(
+          displayPathway.military_months_short || 0
+        )
       : 0;
 
   if (status === "NOT_APPLICABLE") {
@@ -628,6 +648,37 @@ function ProficiencyAdvancementPanel({
                   : "✓ Training requirement met"}
               </small>
             )}
+          </div>
+        )}
+
+        {displayPathway?.type === "MILITARY" && (
+          <div
+            className={
+              militaryMonthsShort > 0
+                ? "proficiency-fact deficient"
+                : "proficiency-fact satisfied"
+            }
+          >
+            <span>Qualifying Military Service</span>
+
+            <strong>
+              {`${militaryYears.toLocaleString(
+                undefined,
+                {
+                  maximumFractionDigits: 2,
+                }
+              )} / ${militaryRequirement} years required`}
+            </strong>
+
+            <small>
+              {militaryMonthsShort > 0
+                ? `${militaryMonthsShort} ${
+                    militaryMonthsShort === 1
+                      ? "month"
+                      : "months"
+                  } short`
+                : "✓ Military service requirement met"}
+            </small>
           </div>
         )}
 

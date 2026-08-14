@@ -1164,3 +1164,375 @@ def test_military_training_credit_does_not_create_military_service_duration(
             == 5000
         )
         assert result["verified_military_months"] == 0
+
+
+def test_advanced_two_year_military_pathway(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Intermediate Peace Officer",
+        )
+        officer.peace_officer_service_start_date = date(
+            2020,
+            8,
+            9,
+        )
+        officer.verified_military_months = 24
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        assert result["qualifying_pathway"] == {
+            "type": "MILITARY",
+            "service_years": 6,
+            "military_years": 2,
+        }
+
+
+def test_advanced_four_year_military_pathway(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Intermediate Peace Officer",
+        )
+        officer.peace_officer_service_start_date = date(
+            2021,
+            8,
+            9,
+        )
+        officer.verified_military_months = 48
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        assert result["qualifying_pathway"] == {
+            "type": "MILITARY",
+            "service_years": 5,
+            "military_years": 4,
+        }
+
+
+def test_master_two_year_military_pathway(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Advanced Peace Officer",
+        )
+        officer.peace_officer_service_start_date = date(
+            2014,
+            8,
+            9,
+        )
+        officer.verified_military_months = 24
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        assert result["qualifying_pathway"] == {
+            "type": "MILITARY",
+            "service_years": 12,
+            "military_years": 2,
+        }
+
+
+def test_master_four_year_military_pathway(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Advanced Peace Officer",
+        )
+        officer.peace_officer_service_start_date = date(
+            2017,
+            8,
+            9,
+        )
+        officer.verified_military_months = 48
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        assert result["qualifying_pathway"] == {
+            "type": "MILITARY",
+            "service_years": 9,
+            "military_years": 4,
+        }
+
+
+def test_master_five_year_military_pathway(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Advanced Peace Officer",
+        )
+        officer.peace_officer_service_start_date = date(
+            2019,
+            8,
+            9,
+        )
+        officer.verified_military_months = 60
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        assert result["qualifying_pathway"] == {
+            "type": "MILITARY",
+            "service_years": 7,
+            "military_years": 5,
+        }
+
+
+def test_master_eight_year_military_pathway(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Advanced Peace Officer",
+        )
+        officer.peace_officer_service_start_date = date(
+            2021,
+            8,
+            9,
+        )
+        officer.verified_military_months = 96
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        assert result["qualifying_pathway"] == {
+            "type": "MILITARY",
+            "service_years": 5,
+            "military_years": 8,
+        }
+
+
+def test_intermediate_military_path_controls_best_pathway(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Basic Peace Officer",
+            training_hours=500,
+        )
+        officer.peace_officer_service_start_date = date(
+            2024,
+            8,
+            9,
+        )
+        officer.verified_military_months = 48
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        assert result["best_available_pathway"]["type"] == (
+            "MILITARY"
+        )
+        assert (
+            result["best_available_pathway"]["service_years"]
+            == 2
+        )
+        assert (
+            result["best_available_pathway"]["military_years"]
+            == 4
+        )
+        assert (
+            "training_hours"
+            not in result["best_available_pathway"]
+        )
+
+
+def test_intermediate_military_path_reduces_service_display(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Basic Peace Officer",
+            training_hours=100,
+        )
+        officer.peace_officer_service_start_date = date(
+            2025,
+            8,
+            9,
+        )
+        officer.verified_military_months = 48
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        pathway = result["best_available_pathway"]
+
+        assert pathway["type"] == "MILITARY"
+        assert pathway["service_years"] == 2
+        assert pathway["service_years_short"] == 1
+        assert pathway["military_months_short"] == 0
+
+
+def test_47_military_months_does_not_satisfy_four_year_path(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Basic Peace Officer",
+            training_hours=100,
+        )
+        officer.peace_officer_service_start_date = date(
+            2024,
+            8,
+            9,
+        )
+        officer.verified_military_months = 47
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        assert result["qualifying_pathway"] is None
+
+
+def test_intermediate_satisfied_training_path_beats_incomplete_two_year_military_path(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Basic Peace Officer",
+            training_hours=2400,
+        )
+
+        officer.peace_officer_service_start_date = date(
+            2023,
+            8,
+            9,
+        )
+
+        officer.verified_military_months = 24
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        pathway = result["best_available_pathway"]
+
+        assert pathway["type"] == "SERVICE_TRAINING"
+        assert pathway["service_years"] == 2
+        assert pathway["training_hours"] == 2400
+        assert pathway["service_years_short"] == 0
+        assert pathway["training_hours_short"] == 0
+
+
+def test_intermediate_four_year_military_path_beats_incomplete_training_path(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Basic Peace Officer",
+            training_hours=1168,
+        )
+
+        officer.peace_officer_service_start_date = date(
+            2024,
+            8,
+            9,
+        )
+
+        officer.verified_military_months = 48
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        pathway = result["best_available_pathway"]
+
+        assert pathway["type"] == "MILITARY"
+        assert pathway["service_years"] == 2
+        assert pathway["military_years"] == 4
+        assert pathway["service_years_short"] == 0
+        assert pathway["military_months_short"] == 0
+
+
+def test_advanced_completed_training_path_remains_valid_with_military_service(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Intermediate Peace Officer",
+            training_hours=2400,
+        )
+
+        officer.peace_officer_service_start_date = date(
+            2020,
+            8,
+            9,
+        )
+
+        officer.verified_military_months = 24
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        pathway = result["best_available_pathway"]
+
+        assert result["qualifying_pathway"] is not None
+        assert pathway is not None
+        assert pathway["service_years_short"] == 0
+
+        # At 6 PO years, 2,400 training hours, and
+        # 2 military years, both published Advanced
+        # pathways are satisfied. The selector may
+        # legitimately display either satisfied route.
+        assert pathway["type"] in {
+            "SERVICE_TRAINING",
+            "MILITARY",
+        }
+
+        if pathway["type"] == "SERVICE_TRAINING":
+            assert pathway["training_hours_short"] == 0
+
+        if pathway["type"] == "MILITARY":
+            assert pathway["military_months_short"] == 0
+
+
+def test_master_satisfied_training_path_beats_incomplete_military_path(app):
+    with app.app_context():
+        officer = make_officer(
+            certificate="Advanced Peace Officer",
+            training_hours=4000,
+        )
+
+        officer.peace_officer_service_start_date = date(
+            2016,
+            8,
+            9,
+        )
+
+        officer.verified_military_months = 24
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 9),
+        )
+
+        pathway = result["best_available_pathway"]
+
+        assert pathway["type"] == "SERVICE_TRAINING"
+        assert pathway["service_years"] == 10
+        assert pathway["training_hours"] == 4000
+        assert pathway["service_years_short"] == 0
+        assert pathway["training_hours_short"] == 0

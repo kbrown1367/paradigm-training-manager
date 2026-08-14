@@ -412,6 +412,302 @@ def _best_service_training_pathway(
     )
 
 
+def _best_education_pathway(
+    pathways,
+    service_years,
+    education_level,
+):
+    if service_years is None:
+        return None
+
+    actual_rank = EDUCATION_RANK.get(
+        education_level,
+        0,
+    )
+
+    candidates = []
+
+    for pathway in pathways:
+        required_level = pathway["education_level"]
+        required_rank = EDUCATION_RANK[required_level]
+
+        service_short = max(
+            0,
+            pathway["service_years"] - service_years,
+        )
+
+        education_short = max(
+            0,
+            required_rank - actual_rank,
+        )
+
+        candidates.append(
+            {
+                "type": "EDUCATION",
+                **pathway,
+                "actual_service_years":
+                    service_years,
+                "actual_education_level":
+                    education_level,
+                "service_years_short":
+                    service_short,
+                "education_levels_short":
+                    education_short,
+            }
+        )
+
+    if not candidates:
+        return None
+
+    feasible = [
+        candidate
+        for candidate in candidates
+        if candidate["education_levels_short"] == 0
+    ]
+
+    if feasible:
+        return min(
+            feasible,
+            key=lambda candidate: (
+                candidate["service_years_short"],
+                candidate["service_years"],
+            ),
+        )
+
+    return None
+
+
+def _best_military_pathway(
+    pathways,
+    service_years,
+    military_months,
+):
+    if (
+        service_years is None
+        or military_months is None
+        or military_months <= 0
+    ):
+        return None
+
+    candidates = []
+
+    for pathway in pathways:
+        required_months = (
+            pathway["military_years"] * 12
+        )
+
+        service_short = max(
+            0,
+            pathway["service_years"] - service_years,
+        )
+
+        military_months_short = max(
+            0,
+            required_months - military_months,
+        )
+
+        candidates.append(
+            {
+                "type": "MILITARY",
+                **pathway,
+                "actual_service_years":
+                    service_years,
+                "actual_military_months":
+                    military_months,
+                "service_years_short":
+                    service_short,
+                "military_months_short":
+                    military_months_short,
+            }
+        )
+
+    if not candidates:
+        return None
+
+    military_feasible = [
+        candidate
+        for candidate in candidates
+        if candidate["military_months_short"] == 0
+    ]
+
+    if military_feasible:
+        return min(
+            military_feasible,
+            key=lambda candidate: (
+                candidate["service_years_short"],
+                candidate["service_years"],
+                -candidate["military_years"],
+            ),
+        )
+
+    return min(
+        candidates,
+        key=lambda candidate: (
+            candidate["military_months_short"],
+            candidate["service_years_short"],
+            candidate["military_years"],
+        ),
+    )
+
+
+def _pathway_is_satisfied(pathway):
+    if pathway is None:
+        return False
+
+    pathway_type = pathway.get("type")
+
+    if pathway_type == "SERVICE_TRAINING":
+        return (
+            pathway.get("service_years_short", 0) == 0
+            and pathway.get("training_hours_short", 0) == 0
+        )
+
+    if pathway_type == "MILITARY":
+        return (
+            pathway.get("service_years_short", 0) == 0
+            and pathway.get("military_months_short", 0) == 0
+        )
+
+    if pathway_type == "EDUCATION":
+        return (
+            pathway.get("service_years_short", 0) == 0
+            and pathway.get("education_levels_short", 0) == 0
+        )
+
+    return False
+
+
+def _pathway_remaining_burden(pathway):
+    if pathway is None:
+        return (
+            float("inf"),
+            float("inf"),
+            float("inf"),
+        )
+
+    pathway_type = pathway.get("type")
+
+    service_short = pathway.get(
+        "service_years_short",
+        0,
+    )
+
+    if pathway_type == "SERVICE_TRAINING":
+        secondary_short = pathway.get(
+            "training_hours_short",
+            0,
+        )
+
+        type_rank = 2
+
+    elif pathway_type == "MILITARY":
+        secondary_short = pathway.get(
+            "military_months_short",
+            0,
+        )
+
+        type_rank = 0
+
+    elif pathway_type == "EDUCATION":
+        secondary_short = pathway.get(
+            "education_levels_short",
+            0,
+        )
+
+        type_rank = 1
+
+    else:
+        secondary_short = float("inf")
+        type_rank = 9
+
+    return (
+        service_short,
+        secondary_short,
+        type_rank,
+    )
+
+
+def _best_available_pathway(
+    rules,
+    service_years,
+    training_hours,
+    education_level,
+    military_months,
+):
+    service_training = (
+        _best_service_training_pathway(
+            rules["service_training"],
+            service_years,
+            training_hours,
+        )
+    )
+
+    education = _best_education_pathway(
+        rules["education"],
+        service_years,
+        education_level,
+    )
+
+    military = _best_military_pathway(
+        rules["military"],
+        service_years,
+        military_months,
+    )
+
+    pathways = [
+        pathway
+        for pathway in (
+            service_training,
+            education,
+            military,
+        )
+        if pathway is not None
+    ]
+
+    if not pathways:
+        return None
+
+    satisfied = [
+        pathway
+        for pathway in pathways
+        if _pathway_is_satisfied(pathway)
+    ]
+
+    if satisfied:
+        # Never display an incomplete alternate pathway when
+        # another valid TCOLE pathway is already satisfied.
+        #
+        # When multiple pathways are satisfied, prefer the route
+        # requiring the least peace-officer service. If still tied,
+        # prefer military, then education, then service/training for
+        # a concise explanation of the alternate qualification.
+        return min(
+            satisfied,
+            key=lambda pathway: (
+                pathway.get(
+                    "service_years",
+                    float("inf"),
+                ),
+                (
+                    0
+                    if pathway.get("type") == "MILITARY"
+                    else 1
+                    if pathway.get("type") == "EDUCATION"
+                    else 2
+                ),
+            ),
+        )
+
+    # No pathway is complete. Show the route with the smallest
+    # remaining burden instead of automatically favoring an
+    # education or military alternative.
+    return min(
+        pathways,
+        key=_pathway_remaining_burden,
+    )
+
+
+
 def _evaluate_service_training(
     pathways,
     service_years,
@@ -655,10 +951,12 @@ def evaluate_peace_officer_proficiency(
     )
 
     best_available_pathway = (
-        _best_service_training_pathway(
-            rules["service_training"],
+        _best_available_pathway(
+            rules,
             service_years,
             total_hours,
+            education_level,
+            military_months,
         )
     )
 
