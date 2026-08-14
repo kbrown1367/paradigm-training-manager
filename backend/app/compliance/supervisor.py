@@ -198,6 +198,16 @@ def evaluate_supervisor(
         ]["eligible_courses"]
     }
 
+    hb33_course_options = "; ".join(
+        (
+            f"#{item['course_number']} "
+            f"{item['name']}"
+        )
+        for item in rule[
+            "hb33"
+        ]["eligible_courses"]
+    )
+
     hb33_training = find_course(
         officer,
         hb33_course_numbers,
@@ -257,10 +267,13 @@ def evaluate_supervisor(
                 ),
                 "agency_review_recommended": True,
                 "message": (
-                    "No approved HB33 supervisor training "
-                    "course was found in the imported TCOLE "
-                    "training record. Requirement due "
-                    f"{hb33_due.isoformat()}. "
+                    "HB33 Supervisor Training remains "
+                    "outstanding. Complete one approved "
+                    "course by "
+                    f"{hb33_due.strftime('%m/%d/%Y')}: "
+                    f"{hb33_course_options}. "
+                    "No qualifying completion was found in "
+                    "the imported TCOLE training record. "
                     "Agency review recommended."
                 ),
             }

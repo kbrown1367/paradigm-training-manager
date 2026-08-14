@@ -564,3 +564,58 @@ def test_prior_3737_satisfies_later_supervisor_assignment(app):
             == "NEW_SUPERVISOR_TRAINING"
             for item in result["requirements"]
         )
+
+
+def test_missing_hb33_message_lists_approved_courses(app):
+    with app.app_context():
+        agency, officer = make_supervisor(
+            date(2026, 1, 1)
+        )
+
+        add_course(
+            agency,
+            officer,
+            "3737",
+            date(2026, 2, 1),
+        )
+
+        db.session.commit()
+
+        result = evaluate_supervisor(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        requirement = next(
+            item
+            for item in result["requirements"]
+            if (
+                item["type"]
+                == "HB33_SUPERVISOR_TRAINING"
+            )
+        )
+
+        message = requirement["message"]
+
+        assert (
+            "HB33 Supervisor Training remains outstanding."
+            in message
+        )
+        assert "08/31/2027" in message
+
+        expected_courses = {
+            "#3366 ALERRT Active Attack Incident Management",
+            "#3367 Active Attack Incident Management Train the Trainer",
+            "#3607 ALERRT Active Shooter Response Incident Management",
+            "#33111 ALERRT Command and Control",
+            "#3740 Chief Continuing Education",
+            "#3743 Constable Continuing Education",
+            "#3608 ALERRT Incident Response and Command",
+            "#3709 Command Staff Leadership Series",
+            "#3369 ALERRT Active Attack Incident Management",
+        }
+
+        for course in expected_courses:
+            assert course in message
+
+        assert "#3737" not in message
