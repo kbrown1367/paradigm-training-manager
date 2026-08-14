@@ -983,3 +983,196 @@ def test_intermediate_or_higher_suppresses_cycle_courses(
         )
         assert result["cycle_requirements"] == []
         assert result["cycle_required_courses"] == []
+
+
+def test_historical_bpoc_736_does_not_satisfy_current_cycle_courses(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_award(
+            agency,
+            officer,
+            "Basic Peace Officer",
+            date(2025, 1, 1),
+        )
+
+        add_training(
+            agency,
+            officer,
+            "1000736",
+            date(2024, 8, 20),
+            736,
+        )
+
+        add_complete_unit_training(
+            agency,
+            officer,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 14),
+        )
+
+        assert (
+            result["cycle_requirements_applicable"]
+            is True
+        )
+        assert result["cycle_status"] == "OUTSTANDING"
+
+        assert len(
+            result["cycle_requirements"]
+        ) == 4
+
+        assert all(
+            item["completed"] is False
+            for item in result[
+                "cycle_required_courses"
+            ]
+        )
+
+
+def test_current_cycle_bpoc_736_satisfies_all_cycle_courses(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_award(
+            agency,
+            officer,
+            "Basic Peace Officer",
+            date(2026, 6, 1),
+        )
+
+        add_training(
+            agency,
+            officer,
+            "1000736",
+            date(2026, 5, 26),
+            736,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 14),
+        )
+
+        assert (
+            result["cycle_requirements_applicable"]
+            is True
+        )
+
+        assert result["cycle_status"] == "COMPLETE"
+        assert result["cycle_requirements"] == []
+
+        assert len(
+            result["cycle_required_courses"]
+        ) == 4
+
+        for requirement in result[
+            "cycle_required_courses"
+        ]:
+            assert requirement["completed"] is True
+            assert (
+                requirement[
+                    "completed_equivalent_courses"
+                ]
+                == ["1000736"]
+            )
+
+
+def test_bpoc_736_in_unit_one_counts_in_unit_two_cycle_courses(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_award(
+            agency,
+            officer,
+            "Basic Peace Officer",
+            date(2026, 6, 1),
+        )
+
+        add_training(
+            agency,
+            officer,
+            "1000736",
+            date(2026, 5, 26),
+            736,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2028, 1, 1),
+        )
+
+        assert result["unit_number"] == 2
+        assert result["cycle_status"] == "COMPLETE"
+        assert result["cycle_requirements"] == []
+
+        assert all(
+            item["completed"] is True
+            for item in result[
+                "cycle_required_courses"
+            ]
+        )
+
+
+def test_prior_cycle_bpoc_736_does_not_carry_into_next_cycle(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_award(
+            agency,
+            officer,
+            "Basic Peace Officer",
+            date(2026, 6, 1),
+        )
+
+        add_training(
+            agency,
+            officer,
+            "1000736",
+            date(2026, 5, 26),
+            736,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2029, 9, 1),
+        )
+
+        assert result["cycle_start"] == "2029-09-01"
+        assert result["cycle_end"] == "2033-08-31"
+
+        assert (
+            result["cycle_requirements_applicable"]
+            is True
+        )
+
+        assert result["cycle_status"] == "OUTSTANDING"
+
+        assert len(
+            result["cycle_requirements"]
+        ) == 4
+
+        assert all(
+            item["completed"] is False
+            for item in result[
+                "cycle_required_courses"
+            ]
+        )

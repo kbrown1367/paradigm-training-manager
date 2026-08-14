@@ -45,7 +45,7 @@ def test_copyright_notice_future_year():
 
 
 def test_version_reads_root_version_file():
-    assert get_version() == "0.4.19"
+    assert get_version() == "0.4.20"
 
 
 def test_software_identity_payload():
@@ -73,5 +73,5 @@ def test_default_identity_reads_current_version():
         year=2026,
     )
 
-    assert identity["version"] == "0.4.19"
+    assert identity["version"] == "0.4.20"
     assert identity["software_id"] == "PTM-PSP-2026"

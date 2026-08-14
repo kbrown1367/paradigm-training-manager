@@ -71,6 +71,9 @@
         "accepted_courses": [
           "3843",
           "1850"
+        ],
+        "equivalent_courses": [
+          "1000736"
         ]
       },
       {
@@ -78,6 +81,9 @@
         "name": "Cultural Diversity",
         "accepted_courses": [
           "3939"
+        ],
+        "equivalent_courses": [
+          "1000736"
         ]
       },
       {
@@ -85,6 +91,9 @@
         "name": "Special Investigative Topics",
         "accepted_courses": [
           "3232"
+        ],
+        "equivalent_courses": [
+          "1000736"
         ]
       },
       {
@@ -92,6 +101,9 @@
         "name": "De-escalation Techniques",
         "accepted_courses": [
           "1849"
+        ],
+        "equivalent_courses": [
+          "1000736"
         ]
       }
     ]

@@ -126,20 +126,39 @@ def _evaluate_below_intermediate_cycle(
             ]
         ]
 
+        equivalent_courses = [
+            str(course_number)
+            for course_number in required.get(
+                "equivalent_courses",
+                [],
+            )
+        ]
+
         completed_courses = sorted(
             set(accepted_courses)
             & completed_course_numbers
         )
 
-        completed = bool(completed_courses)
+        completed_equivalent_courses = sorted(
+            set(equivalent_courses)
+            & completed_course_numbers
+        )
+
+        completed = bool(
+            completed_courses
+            or completed_equivalent_courses
+        )
 
         required_course_results.append(
             {
                 "id": required["id"],
                 "name": required["name"],
                 "accepted_courses": accepted_courses,
+                "equivalent_courses": equivalent_courses,
                 "completed": completed,
                 "completed_courses": completed_courses,
+                "completed_equivalent_courses":
+                    completed_equivalent_courses,
                 "status": (
                     "COMPLETE"
                     if completed
