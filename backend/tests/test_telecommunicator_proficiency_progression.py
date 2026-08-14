@@ -311,3 +311,38 @@ def test_tcole_education_takes_precedence_over_verified_fallback(
 
         assert result["education_level"] == "BACHELOR"
         assert result["college_credit_hours"] == 120
+
+
+def test_telecommunicator_reports_psr_style_hour_totals(app):
+    with app.app_context():
+        agency, officer = make_telecommunicator()
+
+        add_certificate(
+            agency,
+            officer,
+            "Intermediate Telecommunicator",
+            date(2024, 1, 1),
+        )
+
+        officer.verified_college_credit_hours = 120
+        officer.verified_military_training_credit_hours = 100
+
+        db.session.commit()
+
+        result = evaluate_telecommunicator_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 14),
+        )
+
+        assert result["college_credit_hours"] == 120
+        assert (
+            result["military_training_credit_hours"]
+            == 100
+        )
+        assert (
+            result["career_professional_hours"]
+            == 2500.0
+        )
+        assert result["total_hours"] == (
+            result["training_hours"] + 2500.0
+        )

@@ -419,6 +419,40 @@ def _college_credit_hours(officer):
     return max(0, int(hours))
 
 
+def _military_training_credit_hours(officer):
+    hours = (
+        officer.verified_military_training_credit_hours
+    )
+
+    if hours is None:
+        return None
+
+    return max(0, int(hours))
+
+
+def _career_professional_hours(officer):
+    college_hours = _college_credit_hours(officer)
+    military_training_credit = (
+        _military_training_credit_hours(officer)
+    )
+
+    higher_education_points = (
+        (college_hours or 0) * 20
+    )
+
+    military_points = (
+        military_training_credit or 0
+    )
+
+    # Match the TCOLE Personal Status Report calculation
+    # already used by the Peace Officer proficiency engine:
+    #
+    # Total Career/Professional Hours =
+    # Higher Education Points
+    # + Military Service Training Credit.
+    return higher_education_points + military_points
+
+
 def _with_qualification_context(
     result,
     officer,
@@ -429,6 +463,23 @@ def _with_qualification_context(
 
     result["college_credit_hours"] = (
         _college_credit_hours(officer)
+    )
+
+    result["military_training_credit_hours"] = (
+        _military_training_credit_hours(officer)
+    )
+
+    career_professional_hours = (
+        _career_professional_hours(officer)
+    )
+
+    result["career_professional_hours"] = float(
+        career_professional_hours
+    )
+
+    result["total_hours"] = float(
+        result.get("training_hours", 0.0)
+        + career_professional_hours
     )
 
     return result

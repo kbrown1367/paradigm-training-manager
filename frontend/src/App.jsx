@@ -556,100 +556,93 @@ function ProficiencyAdvancementPanel({
           )}
         </div>
 
-        {trackLabel === "Peace Officer" ? (
-          <>
-            <div className="proficiency-fact">
-              <span>
-                Total Career/Professional Hours
-              </span>
-              <strong>
-                {Number(
-                  advancement
-                    .career_professional_hours || 0
-                ).toLocaleString()}
-              </strong>
-            </div>
+        <div className="proficiency-fact">
+          <span>
+            Total Career/Professional Hours
+          </span>
+          <strong>
+            {Number(
+              advancement
+                .career_professional_hours || 0
+            ).toLocaleString()}
+          </strong>
+        </div>
 
-            <div className="proficiency-fact">
-              <span>Total TCOLE Course Hours</span>
-              <strong>
-                {advancement.training_hours != null
-                  ? Number(
-                      advancement.training_hours
-                    ).toLocaleString()
-                  : "Not available"}
-              </strong>
-            </div>
+        <div
+          className={
+            trackLabel === "Telecommunicator" &&
+            trainingShort > 0
+              ? "proficiency-fact deficient"
+              : trackLabel === "Telecommunicator" &&
+                  trainingRequirement != null
+                ? "proficiency-fact satisfied"
+                : "proficiency-fact"
+          }
+        >
+          <span>Total TCOLE Course Hours</span>
 
-            <div
-              className={
-                trainingShort > 0
-                  ? "proficiency-fact deficient"
-                  : trainingRequirement != null
-                    ? "proficiency-fact satisfied"
-                    : "proficiency-fact"
-              }
-            >
-              <span>Total Hours</span>
+          <strong>
+            {advancement.training_hours != null
+              ? trackLabel === "Telecommunicator" &&
+                  trainingRequirement != null
+                ? `${Number(
+                    advancement.training_hours
+                  ).toLocaleString()} / ${Number(
+                    trainingRequirement
+                  ).toLocaleString()} required`
+                : Number(
+                    advancement.training_hours
+                  ).toLocaleString()
+              : "Not available"}
+          </strong>
 
-              <strong>
-                {advancement.total_hours != null
-                  ? trainingRequirement != null
-                    ? `${Number(
-                        advancement.total_hours
-                      ).toLocaleString()} / ${Number(
-                        trainingRequirement
-                      ).toLocaleString()} required`
-                    : Number(
-                        advancement.total_hours
-                      ).toLocaleString()
-                  : "Not available"}
-              </strong>
-
-              {trainingRequirement != null && (
-                <small>
-                  {trainingShort > 0
-                    ? `${trainingShort.toLocaleString()} hours short`
-                    : "✓ Training requirement met"}
-                </small>
-              )}
-            </div>
-          </>
-        ) : (
-          <div
-            className={
-              trainingShort > 0
-                ? "proficiency-fact deficient"
-                : trainingRequirement != null
-                  ? "proficiency-fact satisfied"
-                  : "proficiency-fact"
-            }
-          >
-            <span>TCOLE Training Hours</span>
-
-            <strong>
-              {advancement.training_hours != null
-                ? trainingRequirement != null
-                  ? `${Number(
-                      advancement.training_hours
-                    ).toLocaleString()} / ${Number(
-                      trainingRequirement
-                    ).toLocaleString()} required`
-                  : Number(
-                      advancement.training_hours
-                    ).toLocaleString()
-                : "Not available"}
-            </strong>
-
-            {trainingRequirement != null && (
+          {trackLabel === "Telecommunicator" &&
+            trainingRequirement != null && (
               <small>
                 {trainingShort > 0
                   ? `${trainingShort.toLocaleString()} hours short`
                   : "✓ Training requirement met"}
               </small>
             )}
-          </div>
-        )}
+        </div>
+
+        <div
+          className={
+            trackLabel === "Peace Officer" &&
+            trainingShort > 0
+              ? "proficiency-fact deficient"
+              : trackLabel === "Peace Officer" &&
+                  trainingRequirement != null
+                ? "proficiency-fact satisfied"
+                : "proficiency-fact"
+          }
+        >
+          <span>Total Hours</span>
+
+          <strong>
+            {advancement.total_hours != null
+              ? trackLabel === "Peace Officer" &&
+                  trainingRequirement != null
+                ? `${Number(
+                    advancement.total_hours
+                  ).toLocaleString()} / ${Number(
+                    trainingRequirement
+                  ).toLocaleString()} required`
+                : Number(
+                    advancement.total_hours
+                  ).toLocaleString()
+              : "Not available"}
+          </strong>
+
+          {trackLabel === "Peace Officer" &&
+            trainingRequirement != null && (
+              <small>
+                {trainingShort > 0
+                  ? `${trainingShort.toLocaleString()} hours short`
+                  : "✓ Training requirement met"}
+              </small>
+            )}
+        </div>
 
         {displayPathway?.type === "MILITARY" && (
           <div
