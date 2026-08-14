@@ -355,6 +355,85 @@ def _training_hours(officer):
     return total
 
 
+TELECOMMUNICATOR_EDUCATION_RANK = {
+    None: 0,
+    "ASSOCIATE": 1,
+    "BACHELOR": 2,
+    "MASTER": 3,
+    "DOCTORATE": 4,
+}
+
+
+def _education_level(officer):
+    recognized = {
+        "academic recognition award - associate degree":
+            "ASSOCIATE",
+        "academic recognition award - bachelor degree":
+            "BACHELOR",
+        "academic recognition award - master degree":
+            "MASTER",
+        "academic recognition award - doctorate degree":
+            "DOCTORATE",
+        "academic recognition award - juris doctor":
+            "DOCTORATE",
+    }
+
+    level = None
+
+    # Explicit TCOLE academic recognition takes
+    # precedence over agency-entered fallback data.
+    for award in officer.awards:
+        name = (
+            award.award_name
+            or ""
+        ).strip().lower()
+
+        candidate = recognized.get(name)
+
+        if candidate is None:
+            continue
+
+        if (
+            TELECOMMUNICATOR_EDUCATION_RANK[candidate]
+            > TELECOMMUNICATOR_EDUCATION_RANK[level]
+        ):
+            level = candidate
+
+    if level is not None:
+        return level
+
+    verified = officer.verified_education_level
+
+    if verified in TELECOMMUNICATOR_EDUCATION_RANK:
+        return verified
+
+    return None
+
+
+def _college_credit_hours(officer):
+    hours = officer.verified_college_credit_hours
+
+    if hours is None:
+        return None
+
+    return max(0, int(hours))
+
+
+def _with_qualification_context(
+    result,
+    officer,
+):
+    result["education_level"] = (
+        _education_level(officer)
+    )
+
+    result["college_credit_hours"] = (
+        _college_credit_hours(officer)
+    )
+
+    return result
+
+
 def _career_course_requirement_result(
     officer,
     requirement,
@@ -1610,41 +1689,47 @@ def evaluate_telecommunicator_proficiency(
     ]
 
     if not has_telecommunicator_license(officer):
-        return {
-            "status": "NOT_APPLICABLE",
-            "current_certificate": None,
-            "current_certificate_date": None,
-            "next_certificate": None,
-            "service_years": None,
-            "training_hours": 0.0,
-            "course_requirements": [],
-            "missing_requirements": [],
-            "insufficient_data_requirements": [],
-            "rule_version": None,
-        }
+        return _with_qualification_context(
+            {
+                "status": "NOT_APPLICABLE",
+                "current_certificate": None,
+                "current_certificate_date": None,
+                "next_certificate": None,
+                "service_years": None,
+                "training_hours": 0.0,
+                "course_requirements": [],
+                "missing_requirements": [],
+                "insufficient_data_requirements": [],
+                "rule_version": None,
+            },
+            officer,
+        )
 
     if current_level == "MASTER":
-        return {
-            "status": "TERMINAL",
-            "current_certificate":
-                current_certificate,
-            "current_certificate_date":
-                credential[
-                    "highest_certificate_date"
-                ],
-            "next_certificate": None,
-            "service_years":
-                _service_years(
-                    officer,
-                    evaluation_date,
-                ),
-            "training_hours":
-                _training_hours(officer),
-            "course_requirements": [],
-            "missing_requirements": [],
-            "insufficient_data_requirements": [],
-            "rule_version": None,
-        }
+        return _with_qualification_context(
+            {
+                "status": "TERMINAL",
+                "current_certificate":
+                    current_certificate,
+                "current_certificate_date":
+                    credential[
+                        "highest_certificate_date"
+                    ],
+                "next_certificate": None,
+                "service_years":
+                    _service_years(
+                        officer,
+                        evaluation_date,
+                    ),
+                "training_hours":
+                    _training_hours(officer),
+                "course_requirements": [],
+                "missing_requirements": [],
+                "insufficient_data_requirements": [],
+                "rule_version": None,
+            },
+            officer,
+        )
 
     if current_level == "ADVANCED":
         result = (
@@ -1656,7 +1741,10 @@ def evaluate_telecommunicator_proficiency(
         result["next_certificate"] = (
             "Master Telecommunicator"
         )
-        return result
+        return _with_qualification_context(
+            result,
+            officer,
+        )
 
     if current_level == "INTERMEDIATE":
         result = (
@@ -1668,7 +1756,10 @@ def evaluate_telecommunicator_proficiency(
         result["next_certificate"] = (
             "Advanced Telecommunicator"
         )
-        return result
+        return _with_qualification_context(
+            result,
+            officer,
+        )
 
     if current_level == "BASIC":
         result = (
@@ -1680,7 +1771,10 @@ def evaluate_telecommunicator_proficiency(
         result["next_certificate"] = (
             "Intermediate Telecommunicator"
         )
-        return result
+        return _with_qualification_context(
+            result,
+            officer,
+        )
 
     result = (
         evaluate_basic_telecommunicator_proficiency(
@@ -1693,4 +1787,7 @@ def evaluate_telecommunicator_proficiency(
         "Basic Telecommunicator"
     )
 
-    return result
+    return _with_qualification_context(
+        result,
+        officer,
+    )

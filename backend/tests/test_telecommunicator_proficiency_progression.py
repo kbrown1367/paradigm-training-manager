@@ -214,3 +214,100 @@ def test_non_telecommunicator_not_applicable(app):
 
         assert result["status"] == "NOT_APPLICABLE"
         assert result["next_certificate"] is None
+
+
+def test_telecommunicator_advancement_uses_verified_education(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_telecommunicator()
+
+        add_certificate(
+            agency,
+            officer,
+            "Intermediate Telecommunicator",
+            date(2024, 1, 1),
+        )
+
+        officer.verified_education_level = "BACHELOR"
+        officer.verified_college_credit_hours = 120
+
+        db.session.commit()
+
+        result = evaluate_telecommunicator_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 14),
+        )
+
+        assert result["education_level"] == "BACHELOR"
+        assert result["college_credit_hours"] == 120
+
+
+def test_telecommunicator_education_does_not_change_eligibility(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_telecommunicator()
+
+        add_certificate(
+            agency,
+            officer,
+            "Intermediate Telecommunicator",
+            date(2024, 1, 1),
+        )
+
+        officer.telecommunicator_service_start_date = (
+            date(2023, 8, 14)
+        )
+
+        officer.verified_education_level = "BACHELOR"
+        officer.verified_college_credit_hours = 120
+
+        db.session.commit()
+
+        result = evaluate_telecommunicator_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 14),
+        )
+
+        assert result["education_level"] == "BACHELOR"
+        assert result["college_credit_hours"] == 120
+
+        # Education is informational for the
+        # Telecommunicator proficiency track and must
+        # not replace published service/training rules.
+        assert result["status"] != "ELIGIBLE"
+        assert result["minimum_service_years"] == 4
+
+
+def test_tcole_education_takes_precedence_over_verified_fallback(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_telecommunicator()
+
+        officer.verified_education_level = "ASSOCIATE"
+        officer.verified_college_credit_hours = 120
+
+        db.session.add(
+            OfficerAward(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                award_type="Certificate",
+                award_name=(
+                    "Academic Recognition Award - "
+                    "Bachelor Degree"
+                ),
+                award_date=date(2025, 1, 1),
+            )
+        )
+
+        db.session.commit()
+
+        result = evaluate_telecommunicator_proficiency(
+            officer,
+            evaluation_date=date(2026, 8, 14),
+        )
+
+        assert result["education_level"] == "BACHELOR"
+        assert result["college_credit_hours"] == 120

@@ -685,13 +685,15 @@ function ProficiencyAdvancementPanel({
         <div className="proficiency-fact">
           <span>Education</span>
           <strong>
-            {advancement.education_level ||
-              (trackLabel === "Peace Officer" &&
-              advancement.college_credit_hours != null
+            {advancement.education_level
+              ? formatEducationLevel(
+                  advancement.education_level
+                )
+              : advancement.college_credit_hours != null
                 ? `${Number(
                     advancement.college_credit_hours
-                  ).toLocaleString()} COLLEGE HOURS`
-                : "Not reported")}
+                  ).toLocaleString()} college hours`
+                : "Not reported"}
           </strong>
         </div>
 
