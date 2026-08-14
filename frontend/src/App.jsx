@@ -1065,17 +1065,26 @@ function QualificationInformationPanel({
             <div>
               <strong>Military</strong>
               <span>
-                PSR military training credit and qualifying
-                military service duration are separate TCOLE
-                qualification facts.
+                Military training credit hours and qualifying
+                military service duration are separate
+                qualification factors.
               </span>
             </div>
           </div>
 
           <label className="qualification-field">
             <span>
-              Military Service Training Credit from PSR
+              Additional Military Training Credit Hours
             </span>
+
+            <small className="qualification-helper-text">
+              Enter military training credit hours only when
+              they are not already included in the employee's
+              TCOLE training history. If TCOLE has already
+              credited these hours, leave this field blank to
+              avoid duplicate credit.
+            </small>
+
             <input
               type="number"
               min="0"
@@ -1097,10 +1106,12 @@ function QualificationInformationPanel({
                 Qualifying Military Service
               </strong>
               <span>
-                Defaults to no qualifying military
-                service. Turn this on only when military
-                service duration applies to an alternate
-                proficiency pathway.
+                Use this setting when the employee has
+                qualifying military service that may reduce
+                the service-time requirement for an alternate
+                proficiency pathway. Enter the employee's
+                qualifying years and additional months of
+                military service.
               </span>
             </div>
 
