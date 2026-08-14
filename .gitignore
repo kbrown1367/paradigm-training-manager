@@ -25,3 +25,5 @@ dist/
 # IDE
 .vscode/
 .idea/
+backups/
+*.before-*

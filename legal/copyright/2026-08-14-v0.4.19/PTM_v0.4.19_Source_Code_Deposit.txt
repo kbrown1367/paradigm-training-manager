@@ -1,0 +1,823 @@
+Paradigm Training Manager™
+Version 0.4.19
+Software ID: PTM-PSP-2026
+Copyright © 2026 Paradigm Strategic Partners, LLC. All Rights Reserved.
+
+U.S. COPYRIGHT OFFICE SOURCE-CODE DEPOSIT
+TRADE SECRET / CONFIDENTIAL MATERIAL
+
+This deposit uses the trade-secret option consisting of the first 10 pages and last 10 pages of source code with no blocked-out portions.
+For equivalent-unit calculation, this package uses 40 lines of code per page, for 400 lines from the beginning and 400 lines from the end of the source-code corpus.
+
+BEGIN FIRST 10 PAGES / 400 LINES
+
+===== FILE: backend/app/__init__.py =====
+# Copyright © 2026 Paradigm Strategic Partners, LLC.
+# All Rights Reserved.
+#
+# Paradigm Training Manager™ is proprietary and confidential software.
+# Unauthorized copying, modification, distribution, or use is prohibited.
+# Software ID: PTM-PSP-2026
+
+from pathlib import Path
+
+from flask import Flask
+
+from .config import Config
+from .extensions import db, migrate
+from .software_identity import get_software_identity
+
+
+def create_app(config=None):
+    app = Flask(__name__)
+    app.config.from_object(Config)
+
+    if config:
+        app.config.update(config)
+
+    db.init_app(app)
+    migrate.init_app(app, db)
+
+    from . import models
+    from .auth_routes import auth_api
+    from .frontend_routes import frontend_web
+    from .platform_routes import platform_api
+    from .routes import api
+
+    app.register_blueprint(
+        auth_api,
+        url_prefix="/api/auth",
+    )
+    app.register_blueprint(
+        platform_api,
+        url_prefix="/api/platform",
+    )
+    app.register_blueprint(
+        api,
+        url_prefix="/api",
+    )
+    app.register_blueprint(
+        frontend_web,
+    )
+
+    @app.get("/api/health")
+    def health():
+        version_path = Path(
+            app.root_path
+        ).parent.parent / "VERSION"
+
+        version = (
+            version_path.read_text().strip()
+            if version_path.exists()
+            else "unknown"
+        )
+
+        identity = get_software_identity(
+            version=version,
+        )
+
+        return {
+            "application": identity["product_name"],
+            "product_name": identity["product_name"],
+            "product_mark": identity["product_mark"],
+            "software_id": identity["software_id"],
+            "owner": identity["owner"],
+            "copyright": identity["copyright"],
+            "status": "ok",
+            "version": identity["version"],
+        }
+
+    return app
+===== END FILE: backend/app/__init__.py =====
+
+===== FILE: backend/app/auth.py =====
+# Copyright © 2026 Paradigm Strategic Partners, LLC.
+# All Rights Reserved.
+#
+# Paradigm Training Manager™ is proprietary and confidential software.
+# Unauthorized copying, modification, distribution, or use is prohibited.
+# Software ID: PTM-PSP-2026
+
+from datetime import datetime, timedelta, timezone
+import hashlib
+import secrets
+from uuid import UUID
+
+from flask import session
+
+from werkzeug.security import (
+    check_password_hash,
+    generate_password_hash,
+)
+
+from app.models import User
+
+
+ROLE_PLATFORM_ADMIN = "PLATFORM_ADMIN"
+ROLE_AGENCY_ADMIN = "AGENCY_ADMIN"
+
+SUPPORTED_USER_ROLES = {
+    ROLE_PLATFORM_ADMIN,
+    ROLE_AGENCY_ADMIN,
+}
+
+INVITATION_EXPIRATION_HOURS = 72
+
+
+def hash_invitation_token(token):
+    if not token:
+        return ""
+
+    return hashlib.sha256(
+        token.encode("utf-8")
+    ).hexdigest()
+
+
+def generate_invitation_token():
+    token = secrets.token_urlsafe(32)
+
+    return (
+        token,
+        hash_invitation_token(token),
+    )
+
+
+def invitation_expiration():
+    return datetime.now(
+        timezone.utc
+    ) + timedelta(
+        hours=INVITATION_EXPIRATION_HOURS
+    )
+
+
+def invitation_is_expired(value):
+    if value is None:
+        return True
+
+    if value.tzinfo is None:
+        now = datetime.now(
+            timezone.utc
+        ).replace(
+            tzinfo=None
+        )
+    else:
+        now = datetime.now(
+            timezone.utc
+        )
+
+    return value <= now
+
+
+def hash_password(password):
+    if not password:
+        raise ValueError("Password is required.")
+
+    return generate_password_hash(password)
+
+
+def verify_password(password_hash, password):
+    if not password_hash or not password:
+        return False
+
+    return check_password_hash(
+        password_hash,
+        password,
+    )
+
+
+def user_has_role(user, role):
+    return (
+        user is not None
+        and user.status == "active"
+        and user.role == role
+    )
+
+
+def user_is_platform_admin(user):
+    return user_has_role(
+        user,
+        ROLE_PLATFORM_ADMIN,
+    )
+
+
+def user_is_agency_admin(user):
+    return user_has_role(
+        user,
+        ROLE_AGENCY_ADMIN,
+    )
+
+
+def normalize_login_email(value):
+    if not value:
+        return ""
+
+    return value.strip().lower()
+
+
+def serialize_user(user):
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "role": user.role,
+        "status": user.status,
+        "onboarding_completed_at": (
+            user.onboarding_completed_at.isoformat()
+            if user.onboarding_completed_at
+            else None
+        ),
+        "agency_id": (
+            str(user.agency_id)
+            if user.agency_id is not None
+            else None
+        ),
+        "agency": (
+            {
+                "id": str(user.agency.id),
+                "name": user.agency.name,
+            }
+            if user.agency is not None
+            else None
+        ),
+    }
+
+
+def get_session_user():
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return None
+
+    try:
+        user_uuid = UUID(user_id)
+    except (TypeError, ValueError):
+        session.clear()
+        return None
+
+    user = User.query.filter_by(
+        id=user_uuid,
+    ).one_or_none()
+
+    if (
+        user is None
+        or user.status != "active"
+    ):
+        session.clear()
+        return None
+
+    return user
+===== END FILE: backend/app/auth.py =====
+
+===== FILE: backend/app/auth_routes.py =====
+# Copyright © 2026 Paradigm Strategic Partners, LLC.
+# All Rights Reserved.
+#
+# Paradigm Training Manager™ is proprietary and confidential software.
+# Unauthorized copying, modification, distribution, or use is prohibited.
+# Software ID: PTM-PSP-2026
+
+from datetime import datetime, timezone
+
+from flask import (
+    Blueprint,
+    jsonify,
+    request,
+    session,
+)
+
+from app.auth import (
+    get_session_user,
+    hash_invitation_token,
+    hash_password,
+    invitation_is_expired,
+    normalize_login_email,
+    serialize_user,
+    verify_password,
+)
+from app.extensions import db
+from app.models import User
+
+
+auth_api = Blueprint(
+    "auth_api",
+    __name__,
+)
+
+
+
+
+@auth_api.post("/login")
+def login():
+    payload = request.get_json(
+        silent=True
+    ) or {}
+
+    email = normalize_login_email(
+        payload.get("email")
+    )
+    password = payload.get("password") or ""
+
+    if not email or not password:
+        return jsonify(
+            {
+                "error":
+                    "Email and password are required."
+            }
+        ), 400
+
+    user = User.query.filter(
+        db.func.lower(User.email) == email
+    ).one_or_none()
+
+    if (
+        user is None
+        or user.status != "active"
+        or not verify_password(
+            user.password_hash,
+            password,
+        )
+    ):
+        return jsonify(
+            {
+                "error":
+                    "Invalid email or password."
+            }
+        ), 401
+
+    session.clear()
+    session["user_id"] = str(user.id)
+    session.permanent = True
+
+    user.last_login_at = datetime.now(
+        timezone.utc
+    )
+
+    db.session.commit()
+
+    return jsonify(
+        {
+            "authenticated": True,
+            "user": serialize_user(user),
+        }
+    ), 200
+
+
+def get_pending_invitation_user(token):
+    token_hash = hash_invitation_token(
+        token
+    )
+
+    if not token_hash:
+        return None
+
+    return User.query.filter_by(
+        invitation_token_hash=token_hash,
+        status="pending_invitation",
+    ).one_or_none()
+
+
+@auth_api.get("/invitation")
+def invitation_details():
+    token = (
+        request.args.get("token")
+        or ""
+    )
+
+    user = get_pending_invitation_user(
+        token
+    )
+
+    if user is None:
+        return jsonify(
+            {
+                "error":
+                    "This invitation link is invalid "
+                    "or has already been used."
+            }
+        ), 404
+
+    if invitation_is_expired(
+        user.invitation_expires_at
+    ):
+        return jsonify(
+            {
+                "error":
+                    "This invitation link has expired."
+            }
+        ), 410
+
+    return jsonify(
+        {
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+
+END FIRST 10 PAGES / 400 LINES
+
+BEGIN LAST 10 PAGES / 400 LINES
+
+        }
+      }
+    }
+
+    loadInvitation();
+
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  async function handleActivation(event) {
+    event.preventDefault();
+
+    setState((current) => ({
+      ...current,
+      error: "",
+    }));
+
+    if (password.length < 12) {
+      setState((current) => ({
+        ...current,
+        error:
+          "Password must be at least 12 characters.",
+      }));
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      setState((current) => ({
+        ...current,
+        error:
+          "Password and confirmation do not match.",
+      }));
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      const response = await fetch(
+        "/api/auth/activate-invitation",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "Unable to activate your account."
+        );
+      }
+
+      setActivated(true);
+      setPassword("");
+      setPasswordConfirm("");
+    } catch (err) {
+      setState((current) => ({
+        ...current,
+        error:
+          err.message ||
+          "Unable to activate your account.",
+      }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (state.loading) {
+    return (
+      <div className="activation-page">
+        <div className="activation-card">
+          <strong>
+            Paradigm Training Manager
+            <sup className="product-mark">™</sup>
+          </strong>
+
+          <p>
+            Validating your invitation...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (activated) {
+    return (
+      <div className="activation-page">
+        <section className="activation-card">
+          <div className="activation-kicker">
+            ACCOUNT ACTIVATED
+          </div>
+
+          <h1>
+            Your PTM account is ready.
+          </h1>
+
+          <p>
+            Your password has been created
+            successfully. You can now sign in.
+          </p>
+
+          <a
+            href="/login"
+            className="activation-primary-link"
+          >
+            Continue to Sign In
+          </a>
+        </section>
+      </div>
+    );
+  }
+
+  if (state.error && !state.invitation) {
+    return (
+      <div className="activation-page">
+        <section className="activation-card">
+          <div className="activation-kicker">
+            INVITATION
+          </div>
+
+          <h1>
+            Unable to activate account
+          </h1>
+
+          <div className="activation-message error">
+            {state.error}
+          </div>
+
+          <p>
+            Ask your PTM administrator to
+            generate a new invitation link.
+          </p>
+
+          <a href="/login">
+            Return to Sign In
+          </a>
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <div className="activation-page">
+      <section className="activation-card">
+        <div className="activation-kicker">
+          PTM ACCOUNT INVITATION
+        </div>
+
+        <h1>
+          Create your password
+        </h1>
+
+        <p>
+          You have been invited to access
+          Paradigm Training Manager for{" "}
+          <strong>
+            {state.invitation?.agency}
+          </strong>.
+        </p>
+
+        <div className="activation-identity">
+          <strong>
+            {state.invitation?.first_name}{" "}
+            {state.invitation?.last_name}
+          </strong>
+
+          <span>
+            {state.invitation?.email}
+          </span>
+        </div>
+
+        {state.error && (
+          <div className="activation-message error">
+            {state.error}
+          </div>
+        )}
+
+        <form
+          onSubmit={handleActivation}
+          className="activation-form"
+        >
+          <label>
+            <span>Password</span>
+
+            <input
+              type="password"
+              required
+              minLength={12}
+              autoComplete="new-password"
+              value={password}
+              disabled={busy}
+              onChange={(event) =>
+                setPassword(
+                  event.target.value
+                )
+              }
+            />
+
+            <small>
+              Minimum 12 characters.
+            </small>
+          </label>
+
+          <label>
+            <span>
+              Confirm Password
+            </span>
+
+            <input
+              type="password"
+              required
+              minLength={12}
+              autoComplete="new-password"
+              value={passwordConfirm}
+              disabled={busy}
+              onChange={(event) =>
+                setPasswordConfirm(
+                  event.target.value
+                )
+              }
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={busy}
+          >
+            {busy
+              ? "Activating..."
+              : "Activate Account"}
+          </button>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+
+function App() {
+  const path = window.location.pathname;
+
+  const loginPath =
+    path === "/login" ||
+    path.startsWith("/login/");
+
+  const activationPath =
+    path === "/activate";
+
+  const platformPath =
+    path === "/platform" ||
+    path.startsWith("/platform/");
+
+  const applicationPath =
+    path === "/app" ||
+    path.startsWith("/app/");
+
+  return (
+    <>
+      {loginPath ? (
+        <LoginPage />
+      ) : activationPath ? (
+        <InvitationActivationPage />
+      ) : platformPath ? (
+        <PlatformAuthenticatedApplication />
+      ) : applicationPath ? (
+        <AuthenticatedApplication />
+      ) : (
+        <PublicLandingPage />
+      )}
+
+      <ProductFooter />
+    </>
+  );
+}
+
+
+export default App;
+===== END FILE: frontend/src/App.jsx =====
+
+===== FILE: frontend/src/index.css =====
+/*
+ * Copyright © 2026 Paradigm Strategic Partners, LLC.
+ * All Rights Reserved.
+ *
+ * Paradigm Training Manager™ is proprietary and confidential software.
+ * Unauthorized copying, modification, distribution, or use is prohibited.
+ * Software ID: PTM-PSP-2026
+ */
+
+:root {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #172033;
+  background: #f4f6f9;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+}
+===== END FILE: frontend/src/index.css =====
+
+===== FILE: frontend/src/main.jsx =====
+/*
+ * Copyright © 2026 Paradigm Strategic Partners, LLC.
+ * All Rights Reserved.
+ *
+ * Paradigm Training Manager™ is proprietary and confidential software.
+ * Unauthorized copying, modification, distribution, or use is prohibited.
+ * Software ID: PTM-PSP-2026
+ */
+
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App.jsx";
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
+===== END FILE: frontend/src/main.jsx =====
+
+===== FILE: frontend/vite.config.js =====
+/*
+ * Copyright © 2026 Paradigm Strategic Partners, LLC.
+ * All Rights Reserved.
+ *
+ * Paradigm Training Manager™ is proprietary and confidential software.
+ * Unauthorized copying, modification, distribution, or use is prohibited.
+ * Software ID: PTM-PSP-2026
+ */
+
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const appVersion = readFileSync(
+  resolve(__dirname, "../VERSION"),
+  "utf8"
+).trim();
+
+export default defineConfig({
+  define: {
+    __PTM_VERSION__: JSON.stringify(appVersion),
+  },
+  plugins: [react()],
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:5050",
+        changeOrigin: true,
+      },
+    },
+  },
+});
+===== END FILE: frontend/vite.config.js =====
+
+
+END LAST 10 PAGES / 400 LINES
+
+Copyright © 2026 Paradigm Strategic Partners, LLC. All Rights Reserved.
+Software ID: PTM-PSP-2026
