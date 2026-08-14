@@ -1,0 +1,33 @@
+PARADIGM TRAINING MANAGER™
+PROPRIETARY SOFTWARE LICENSE NOTICE
+
+Copyright © 2026 Paradigm Strategic Partners, LLC.
+All Rights Reserved.
+
+Paradigm Training Manager™ is proprietary software owned by
+Paradigm Strategic Partners, LLC.
+
+This software is not open-source software.
+
+Possession of, access to, or use of the software or source code does not
+transfer ownership or grant any license except as expressly provided in a
+written agreement authorized by Paradigm Strategic Partners, LLC.
+
+Without prior written authorization, no person or organization may:
+
+1. Copy or reproduce the software or source code.
+2. Modify, adapt, translate, or create derivative software.
+3. Distribute, publish, sublicense, sell, lease, or transfer the software.
+4. Reverse engineer, decompile, or disassemble the software except where
+   such restriction is prohibited by applicable law.
+5. Use the software to create or operate a competing product or service.
+6. Remove or alter copyright, trademark, ownership, or proprietary notices.
+7. Provide unauthorized third-party access to the software or source code.
+
+Authorized customers and users may use Paradigm Training Manager™ only
+within the scope of their applicable subscription, license, services
+agreement, terms of use, or other written authorization.
+
+All rights not expressly granted are reserved by:
+
+Paradigm Strategic Partners, LLC

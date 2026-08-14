@@ -1,9 +1,17 @@
+# Copyright © 2026 Paradigm Strategic Partners, LLC.
+# All Rights Reserved.
+#
+# Paradigm Training Manager™ is proprietary and confidential software.
+# Unauthorized copying, modification, distribution, or use is prohibited.
+# Software ID: PTM-PSP-2026
+
 from pathlib import Path
 
 from flask import Flask
 
 from .config import Config
 from .extensions import db, migrate
+from .software_identity import get_software_identity
 
 
 def create_app(config=None):
@@ -50,10 +58,19 @@ def create_app(config=None):
             else "unknown"
         )
 
+        identity = get_software_identity(
+            version=version,
+        )
+
         return {
-            "application": "Paradigm Training Manager",
+            "application": identity["product_name"],
+            "product_name": identity["product_name"],
+            "product_mark": identity["product_mark"],
+            "software_id": identity["software_id"],
+            "owner": identity["owner"],
+            "copyright": identity["copyright"],
             "status": "ok",
-            "version": version,
+            "version": identity["version"],
         }
 
     return app

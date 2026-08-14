@@ -19,6 +19,14 @@ def test_health():
     data = response.get_json()
 
     assert data["application"] == "Paradigm Training Manager"
+    assert data["product_name"] == "Paradigm Training Manager"
+    assert data["product_mark"] == "Paradigm Training Manager™"
+    assert data["owner"] == "Paradigm Strategic Partners, LLC"
+    assert data["software_id"] == "PTM-PSP-2026"
+    assert (
+        "Paradigm Strategic Partners, LLC"
+        in data["copyright"]
+    )
     assert data["status"] == "ok"
 
     expected_version = (

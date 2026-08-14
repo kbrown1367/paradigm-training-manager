@@ -1,7 +1,17 @@
+# Copyright © 2026 Paradigm Strategic Partners, LLC.
+# All Rights Reserved.
+#
+# Paradigm Training Manager™ is proprietary and confidential software.
+# Unauthorized copying, modification, distribution, or use is prohibited.
+# Software ID: PTM-PSP-2026
+
 from datetime import date
 
 from app.services.employee_workspace import (
     build_employee_workspace,
+)
+from app.software_identity import (
+    get_software_identity,
 )
 from app.models import Officer
 
@@ -788,6 +798,8 @@ def build_compliance_email(
             )
         )
 
+    identity = get_software_identity()
+
     lines.extend(
         [
             "",
@@ -805,8 +817,15 @@ def build_compliance_email(
             "",
             (
                 "This notice was prepared from records "
-                "currently available in Paradigm Training "
-                "Manager."
+                "currently available in "
+                f"{identity['product_mark']}."
+            ),
+            "",
+            identity["product_mark"],
+            identity["copyright"],
+            (
+                "Software ID: "
+                f"{identity['software_id']}"
             ),
         ]
     )

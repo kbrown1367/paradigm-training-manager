@@ -561,3 +561,27 @@ def test_telecommunicator_email_includes_proficiency(
             "Next Certificate: Basic Telecommunicator"
             in body
         )
+
+
+def test_compliance_email_includes_ptm_identity_footer(app):
+    with app.app_context():
+        officer = make_officer()
+
+        result = build_compliance_email(
+            officer,
+            evaluation_date=date(2026, 8, 11),
+        )
+
+        body = result["body"]
+
+        assert "Paradigm Training Manager™" in body
+        assert (
+            "© 2026 Paradigm Strategic Partners, LLC. "
+            "All Rights Reserved."
+            in body
+        )
+        assert "Software ID: PTM-PSP-2026" in body
+
+        assert body.rstrip().endswith(
+            "Software ID: PTM-PSP-2026"
+        )
