@@ -31,6 +31,174 @@ def has_peace_officer_license(officer):
     )
 
 
+CERTIFICATE_LEVEL_RANK = {
+    None: 0,
+    "NONE": 0,
+    "BASIC": 1,
+    "INTERMEDIATE": 2,
+    "ADVANCED": 3,
+    "MASTER": 4,
+}
+
+
+def _evaluate_below_intermediate_cycle(
+    officer,
+    rule,
+    unit,
+    credential,
+    evaluation_date,
+):
+    cycle_rule = rule.get(
+        "below_intermediate_cycle"
+    )
+
+    if not cycle_rule:
+        return {
+            "applicable": False,
+            "status": "NOT_APPLICABLE",
+            "required_courses": [],
+            "requirements": [],
+        }
+
+    certificate_level = credential.get(
+        "certificate_level"
+    )
+
+    intermediate_rank = CERTIFICATE_LEVEL_RANK[
+        "INTERMEDIATE"
+    ]
+
+    certificate_rank = CERTIFICATE_LEVEL_RANK.get(
+        certificate_level,
+        0,
+    )
+
+    applicable = (
+        certificate_rank < intermediate_rank
+    )
+
+    cycle_start = unit["cycle_start"]
+    cycle_end = unit["cycle_end"]
+
+    if not applicable:
+        return {
+            "applicable": False,
+            "status": "NOT_APPLICABLE",
+            "cycle_start": cycle_start.isoformat(),
+            "cycle_end": cycle_end.isoformat(),
+            "required_courses": [],
+            "requirements": [],
+        }
+
+    cycle_training = [
+        record
+        for record in officer.training_records
+        if (
+            record.course_date is not None
+            and cycle_start
+            <= record.course_date
+            <= cycle_end
+        )
+    ]
+
+    completed_course_numbers = {
+        record.course_number
+        for record in cycle_training
+    }
+
+    required_course_results = []
+    requirements = []
+
+    for required in cycle_rule[
+        "required_courses"
+    ]:
+        accepted_courses = [
+            str(course_number)
+            for course_number in required[
+                "accepted_courses"
+            ]
+        ]
+
+        completed_courses = sorted(
+            set(accepted_courses)
+            & completed_course_numbers
+        )
+
+        completed = bool(completed_courses)
+
+        required_course_results.append(
+            {
+                "id": required["id"],
+                "name": required["name"],
+                "accepted_courses": accepted_courses,
+                "completed": completed,
+                "completed_courses": completed_courses,
+                "status": (
+                    "COMPLETE"
+                    if completed
+                    else "OUTSTANDING"
+                ),
+            }
+        )
+
+        if completed:
+            continue
+
+        accepted_display = " or ".join(
+            f"#{course_number}"
+            for course_number in accepted_courses
+        )
+
+        requirements.append(
+            {
+                "type":
+                    "PEACE_OFFICER_CYCLE_COURSE",
+                "status": "OUTSTANDING",
+                "course_number": (
+                    accepted_courses[0]
+                    if len(accepted_courses) == 1
+                    else None
+                ),
+                "accepted_courses":
+                    accepted_courses,
+                "due_date":
+                    cycle_end.isoformat(),
+                "message": (
+                    f"{required['name']} "
+                    f"({accepted_display}) remains "
+                    "outstanding for the current "
+                    "four-year training cycle. "
+                    "This requirement applies because "
+                    "the officer does not currently hold "
+                    "an Intermediate Peace Officer "
+                    "Certificate or higher."
+                ),
+            }
+        )
+
+    if not requirements:
+        cycle_status = "COMPLETE"
+    elif evaluation_date <= cycle_end:
+        cycle_status = "OUTSTANDING"
+    else:
+        cycle_status = "OVERDUE"
+
+    if cycle_status == "OVERDUE":
+        for requirement in requirements:
+            requirement["status"] = "FAILED"
+
+    return {
+        "applicable": True,
+        "status": cycle_status,
+        "cycle_start": cycle_start.isoformat(),
+        "cycle_end": cycle_end.isoformat(),
+        "required_courses":
+            required_course_results,
+        "requirements": requirements,
+    }
+
+
+
 def evaluate_peace_officer_unit(
     officer,
     evaluation_date=None,
@@ -325,6 +493,48 @@ def evaluate_peace_officer_unit(
         for requirement in requirements:
             requirement["status"] = "FAILED"
 
+    unit_requirements = list(requirements)
+
+    cycle_result = (
+        _evaluate_below_intermediate_cycle(
+            officer,
+            rule,
+            unit,
+            credential,
+            evaluation_date,
+        )
+    )
+
+    cycle_status = cycle_result["status"]
+
+    requirements = [
+        *unit_requirements,
+        *cycle_result["requirements"],
+    ]
+
+    if (
+        unit_status == "OVERDUE"
+        or cycle_status == "OVERDUE"
+    ):
+        compliance_status = "OVERDUE"
+    elif (
+        unit_status == "OUTSTANDING"
+        or cycle_status == "OUTSTANDING"
+    ):
+        compliance_status = "OUTSTANDING"
+    else:
+        compliance_status = "COMPLETE"
+
+    requirement_status = (
+        "SATISFIED"
+        if compliance_status == "COMPLETE"
+        else (
+            "OUTSTANDING"
+            if compliance_status == "OUTSTANDING"
+            else "FAILED"
+        )
+    )
+
     return {
         "officer_id": str(officer.id),
         "tcole_pid": officer.tcole_pid,
@@ -365,7 +575,16 @@ def evaluate_peace_officer_unit(
         "unit_end": unit_end.isoformat(),
         "due_date": unit_end.isoformat(),
         "unit_status": unit_status,
+        "cycle_status": cycle_status,
+        "compliance_status": compliance_status,
         "requirement_status": requirement_status,
+        "cycle_requirements_applicable":
+            cycle_result["applicable"],
+        "cycle_required_courses":
+            cycle_result["required_courses"],
+        "unit_requirements": unit_requirements,
+        "cycle_requirements":
+            cycle_result["requirements"],
         "total_hours": float(total_hours),
         "minimum_total_hours": float(minimum_hours),
         "remaining_total_hours": float(

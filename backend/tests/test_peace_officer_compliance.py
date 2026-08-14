@@ -719,3 +719,267 @@ def test_direct_3189_still_reports_direct_satisfaction(app):
             legislative_update["satisfaction_basis"]
             == "DIRECT"
         )
+
+
+def test_below_intermediate_requires_four_cycle_courses(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_award(
+            agency,
+            officer,
+            "Basic Peace Officer",
+            date(2025, 1, 1),
+        )
+
+        add_complete_unit_training(
+            agency,
+            officer,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 14),
+        )
+
+        assert (
+            result["cycle_requirements_applicable"]
+            is True
+        )
+        assert result["unit_status"] == "COMPLETE"
+        assert result["cycle_status"] == "OUTSTANDING"
+        assert (
+            result["compliance_status"]
+            == "OUTSTANDING"
+        )
+
+        required = {
+            item["id"]
+            for item in result[
+                "cycle_required_courses"
+            ]
+        }
+
+        assert required == {
+            "CRISIS_INTERVENTION",
+            "CULTURAL_DIVERSITY",
+            "SPECIAL_INVESTIGATIVE_TOPICS",
+            "DE_ESCALATION",
+        }
+
+        assert len(
+            result["cycle_requirements"]
+        ) == 4
+
+        assert all(
+            item["due_date"] == "2029-08-31"
+            for item in result[
+                "cycle_requirements"
+            ]
+        )
+
+
+def test_prior_cycle_cit_does_not_satisfy_current_cycle(app):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_award(
+            agency,
+            officer,
+            "Basic Peace Officer",
+            date(2025, 1, 1),
+        )
+
+        add_training(
+            agency,
+            officer,
+            "1850",
+            date(2024, 12, 3),
+            40,
+        )
+
+        add_complete_unit_training(
+            agency,
+            officer,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 14),
+        )
+
+        cit = next(
+            item
+            for item in result[
+                "cycle_required_courses"
+            ]
+            if item["id"] == "CRISIS_INTERVENTION"
+        )
+
+        assert cit["completed"] is False
+
+        assert any(
+            item["type"]
+            == "PEACE_OFFICER_CYCLE_COURSE"
+            and item["accepted_courses"]
+            == ["3843", "1850"]
+            for item in result[
+                "cycle_requirements"
+            ]
+        )
+
+
+@pytest.mark.parametrize(
+    "cit_course",
+    [
+        "3843",
+        "1850",
+    ],
+)
+def test_current_cycle_cit_options_satisfy_cycle_requirement(
+    app,
+    cit_course,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_award(
+            agency,
+            officer,
+            "Basic Peace Officer",
+            date(2025, 1, 1),
+        )
+
+        add_complete_unit_training(
+            agency,
+            officer,
+        )
+
+        add_training(
+            agency,
+            officer,
+            cit_course,
+            date(2026, 5, 1),
+            8,
+        )
+        add_training(
+            agency,
+            officer,
+            "3939",
+            date(2026, 5, 2),
+            8,
+        )
+        add_training(
+            agency,
+            officer,
+            "3232",
+            date(2026, 5, 3),
+            8,
+        )
+        add_training(
+            agency,
+            officer,
+            "1849",
+            date(2026, 5, 4),
+            8,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 14),
+        )
+
+        assert result["cycle_status"] == "COMPLETE"
+        assert result["cycle_requirements"] == []
+        assert (
+            result["compliance_status"]
+            == "COMPLETE"
+        )
+
+
+def test_cycle_course_completed_in_unit_one_counts_in_unit_two(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_award(
+            agency,
+            officer,
+            "Basic Peace Officer",
+            date(2025, 1, 1),
+        )
+
+        add_training(
+            agency,
+            officer,
+            "1850",
+            date(2026, 5, 1),
+            40,
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2028, 1, 1),
+        )
+
+        assert result["unit_number"] == 2
+
+        cit = next(
+            item
+            for item in result[
+                "cycle_required_courses"
+            ]
+            if item["id"] == "CRISIS_INTERVENTION"
+        )
+
+        assert cit["completed"] is True
+
+
+@pytest.mark.parametrize(
+    "certificate_name",
+    [
+        "Intermediate Peace Officer",
+        "Advanced Peace Officer",
+        "Master Peace Officer",
+    ],
+)
+def test_intermediate_or_higher_suppresses_cycle_courses(
+    app,
+    certificate_name,
+):
+    with app.app_context():
+        agency, officer = make_officer()
+
+        add_award(
+            agency,
+            officer,
+            certificate_name,
+            date(2025, 1, 1),
+        )
+
+        db.session.commit()
+
+        result = evaluate_peace_officer_unit(
+            officer,
+            evaluation_date=date(2026, 8, 14),
+        )
+
+        assert (
+            result["cycle_requirements_applicable"]
+            is False
+        )
+        assert (
+            result["cycle_status"]
+            == "NOT_APPLICABLE"
+        )
+        assert result["cycle_requirements"] == []
+        assert result["cycle_required_courses"] == []

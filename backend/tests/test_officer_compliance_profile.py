@@ -610,3 +610,100 @@ def test_jailer_deficiencies_roll_into_unified_requirements(
 
         assert course_numbers == {"4902", "3939"}
         assert result["overall_status"] == "DUE"
+
+
+def test_peace_officer_cycle_requirement_drives_profile_due(app):
+    with app.app_context():
+        agency = Agency(
+            name="Cycle Requirement Test"
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        officer = Officer(
+            agency_id=agency.id,
+            tcole_pid="765432",
+            first_name="CYCLE",
+            last_name="OFFICER",
+        )
+        db.session.add(officer)
+        db.session.flush()
+
+        db.session.add(
+            OfficerAward(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                award_type="License",
+                award_name="Peace Officer License",
+                award_date=date(2025, 1, 1),
+            )
+        )
+
+        db.session.add(
+            OfficerAward(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                award_type="Certificate",
+                award_name="Basic Peace Officer",
+                award_date=date(2025, 1, 1),
+            )
+        )
+
+        add_course(
+            agency,
+            officer,
+            "3189",
+            date(2026, 1, 1),
+            8,
+        )
+        add_course(
+            agency,
+            officer,
+            "7006",
+            date(2026, 1, 2),
+            8,
+        )
+        add_course(
+            agency,
+            officer,
+            "3369",
+            date(2026, 1, 3),
+            16,
+        )
+        add_course(
+            agency,
+            officer,
+            "3311",
+            date(2026, 1, 4),
+            16,
+        )
+
+        db.session.commit()
+
+        result = evaluate_officer_compliance_profile(
+            officer,
+            evaluation_date=date(2026, 8, 14),
+        )
+
+        peace = result["components"][
+            "PEACE_OFFICER"
+        ]
+
+        assert peace["result"]["unit_status"] == "COMPLETE"
+        assert (
+            peace["result"]["cycle_status"]
+            == "OUTSTANDING"
+        )
+        assert peace["status"] == "DUE"
+        assert result["overall_status"] == "DUE"
+
+        cycle_requirements = [
+            item
+            for item in result[
+                "outstanding_requirements"
+            ]
+            if item.get("type")
+            == "PEACE_OFFICER_CYCLE_COURSE"
+        ]
+
+        assert len(cycle_requirements) == 4

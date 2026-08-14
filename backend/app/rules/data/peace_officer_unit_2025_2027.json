@@ -61,5 +61,39 @@
     "embedded_alerrt_hours": {
       "1000736": 16
     }
+  },
+  "below_intermediate_cycle": {
+    "applicable_below_certificate_level": "INTERMEDIATE",
+    "required_courses": [
+      {
+        "id": "CRISIS_INTERVENTION",
+        "name": "Crisis Intervention Training",
+        "accepted_courses": [
+          "3843",
+          "1850"
+        ]
+      },
+      {
+        "id": "CULTURAL_DIVERSITY",
+        "name": "Cultural Diversity",
+        "accepted_courses": [
+          "3939"
+        ]
+      },
+      {
+        "id": "SPECIAL_INVESTIGATIVE_TOPICS",
+        "name": "Special Investigative Topics",
+        "accepted_courses": [
+          "3232"
+        ]
+      },
+      {
+        "id": "DE_ESCALATION",
+        "name": "De-escalation Techniques",
+        "accepted_courses": [
+          "1849"
+        ]
+      }
+    ]
   }
 }

@@ -33,7 +33,7 @@ from app.services.license_tracking import (
 
 def _raw_component_status(component_name, result):
     status_fields = {
-        "PEACE_OFFICER": "unit_status",
+        "PEACE_OFFICER": "compliance_status",
         "COUNTY_JAILER": "status",
         "TELECOMMUNICATOR": "unit_status",
         "POLICE_CHIEF": "chief_status",
