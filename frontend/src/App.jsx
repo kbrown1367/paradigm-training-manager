@@ -5197,8 +5197,8 @@ function OperationalApp({
         ) : (
           <>
         <section className="dashboard-section">
-          <div className="dashboard-heading">
-            <div>
+          <div className="dashboard-heading dashboard-heading-redesign">
+            <div className="dashboard-heading-copy">
               <div className="dashboard-kicker">
                 Executive Compliance Dashboard
               </div>
@@ -5214,56 +5214,58 @@ function OperationalApp({
               </p>
             </div>
 
-            <div className="dashboard-header-actions">
-              <button
-                type="button"
-                className="archived-employees-button"
-                onClick={openArchivedEmployees}
-              >
-                Archived Employees
-              </button>
+            <div className="dashboard-heading-footer">
+              <div className="dashboard-header-actions">
+                <button
+                  type="button"
+                  className="archived-employees-button"
+                  onClick={openArchivedEmployees}
+                >
+                  Archived Employees
+                </button>
 
-              <button
-                type="button"
-                className="communications-launch-button"
-                onClick={openComplianceCommunications}
-              >
-                Email Compliance Updates
-              </button>
+                <button
+                  type="button"
+                  className="communications-launch-button"
+                  onClick={openComplianceCommunications}
+                >
+                  Email Compliance Updates
+                </button>
 
-              <button
-                type="button"
-                className="agency-email-settings-button"
-                onClick={() => {
-                  setEmailSettingsError("");
-                  setEmailDomain(
-                    agency?.email_domain || ""
-                  );
-                  setEmailPattern(
-                    agency?.email_pattern || ""
-                  );
-                  setEmailSettingsOpen(true);
-                }}
-              >
-                Email Settings
-              </button>
+                <button
+                  type="button"
+                  className="agency-email-settings-button"
+                  onClick={() => {
+                    setEmailSettingsError("");
+                    setEmailDomain(
+                      agency?.email_domain || ""
+                    );
+                    setEmailPattern(
+                      agency?.email_pattern || ""
+                    );
+                    setEmailSettingsOpen(true);
+                  }}
+                >
+                  Email Settings
+                </button>
+              </div>
 
               {dashboard && (
-              <div className="dashboard-period">
-                <span>
-                  Training Unit{" "}
-                  {dashboard.training_unit.number}
-                </span>
-                <strong>
-                  {formatDashboardDate(
-                    dashboard.training_unit.start
-                  )}{" "}
-                  through{" "}
-                  {formatDashboardDate(
-                    dashboard.training_unit.end
-                  )}
-                </strong>
-              </div>
+                <div className="dashboard-period">
+                  <span>
+                    Training Unit{" "}
+                    {dashboard.training_unit.number}
+                  </span>
+                  <strong>
+                    {formatDashboardDate(
+                      dashboard.training_unit.start
+                    )}{" "}
+                    through{" "}
+                    {formatDashboardDate(
+                      dashboard.training_unit.end
+                    )}
+                  </strong>
+                </div>
               )}
             </div>
           </div>

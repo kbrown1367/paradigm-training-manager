@@ -7239,3 +7239,84 @@ body:has(.login-page) .product-footer strong {
 }
 
 /* ===== END PTM AUTHENTICATED HEADER BRAND LOCKUP ===== */
+
+
+/* v0.4.14 executive dashboard header layout */
+
+.dashboard-heading.dashboard-heading-redesign {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.dashboard-heading-copy {
+  width: 100%;
+}
+
+.dashboard-heading-copy h2 {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.dashboard-heading-copy p {
+  max-width: 520px;
+}
+
+.dashboard-heading-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  width: 100%;
+  margin-top: 34px;
+}
+
+.dashboard-heading-footer .dashboard-header-actions {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 14px;
+  min-width: 0;
+}
+
+.dashboard-heading-footer .dashboard-period {
+  flex: 0 0 auto;
+  margin-left: auto;
+  text-align: right;
+}
+
+.dashboard-heading-footer .dashboard-period span,
+.dashboard-heading-footer .dashboard-period strong {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .dashboard-heading-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .dashboard-heading-footer .dashboard-header-actions {
+    width: 100%;
+  }
+
+  .dashboard-heading-footer .dashboard-period {
+    margin-left: 0;
+    text-align: left;
+  }
+}
+
+@media (max-width: 620px) {
+  .dashboard-heading-footer .dashboard-header-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-heading-footer .dashboard-header-actions button {
+    width: 100%;
+  }
+}
