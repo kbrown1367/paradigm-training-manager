@@ -4589,6 +4589,17 @@ function OperationalApp({
             </a>
           )}
 
+          {currentUser?.role === "AGENCY_ADMIN" && (
+            <a
+              href="https://paradigm-strategic-partners-llc.odoo.com/report-ptm-bug"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="authenticated-report-bug"
+            >
+              Report a Bug
+            </a>
+          )}
+
           <button
             type="button"
             onClick={() => {

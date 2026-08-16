@@ -7693,3 +7693,28 @@ body:has(.login-page) .product-footer strong {
     grid-template-columns: 1fr;
   }
 }
+
+/* v0.5.3 agency administrator bug reporting */
+
+.authenticated-user .authenticated-report-bug {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 7px;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.authenticated-user .authenticated-report-bug:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.42);
+}
