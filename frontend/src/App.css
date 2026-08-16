@@ -7448,3 +7448,175 @@ body:has(.login-page) .product-footer strong {
     width: 100%;
   }
 }
+
+/* v0.5.1 TCLEDDS report selection guide */
+
+.tcole-reports-guide-button {
+  width: fit-content;
+  margin: 4px 0 18px;
+  padding: 10px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f1c38;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.tcole-reports-guide-button:hover {
+  border-color: #0bb3ad;
+  background: #f7fdfd;
+}
+
+.tcole-reports-guide-button:active {
+  transform: translateY(1px);
+}
+
+.tcole-reports-guide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(7, 18, 38, 0.72);
+}
+
+.tcole-reports-guide-modal {
+  width: min(920px, 96vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.3);
+}
+
+.tcole-reports-guide-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tcole-reports-guide-heading span {
+  display: block;
+  margin-bottom: 5px;
+  color: #0aa9a5;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.tcole-reports-guide-heading h2 {
+  margin: 0;
+  color: #0f1c38;
+}
+
+.tcole-reports-guide-heading p {
+  max-width: 650px;
+  margin: 8px 0 0;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.tcole-reports-guide-close {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tcole-reports-guide-close:hover {
+  background: #f1f5f9;
+}
+
+.tcole-reports-guide-image-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 24px;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.tcole-reports-guide-image-wrap img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 68vh;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+.tcole-reports-guide-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.tcole-reports-guide-actions button {
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 8px;
+  background: #0f1c38;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tcole-reports-guide-actions button:hover {
+  background: #18294d;
+}
+
+@media (max-width: 620px) {
+  .tcole-reports-guide-button {
+    width: 100%;
+  }
+
+  .tcole-reports-guide-backdrop {
+    padding: 12px;
+  }
+
+  .tcole-reports-guide-modal {
+    width: 100%;
+    max-height: 94vh;
+  }
+
+  .tcole-reports-guide-heading {
+    padding: 18px;
+  }
+
+  .tcole-reports-guide-image-wrap {
+    padding: 14px;
+  }
+
+  .tcole-reports-guide-actions {
+    padding: 14px 18px;
+  }
+
+  .tcole-reports-guide-actions button {
+    width: 100%;
+  }
+}

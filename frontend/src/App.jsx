@@ -3147,6 +3147,34 @@ function OperationalApp({
   const [agency, setAgency] = useState(null);
   const [selectedOfficerId, setSelectedOfficerId] = useState("");
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
+  const [
+    tcoleReportsGuideOpen,
+    setTcoleReportsGuideOpen,
+  ] = useState(false);
+
+  useEffect(() => {
+    if (!tcoleReportsGuideOpen) {
+      return undefined;
+    }
+
+    function handleTcoleGuideKeyDown(event) {
+      if (event.key === "Escape") {
+        setTcoleReportsGuideOpen(false);
+      }
+    }
+
+    document.addEventListener(
+      "keydown",
+      handleTcoleGuideKeyDown
+    );
+
+    return () => {
+      document.removeEventListener(
+        "keydown",
+        handleTcoleGuideKeyDown
+      );
+    };
+  }, [tcoleReportsGuideOpen]);
   const [emailDomain, setEmailDomain] = useState("");
   const [emailPattern, setEmailPattern] = useState("");
   const [emailSettingsBusy, setEmailSettingsBusy] = useState(false);
@@ -4681,7 +4709,7 @@ function OperationalApp({
 
                   <div className="getting-started-image-wrap">
                     <img
-                      src="/tcledds-department-reports.png"
+                      src="/tcledds-department-reports-2.png"
                       alt="TCLEDDS Department Reports showing the four reports required for Paradigm Training Manager"
                     />
                   </div>
@@ -5628,6 +5656,16 @@ function OperationalApp({
             history, and actual credited training hours.
           </p>
 
+          <button
+            type="button"
+            className="tcole-reports-guide-button"
+            onClick={() =>
+              setTcoleReportsGuideOpen(true)
+            }
+          >
+            Which TCOLE Reports Do I Need?
+          </button>
+
           <div className="agency-panel">
             <span>Agency</span>
             <strong>
@@ -5637,6 +5675,70 @@ function OperationalApp({
             </strong>
           </div>
         </section>
+
+        {tcoleReportsGuideOpen && (
+          <div
+            className="tcole-reports-guide-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setTcoleReportsGuideOpen(false);
+              }
+            }}
+          >
+            <section
+              className="tcole-reports-guide-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="tcole-reports-guide-title"
+            >
+              <div className="tcole-reports-guide-heading">
+                <div>
+                  <span>TCLEDDS REPORT GUIDE</span>
+
+                  <h2 id="tcole-reports-guide-title">
+                    Which TCOLE Reports Do I Need?
+                  </h2>
+
+                  <p>
+                    Download these four Department Reports
+                    from TCLEDDS and save each one as a CSV
+                    file before importing them into PTM.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="tcole-reports-guide-close"
+                  aria-label="Close TCOLE reports guide"
+                  onClick={() =>
+                    setTcoleReportsGuideOpen(false)
+                  }
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="tcole-reports-guide-image-wrap">
+                <img
+                  src="/tcledds-department-reports-2.png"
+                  alt="TCLEDDS Department Reports showing the four reports required for Paradigm Training Manager"
+                />
+              </div>
+
+              <div className="tcole-reports-guide-actions">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setTcoleReportsGuideOpen(false)
+                  }
+                >
+                  Close
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
 
         <form className="import-panel" onSubmit={handleImport}>
           <FileField
