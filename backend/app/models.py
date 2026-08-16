@@ -171,6 +171,61 @@ class User(db.Model):
     )
 
 
+class AuditEvent(db.Model):
+    __tablename__ = "audit_events"
+
+    id = db.Column(
+        db.Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    agency_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("agencies.id"),
+        nullable=True,
+        index=True,
+    )
+
+    user_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+
+    event_type = db.Column(
+        db.String(100),
+        nullable=False,
+        index=True,
+    )
+
+    ip_address = db.Column(
+        db.String(64),
+        nullable=True,
+    )
+
+    user_agent = db.Column(
+        db.String(500),
+        nullable=True,
+    )
+
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=utcnow,
+        index=True,
+    )
+
+    agency = db.relationship(
+        "Agency",
+    )
+
+    user = db.relationship(
+        "User",
+    )
+
+
 class Officer(db.Model):
     __tablename__ = "officers"
 

@@ -5,6 +5,7 @@
 # Unauthorized copying, modification, distribution, or use is prohibited.
 # Software ID: PTM-PSP-2026
 
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from flask import (
@@ -25,6 +26,7 @@ from app.auth import (
 from app.extensions import db
 from app.models import (
     Agency,
+    AuditEvent,
     Officer,
     User,
 )
@@ -700,5 +702,170 @@ def platform_reset_agency_administrator_password(
                 serialize_platform_user(
                     user
                 ),
+        }
+    ), 200
+
+def serialize_login_event(event):
+    user = event.user
+
+    return {
+        "id": str(event.id),
+        "agency_id": (
+            str(event.agency_id)
+            if event.agency_id is not None
+            else None
+        ),
+        "user_id": (
+            str(event.user_id)
+            if event.user_id is not None
+            else None
+        ),
+        "user": (
+            {
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+            }
+            if user is not None
+            else None
+        ),
+        "created_at": (
+            event.created_at.isoformat()
+            if event.created_at
+            else None
+        ),
+    }
+
+
+def login_activity_for_agency(
+    agency_id,
+    now=None,
+):
+    if now is None:
+        now = datetime.now(timezone.utc)
+
+    seven_days_ago = now - timedelta(days=7)
+    thirty_days_ago = now - timedelta(days=30)
+
+    login_query = AuditEvent.query.filter_by(
+        agency_id=agency_id,
+        event_type="AUTH_LOGIN_SUCCESS",
+    )
+
+    last_event = (
+        login_query
+        .order_by(AuditEvent.created_at.desc())
+        .first()
+    )
+
+    logins_7_days = login_query.filter(
+        AuditEvent.created_at >= seven_days_ago
+    ).count()
+
+    logins_30_days = login_query.filter(
+        AuditEvent.created_at >= thirty_days_ago
+    ).count()
+
+    active_admin_rows = (
+        db.session.query(AuditEvent.user_id)
+        .join(
+            User,
+            User.id == AuditEvent.user_id,
+        )
+        .filter(
+            AuditEvent.agency_id == agency_id,
+            AuditEvent.event_type
+            == "AUTH_LOGIN_SUCCESS",
+            AuditEvent.created_at
+            >= thirty_days_ago,
+            User.role == ROLE_AGENCY_ADMIN,
+        )
+        .distinct()
+        .all()
+    )
+
+    return {
+        "last_login_at": (
+            last_event.created_at.isoformat()
+            if last_event is not None
+            and last_event.created_at
+            else None
+        ),
+        "logins_7_days": logins_7_days,
+        "logins_30_days": logins_30_days,
+        "active_admins_30_days":
+            len(active_admin_rows),
+    }
+
+
+@platform_api.get("/activity/agencies")
+def platform_agency_activity():
+    agencies = (
+        Agency.query
+        .order_by(Agency.name)
+        .all()
+    )
+
+    result = []
+
+    for agency in agencies:
+        activity = login_activity_for_agency(
+            agency.id
+        )
+
+        result.append(
+            {
+                "agency_id": str(agency.id),
+                "agency_name": agency.name,
+                "agency_status": agency.status,
+                **activity,
+            }
+        )
+
+    return jsonify(result), 200
+
+
+@platform_api.get(
+    "/agencies/<uuid:agency_id>/activity"
+)
+def platform_agency_login_activity(
+    agency_id,
+):
+    agency = get_agency_or_none(
+        agency_id
+    )
+
+    if agency is None:
+        return platform_error(
+            "Resource not found.",
+            404,
+        )
+
+    activity = login_activity_for_agency(
+        agency.id
+    )
+
+    recent_events = (
+        AuditEvent.query
+        .filter_by(
+            agency_id=agency.id,
+            event_type="AUTH_LOGIN_SUCCESS",
+        )
+        .order_by(
+            AuditEvent.created_at.desc()
+        )
+        .limit(50)
+        .all()
+    )
+
+    return jsonify(
+        {
+            "agency_id": str(agency.id),
+            "agency_name": agency.name,
+            **activity,
+            "recent_logins": [
+                serialize_login_event(event)
+                for event in recent_events
+            ],
         }
     ), 200

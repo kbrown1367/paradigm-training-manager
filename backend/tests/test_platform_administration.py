@@ -514,3 +514,180 @@ def test_admin_creation_no_longer_accepts_password(
     )
 
     assert "invitation_path" in result
+
+
+def test_platform_admin_can_view_agency_login_activity(
+    app,
+    data,
+):
+    from datetime import datetime, timedelta, timezone
+
+    from app.auth import hash_password
+    from app.extensions import db
+    from app.models import Agency, AuditEvent, User
+
+    with app.app_context():
+        agency = Agency(
+            name="Activity Test Police Department",
+            status="active",
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        agency_admin = User(
+            agency_id=agency.id,
+            email="activity-admin@example.gov",
+            password_hash=hash_password(
+                "ActivityPassword123!"
+            ),
+            first_name="Activity",
+            last_name="Administrator",
+            role="AGENCY_ADMIN",
+            status="active",
+        )
+        db.session.add(agency_admin)
+        db.session.flush()
+
+        now = datetime.now(timezone.utc)
+
+        db.session.add_all(
+            [
+                AuditEvent(
+                    agency_id=agency.id,
+                    user_id=agency_admin.id,
+                    event_type="AUTH_LOGIN_SUCCESS",
+                    created_at=now - timedelta(days=1),
+                ),
+                AuditEvent(
+                    agency_id=agency.id,
+                    user_id=agency_admin.id,
+                    event_type="AUTH_LOGIN_SUCCESS",
+                    created_at=now - timedelta(days=5),
+                ),
+                AuditEvent(
+                    agency_id=agency.id,
+                    user_id=agency_admin.id,
+                    event_type="AUTH_LOGIN_SUCCESS",
+                    created_at=now - timedelta(days=20),
+                ),
+                AuditEvent(
+                    agency_id=agency.id,
+                    user_id=agency_admin.id,
+                    event_type="AUTH_LOGIN_SUCCESS",
+                    created_at=now - timedelta(days=40),
+                ),
+            ]
+        )
+
+        db.session.commit()
+
+        agency_id = agency.id
+
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.get(
+        f"/api/platform/agencies/{agency_id}/activity"
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["agency_name"] == (
+        "Activity Test Police Department"
+    )
+    assert data["logins_7_days"] == 2
+    assert data["logins_30_days"] == 3
+    assert data["active_admins_30_days"] == 1
+    assert len(data["recent_logins"]) == 4
+
+    first_login = data["recent_logins"][0]
+
+    assert first_login["user"]["email"] == (
+        "activity-admin@example.gov"
+    )
+
+
+def test_platform_activity_summary_lists_agencies(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.get(
+        "/api/platform/activity/agencies"
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert isinstance(data, list)
+
+    assert all(
+        "agency_id" in item
+        and "agency_name" in item
+        and "last_login_at" in item
+        and "logins_7_days" in item
+        and "logins_30_days" in item
+        and "active_admins_30_days" in item
+        for item in data
+    )
+
+
+def test_non_platform_admin_cannot_view_activity(app):
+    from app.auth import hash_password
+    from app.extensions import db
+    from app.models import Agency, User
+
+    with app.app_context():
+        agency = Agency(
+            name="Activity Security Police Department",
+            status="active",
+        )
+        db.session.add(agency)
+        db.session.flush()
+
+        user = User(
+            agency_id=agency.id,
+            email="activity-security@example.gov",
+            password_hash=hash_password(
+                "ActivitySecurity123!"
+            ),
+            first_name="Agency",
+            last_name="Administrator",
+            role="AGENCY_ADMIN",
+            status="active",
+        )
+        db.session.add(user)
+        db.session.commit()
+
+    client = app.test_client()
+
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": "activity-security@example.gov",
+            "password": "ActivitySecurity123!",
+        },
+    )
+
+    assert login.status_code == 200
+
+    response = client.get(
+        "/api/platform/activity/agencies"
+    )
+
+    assert response.status_code == 404

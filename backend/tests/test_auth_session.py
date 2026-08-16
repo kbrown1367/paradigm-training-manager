@@ -59,6 +59,8 @@ def test_login_creates_authenticated_session(app):
 
     client = app.test_client()
 
+    client = app.test_client()
+
     response = client.post(
         "/api/auth/login",
         json={
@@ -506,3 +508,143 @@ def test_complete_onboarding_is_idempotent(app):
         ]
         == first_value
     )
+
+
+def test_successful_login_creates_audit_event(
+    app,
+):
+    from app.auth import hash_password
+    from app.extensions import db
+    from app.models import Agency, AuditEvent, User
+
+    with app.app_context():
+        agency = Agency(
+            name="Audit Test Police Department",
+            status="active",
+        )
+
+        db.session.add(agency)
+        db.session.flush()
+
+        user = User(
+            agency_id=agency.id,
+            email="audit@example.gov",
+            password_hash=hash_password(
+                "audit-password-123"
+            ),
+            first_name="Audit",
+            last_name="Tester",
+            role="AGENCY_ADMIN",
+            status="active",
+        )
+
+        db.session.add(user)
+        db.session.commit()
+
+        user_id = user.id
+        agency_id = agency.id
+
+    client = app.test_client()
+
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "email": "audit@example.gov",
+            "password": "audit-password-123",
+        },
+        headers={
+            "User-Agent": "PTM Audit Test Browser",
+        },
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        events = AuditEvent.query.filter_by(
+            user_id=user_id,
+            event_type="AUTH_LOGIN_SUCCESS",
+        ).all()
+
+        assert len(events) == 1
+
+        event = events[0]
+
+        assert event.agency_id == agency_id
+        assert event.user_id == user_id
+        assert (
+            event.event_type
+            == "AUTH_LOGIN_SUCCESS"
+        )
+        assert (
+            event.user_agent
+            == "PTM Audit Test Browser"
+        )
+        assert event.created_at is not None
+
+        user = db.session.get(
+            User,
+            user_id,
+        )
+
+        assert user.last_login_at is not None
+
+
+def test_failed_login_does_not_create_audit_event(
+    app,
+):
+    from app.auth import hash_password
+    from app.extensions import db
+    from app.models import Agency, AuditEvent, User
+
+    with app.app_context():
+        agency = Agency(
+            name="Failed Audit Police Department",
+            status="active",
+        )
+
+        db.session.add(agency)
+        db.session.flush()
+
+        user = User(
+            agency_id=agency.id,
+            email="failed-audit@example.gov",
+            password_hash=hash_password(
+                "correct-password-123"
+            ),
+            first_name="Failed",
+            last_name="Audit",
+            role="AGENCY_ADMIN",
+            status="active",
+        )
+
+        db.session.add(user)
+        db.session.commit()
+
+        user_id = user.id
+
+    client = app.test_client()
+
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "email": "failed-audit@example.gov",
+            "password": "wrong-password-123",
+        },
+    )
+
+    assert response.status_code == 401
+
+    with app.app_context():
+        events = AuditEvent.query.filter_by(
+            user_id=user_id,
+            event_type="AUTH_LOGIN_SUCCESS",
+        ).all()
+
+        assert events == []
+
+        user = db.session.get(
+            User,
+            user_id,
+        )
+
+        assert user.last_login_at is None

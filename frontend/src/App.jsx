@@ -6345,6 +6345,12 @@ function PlatformAdministration({
   const [agencies, setAgencies] = useState([]);
   const [selectedAgency, setSelectedAgency] =
     useState(null);
+
+  const [
+    selectedAgencyActivity,
+    setSelectedAgencyActivity,
+  ] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -6438,11 +6444,33 @@ function PlatformAdministration({
     setError("");
 
     try {
-      const data = await fetchJson(
-        "/api/platform/agencies"
+      const [
+        agencyData,
+        activityData,
+      ] = await Promise.all([
+        fetchJson(
+          "/api/platform/agencies"
+        ),
+        fetchJson(
+          "/api/platform/activity/agencies"
+        ),
+      ]);
+
+      const activityByAgency = new Map(
+        activityData.map((item) => [
+          item.agency_id,
+          item,
+        ])
       );
 
-      setAgencies(data);
+      setAgencies(
+        agencyData.map((agency) => ({
+          ...agency,
+          activity:
+            activityByAgency.get(agency.id) ||
+            null,
+        }))
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -6456,11 +6484,20 @@ function PlatformAdministration({
     setNotice("");
 
     try {
-      const data = await fetchJson(
-        `/api/platform/agencies/${agencyId}`
-      );
+      const [
+        agencyData,
+        activityData,
+      ] = await Promise.all([
+        fetchJson(
+          `/api/platform/agencies/${agencyId}`
+        ),
+        fetchJson(
+          `/api/platform/agencies/${agencyId}/activity`
+        ),
+      ]);
 
-      setSelectedAgency(data);
+      setSelectedAgency(agencyData);
+      setSelectedAgencyActivity(activityData);
       setNewAdminOpen(false);
       setResetUser(null);
       setEditAgencyOpen(false);
@@ -6958,6 +6995,7 @@ function PlatformAdministration({
                 className="platform-secondary-button"
                 onClick={() => {
                   setSelectedAgency(null);
+                  setSelectedAgencyActivity(null);
                   setError("");
                   setNotice("");
                 }}
@@ -7170,6 +7208,12 @@ function PlatformAdministration({
                         <th>
                           Administrators
                         </th>
+                        <th>
+                          Last Login
+                        </th>
+                        <th>
+                          30-Day Logins
+                        </th>
                         <th></th>
                       </tr>
                     </thead>
@@ -7218,6 +7262,24 @@ function PlatformAdministration({
                               agency.administrator_count
                             }
                             {" total"}
+                          </td>
+
+                          <td>
+                            {agency.activity
+                              ?.last_login_at
+                              ? formatPlatformDate(
+                                  agency.activity
+                                    .last_login_at
+                                )
+                              : "Never"}
+                          </td>
+
+                          <td>
+                            {
+                              agency.activity
+                                ?.logins_30_days ??
+                              0
+                            }
                           </td>
 
                           <td>
@@ -7467,6 +7529,167 @@ function PlatformAdministration({
                 </div>
               )}
             </section>
+
+            {selectedAgencyActivity && (
+              <section className="platform-panel">
+                <div className="platform-panel-heading">
+                  <div>
+                    <h3>
+                      Login Activity
+                    </h3>
+
+                    <p>
+                      Successful PTM administrator
+                      logins for this agency.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="platform-activity-summary">
+                  <div>
+                    <span>
+                      Last Login
+                    </span>
+
+                    <strong className="platform-activity-date">
+                      {
+                        selectedAgencyActivity
+                          .last_login_at
+                          ? formatPlatformDate(
+                              selectedAgencyActivity
+                                .last_login_at
+                            )
+                          : "Never"
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Logins, Last 7 Days
+                    </span>
+
+                    <strong>
+                      {
+                        selectedAgencyActivity
+                          .logins_7_days
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Logins, Last 30 Days
+                    </span>
+
+                    <strong>
+                      {
+                        selectedAgencyActivity
+                          .logins_30_days
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Active Admins, 30 Days
+                    </span>
+
+                    <strong>
+                      {
+                        selectedAgencyActivity
+                          .active_admins_30_days
+                      }
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="platform-activity-heading">
+                  Recent Login History
+                </div>
+
+                {selectedAgencyActivity
+                  .recent_logins?.length ? (
+                  <div className="platform-table-wrap">
+                    <table
+                      className={
+                        "platform-table " +
+                        "platform-activity-table"
+                      }
+                    >
+                      <thead>
+                        <tr>
+                          <th>
+                            Administrator
+                          </th>
+                          <th>
+                            Login Email
+                          </th>
+                          <th>
+                            Login Date / Time
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {selectedAgencyActivity
+                          .recent_logins
+                          .map((loginEvent) => {
+                            const user =
+                              loginEvent.user;
+
+                            const userName =
+                              user
+                                ? [
+                                    user.first_name,
+                                    user.last_name,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ")
+                                : "Unknown User";
+
+                            return (
+                              <tr
+                                key={
+                                  loginEvent.id
+                                }
+                              >
+                                <td>
+                                  <strong>
+                                    {userName}
+                                  </strong>
+                                </td>
+
+                                <td>
+                                  {user?.email ||
+                                    "Unavailable"}
+                                </td>
+
+                                <td>
+                                  {
+                                    loginEvent
+                                      .created_at
+                                      ? formatPlatformDate(
+                                          loginEvent
+                                            .created_at
+                                        )
+                                      : "Unavailable"
+                                  }
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="platform-activity-empty">
+                    No successful agency administrator
+                    logins have been recorded yet.
+                  </div>
+                )}
+              </section>
+            )}
 
             <section className="platform-panel">
               <div className="platform-panel-heading">

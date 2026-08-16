@@ -24,7 +24,7 @@ from app.auth import (
     verify_password,
 )
 from app.extensions import db
-from app.models import User
+from app.models import AuditEvent, User
 
 
 auth_api = Blueprint(
@@ -77,8 +77,41 @@ def login():
     session["user_id"] = str(user.id)
     session.permanent = True
 
-    user.last_login_at = datetime.now(
+    login_time = datetime.now(
         timezone.utc
+    )
+
+    user.last_login_at = login_time
+
+    forwarded_for = request.headers.get(
+        "X-Forwarded-For",
+        ""
+    )
+
+    if forwarded_for:
+        ip_address = (
+            forwarded_for.split(",", 1)[0].strip()
+            or None
+        )
+    else:
+        ip_address = request.remote_addr
+
+    user_agent = request.headers.get(
+        "User-Agent"
+    )
+
+    if user_agent:
+        user_agent = user_agent[:500]
+
+    db.session.add(
+        AuditEvent(
+            agency_id=user.agency_id,
+            user_id=user.id,
+            event_type="AUTH_LOGIN_SUCCESS",
+            ip_address=ip_address,
+            user_agent=user_agent,
+            created_at=login_time,
+        )
     )
 
     db.session.commit()
