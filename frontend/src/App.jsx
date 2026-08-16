@@ -10,7 +10,13 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-function FileField({ label, description, file, onChange }) {
+function FileField({
+  label,
+  description,
+  file,
+  onChange,
+  disabled = false,
+}) {
   return (
     <div className="file-field">
       <div className="file-copy">
@@ -22,6 +28,7 @@ function FileField({ label, description, file, onChange }) {
         <input
           type="file"
           accept=".csv,text/csv"
+          disabled={disabled}
           onChange={(event) =>
             onChange(event.target.files?.[0] || null)
           }
@@ -3275,7 +3282,9 @@ function OperationalApp({
   const [assignmentBusy, setAssignmentBusy] = useState(false);
   const [credentialBusy, setCredentialBusy] = useState(false);
   const [qualificationBusy, setQualificationBusy] = useState(false);
-  const [importing, setImporting] = useState(false);
+  const [importJobId, setImportJobId] = useState(null);
+  const [importStep, setImportStep] = useState(1);
+  const [importingStage, setImportingStage] = useState(null);
 
   const [error, setError] = useState("");
   const [assignmentError, setAssignmentError] = useState("");
@@ -3737,14 +3746,6 @@ function OperationalApp({
     loadQualificationFacts();
   }, [agency, selectedOfficerId]);
 
-  const ready =
-    Boolean(agency) &&
-    Boolean(awardsFile) &&
-    Boolean(coursesFile) &&
-    Boolean(cycleFile) &&
-    Boolean(licenseeSearchFile) &&
-    !importing;
-
   async function handleSaveEmailSettings(event) {
     event.preventDefault();
 
@@ -3942,29 +3943,37 @@ function OperationalApp({
     }
   }
 
-  async function handleImport(event) {
-    event.preventDefault();
-
-    if (!ready) {
+  async function handleImportStage(
+    stage,
+    file
+  ) {
+    if (!agency?.id || !file) {
       return;
     }
 
-    setImporting(true);
+    if (stage !== "awards" && !importJobId) {
+      return;
+    }
+
+    setImportingStage(stage);
     setError("");
     setResult(null);
 
     const formData = new FormData();
-    formData.append("awards_file", awardsFile);
-    formData.append("courses_file", coursesFile);
-    formData.append("cycle_file", cycleFile);
-    formData.append(
-      "licensee_search_file",
-      licenseeSearchFile
-    );
+    formData.append("file", file);
+
+    let url =
+      `/api/agencies/${agency.id}/imports/tcole/awards`;
+
+    if (stage !== "awards") {
+      url =
+        `/api/agencies/${agency.id}/imports/tcole/` +
+        `${importJobId}/${stage}`;
+    }
 
     try {
       const response = await fetch(
-        `/api/agencies/${agency.id}/imports/tcole`,
+        url,
         {
           method: "POST",
           body: formData,
@@ -3975,19 +3984,27 @@ function OperationalApp({
 
       if (!response.ok) {
         throw new Error(
-          data.error || "The TCOLE import could not be completed."
+          data.error ||
+            "This TCOLE import step could not be completed."
         );
       }
 
-      setResult(data);
-
-      await Promise.all([
-        loadDashboard(agency.id),
-      ]);
+      if (stage === "awards") {
+        setImportJobId(data.import_job_id);
+        setImportStep(2);
+      } else if (stage === "courses") {
+        setImportStep(3);
+      } else if (stage === "cycle") {
+        setImportStep(4);
+      } else if (stage === "licensee-search") {
+        setImportStep(5);
+        setResult(data);
+        await loadDashboard(agency.id);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
-      setImporting(false);
+      setImportingStage(null);
     }
   }
 
@@ -5751,47 +5768,229 @@ function OperationalApp({
           </div>
         )}
 
-        <form className="import-panel" onSubmit={handleImport}>
-          <FileField
-            label="Awards Report"
-            description="rptAwards.csv"
-            file={awardsFile}
-            onChange={setAwardsFile}
-          />
+        <section className="import-panel staged-import-panel">
+          <div
+            className={
+              "import-step " +
+              (importStep > 1 ? "complete" : "active")
+            }
+          >
+            <div className="import-step-status">
+              <strong>Step 1 of 4</strong>
+              <span>
+                {importStep > 1
+                  ? "Completed"
+                  : "Employee roster and awards"}
+              </span>
+            </div>
 
-          <FileField
-            label="Course History"
-            description="rptCourseTaken.csv"
-            file={coursesFile}
-            onChange={setCoursesFile}
-          />
+            <FileField
+              label="Awards Report"
+              description="rptAwards.csv"
+              file={awardsFile}
+              onChange={setAwardsFile}
+              disabled={
+                importStep !== 1 ||
+                importingStage !== null
+              }
+            />
 
-          <FileField
-            label="Cycle Training Report"
-            description="rptCycleT_All.csv"
-            file={cycleFile}
-            onChange={setCycleFile}
-          />
-
-          <FileField
-            label="Department Licensee Search Report"
-            description="rptDepartmentOfficerSearch.csv"
-            file={licenseeSearchFile}
-            onChange={setLicenseeSearchFile}
-          />
-
-          <div className="import-action">
-            <button
-              type="submit"
-              className="import-button"
-              disabled={!ready}
-            >
-              {importing
-                ? "Importing TCOLE Records..."
-                : "Import TCOLE Records"}
-            </button>
+            <div className="import-step-action">
+              <button
+                type="button"
+                className="import-button"
+                disabled={
+                  importStep !== 1 ||
+                  !awardsFile ||
+                  importingStage !== null
+                }
+                onClick={() =>
+                  handleImportStage(
+                    "awards",
+                    awardsFile
+                  )
+                }
+              >
+                {importingStage === "awards"
+                  ? "Processing Awards Report..."
+                  : importStep > 1
+                    ? "Awards Report Complete"
+                    : "Process Awards Report"}
+              </button>
+            </div>
           </div>
-        </form>
+
+          <div
+            className={
+              "import-step " +
+              (importStep > 2
+                ? "complete"
+                : importStep === 2
+                  ? "active"
+                  : "locked")
+            }
+          >
+            <div className="import-step-status">
+              <strong>Step 2 of 4</strong>
+              <span>
+                {importStep > 2
+                  ? "Completed"
+                  : importStep === 2
+                    ? "Training history"
+                    : "Complete Step 1 first"}
+              </span>
+            </div>
+
+            <FileField
+              label="Course History"
+              description="rptCourseTaken.csv"
+              file={coursesFile}
+              onChange={setCoursesFile}
+              disabled={
+                importStep !== 2 ||
+                importingStage !== null
+              }
+            />
+
+            <div className="import-step-action">
+              <button
+                type="button"
+                className="import-button"
+                disabled={
+                  importStep !== 2 ||
+                  !coursesFile ||
+                  importingStage !== null
+                }
+                onClick={() =>
+                  handleImportStage(
+                    "courses",
+                    coursesFile
+                  )
+                }
+              >
+                {importingStage === "courses"
+                  ? "Processing Course History..."
+                  : importStep > 2
+                    ? "Course History Complete"
+                    : "Process Course History"}
+              </button>
+            </div>
+          </div>
+
+          <div
+            className={
+              "import-step " +
+              (importStep > 3
+                ? "complete"
+                : importStep === 3
+                  ? "active"
+                  : "locked")
+            }
+          >
+            <div className="import-step-status">
+              <strong>Step 3 of 4</strong>
+              <span>
+                {importStep > 3
+                  ? "Completed"
+                  : importStep === 3
+                    ? "Credited training hours"
+                    : "Complete Step 2 first"}
+              </span>
+            </div>
+
+            <FileField
+              label="Cycle Training Report"
+              description="rptCycleT_All.csv"
+              file={cycleFile}
+              onChange={setCycleFile}
+              disabled={
+                importStep !== 3 ||
+                importingStage !== null
+              }
+            />
+
+            <div className="import-step-action">
+              <button
+                type="button"
+                className="import-button"
+                disabled={
+                  importStep !== 3 ||
+                  !cycleFile ||
+                  importingStage !== null
+                }
+                onClick={() =>
+                  handleImportStage(
+                    "cycle",
+                    cycleFile
+                  )
+                }
+              >
+                {importingStage === "cycle"
+                  ? "Processing Cycle Training Report..."
+                  : importStep > 3
+                    ? "Cycle Training Report Complete"
+                    : "Process Cycle Training Report"}
+              </button>
+            </div>
+          </div>
+
+          <div
+            className={
+              "import-step " +
+              (importStep > 4
+                ? "complete"
+                : importStep === 4
+                  ? "active"
+                  : "locked")
+            }
+          >
+            <div className="import-step-status">
+              <strong>Step 4 of 4</strong>
+              <span>
+                {importStep > 4
+                  ? "Completed"
+                  : importStep === 4
+                    ? "License and service information"
+                    : "Complete Step 3 first"}
+              </span>
+            </div>
+
+            <FileField
+              label="Department Licensee Search Report"
+              description="rptDepartmentOfficerSearch.csv"
+              file={licenseeSearchFile}
+              onChange={setLicenseeSearchFile}
+              disabled={
+                importStep !== 4 ||
+                importingStage !== null
+              }
+            />
+
+            <div className="import-step-action">
+              <button
+                type="button"
+                className="import-button"
+                disabled={
+                  importStep !== 4 ||
+                  !licenseeSearchFile ||
+                  importingStage !== null
+                }
+                onClick={() =>
+                  handleImportStage(
+                    "licensee-search",
+                    licenseeSearchFile
+                  )
+                }
+              >
+                {importingStage === "licensee-search"
+                  ? "Processing Licensee Search Report..."
+                  : importStep > 4
+                    ? "Licensee Search Report Complete"
+                    : "Process Licensee Search Report"}
+              </button>
+            </div>
+          </div>
+        </section>
 
         {error && (
           <section className="message error-message">

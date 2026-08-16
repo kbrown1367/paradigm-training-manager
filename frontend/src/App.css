@@ -115,6 +115,61 @@
   padding: 24px;
 }
 
+.staged-import-panel {
+  overflow: visible;
+}
+
+.import-step {
+  border-bottom: 1px solid #e8ebf0;
+}
+
+.import-step:last-child {
+  border-bottom: 0;
+}
+
+.import-step.locked {
+  background: #f8f9fb;
+}
+
+.import-step.complete {
+  background: #f7fbf8;
+}
+
+.import-step-status {
+  padding: 16px 24px 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.import-step-status strong {
+  color: #172033;
+}
+
+.import-step-status span {
+  color: #667085;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.import-step.complete .import-step-status span {
+  color: #247447;
+}
+
+.import-step.locked .file-field {
+  opacity: 0.58;
+}
+
+.import-step-action {
+  padding: 0 24px 22px;
+}
+
+.import-step-action .import-button {
+  max-width: 420px;
+}
+
+
 .import-button {
   width: 100%;
   padding: 15px 20px;

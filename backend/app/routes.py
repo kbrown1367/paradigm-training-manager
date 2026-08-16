@@ -92,6 +92,10 @@ from app.services.tcole_import import (
     TcoleImportError,
     get_import_summary,
     run_tcole_import,
+    start_tcole_awards_import,
+    run_tcole_courses_stage,
+    run_tcole_cycle_stage,
+    run_tcole_licensee_search_stage,
 )
 
 
@@ -145,6 +149,114 @@ def list_agencies():
             for agency in agencies
         ]
     ), 200
+
+
+@api.post("/agencies/<uuid:agency_id>/imports/tcole/awards")
+def import_tcole_awards_stage(agency_id):
+    uploaded_file = request.files.get("file")
+
+    if uploaded_file is None:
+        return jsonify({"error": "file is required."}), 400
+
+    try:
+        result = start_tcole_awards_import(
+            agency_id=agency_id,
+            awards_content=uploaded_file.read(),
+            awards_filename=(
+                uploaded_file.filename or "rptAwards.csv"
+            ),
+        )
+    except (TcoleImportError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify(result), 201
+
+
+@api.post(
+    "/agencies/<uuid:agency_id>/imports/tcole/"
+    "<uuid:import_job_id>/courses"
+)
+def import_tcole_courses_stage(
+    agency_id,
+    import_job_id,
+):
+    uploaded_file = request.files.get("file")
+
+    if uploaded_file is None:
+        return jsonify({"error": "file is required."}), 400
+
+    try:
+        result = run_tcole_courses_stage(
+            agency_id=agency_id,
+            import_job_id=import_job_id,
+            courses_content=uploaded_file.read(),
+            courses_filename=(
+                uploaded_file.filename
+                or "rptCourseTaken.csv"
+            ),
+        )
+    except (TcoleImportError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify(result), 200
+
+
+@api.post(
+    "/agencies/<uuid:agency_id>/imports/tcole/"
+    "<uuid:import_job_id>/cycle"
+)
+def import_tcole_cycle_stage(
+    agency_id,
+    import_job_id,
+):
+    uploaded_file = request.files.get("file")
+
+    if uploaded_file is None:
+        return jsonify({"error": "file is required."}), 400
+
+    try:
+        result = run_tcole_cycle_stage(
+            agency_id=agency_id,
+            import_job_id=import_job_id,
+            cycle_content=uploaded_file.read(),
+            cycle_filename=(
+                uploaded_file.filename
+                or "rptCycleT_All.csv"
+            ),
+        )
+    except (TcoleImportError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify(result), 200
+
+
+@api.post(
+    "/agencies/<uuid:agency_id>/imports/tcole/"
+    "<uuid:import_job_id>/licensee-search"
+)
+def import_tcole_licensee_search_stage(
+    agency_id,
+    import_job_id,
+):
+    uploaded_file = request.files.get("file")
+
+    if uploaded_file is None:
+        return jsonify({"error": "file is required."}), 400
+
+    try:
+        result = run_tcole_licensee_search_stage(
+            agency_id=agency_id,
+            import_job_id=import_job_id,
+            licensee_search_content=uploaded_file.read(),
+            licensee_search_filename=(
+                uploaded_file.filename
+                or "rptDepartmentOfficerSearch.csv"
+            ),
+        )
+    except (TcoleImportError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify(result), 200
 
 
 @api.post("/agencies/<uuid:agency_id>/imports/tcole")

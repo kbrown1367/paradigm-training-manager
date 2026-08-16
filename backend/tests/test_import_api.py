@@ -221,3 +221,134 @@ def test_import_summary_api_is_tenant_scoped(app):
     )
 
     assert response.status_code == 404
+
+
+
+def single_file_payload(content, filename):
+    return {
+        "file": (
+            io.BytesIO(content),
+            filename,
+        )
+    }
+
+
+def test_staged_tcole_import_completes_in_required_order(app):
+    with app.app_context():
+        agency_id = make_agency()
+
+    client = app.test_client()
+
+    awards_response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/awards",
+        data=single_file_payload(
+            AWARDS,
+            "rptAwards.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert awards_response.status_code == 201
+    awards_data = awards_response.get_json()
+
+    assert awards_data["status"] == "awards_completed"
+    assert awards_data["officer_count"] == 2
+    assert awards_data["award_rows_processed"] == 3
+
+    import_job_id = awards_data["import_job_id"]
+
+    courses_response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/"
+        f"{import_job_id}/courses",
+        data=single_file_payload(
+            COURSES,
+            "rptCourseTaken.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert courses_response.status_code == 200
+    courses_data = courses_response.get_json()
+
+    assert courses_data["status"] == "courses_completed"
+    assert courses_data["course_rows_processed"] == 2
+
+    cycle_response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/"
+        f"{import_job_id}/cycle",
+        data=single_file_payload(
+            CYCLE,
+            "rptCycleT_All.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert cycle_response.status_code == 200
+    cycle_data = cycle_response.get_json()
+
+    assert cycle_data["status"] == "cycle_completed"
+    assert cycle_data["cycle_rows_processed"] == 2
+    assert cycle_data["training_records_with_hours"] == 2
+
+    license_response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/"
+        f"{import_job_id}/licensee-search",
+        data=single_file_payload(
+            LICENSEE_SEARCH,
+            "rptDepartmentOfficerSearch.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert license_response.status_code == 200
+    final_data = license_response.get_json()
+
+    assert final_data["status"] == "completed"
+    assert final_data["officer_count"] == 2
+    assert final_data["award_rows_processed"] == 3
+    assert final_data["course_rows_processed"] == 2
+    assert final_data["cycle_rows_processed"] == 2
+    assert final_data["licensee_search_rows_processed"] == 4
+
+    with app.app_context():
+        assert Officer.query.count() == 2
+        assert OfficerAward.query.count() == 3
+        assert TrainingRecord.query.count() == 2
+        assert ImportJob.query.count() == 1
+
+
+def test_staged_tcole_import_rejects_out_of_order_step(app):
+    with app.app_context():
+        agency_id = make_agency()
+
+    client = app.test_client()
+
+    awards_response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/awards",
+        data=single_file_payload(
+            AWARDS,
+            "rptAwards.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert awards_response.status_code == 201
+    import_job_id = awards_response.get_json()[
+        "import_job_id"
+    ]
+
+    cycle_response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/"
+        f"{import_job_id}/cycle",
+        data=single_file_payload(
+            CYCLE,
+            "rptCycleT_All.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert cycle_response.status_code == 400
+    assert (
+        "Course History must be completed"
+        in cycle_response.get_json()["error"]
+    )
