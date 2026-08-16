@@ -7431,3 +7431,20 @@ body:has(.login-page) .product-footer strong {
     width: 100%;
   }
 }
+
+/* v0.5.0 agency compliance PDF report */
+
+.dashboard-header-actions a.archived-employees-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+@media (max-width: 620px) {
+  .dashboard-heading-footer
+    .dashboard-header-actions
+    a.archived-employees-button {
+    width: 100%;
+  }
+}

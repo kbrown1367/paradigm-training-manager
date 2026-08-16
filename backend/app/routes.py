@@ -6,8 +6,15 @@
 # Software ID: PTM-PSP-2026
 
 from datetime import date
+from io import BytesIO
 
-from flask import Blueprint, g, jsonify, request
+from flask import (
+    Blueprint,
+    g,
+    jsonify,
+    request,
+    send_file,
+)
 
 from app.authorization import (
     authorize_operational_api_request,
@@ -70,6 +77,12 @@ from app.services.compliance_email import (
 )
 from app.compliance.agency_dashboard import (
     evaluate_agency_compliance_dashboard,
+)
+from app.compliance.agency_report import (
+    evaluate_agency_compliance_report,
+)
+from app.compliance.agency_report_pdf import (
+    render_agency_compliance_pdf,
 )
 from app.services.bulk_compliance_communications import (
     build_bulk_compliance_preflight,
@@ -203,6 +216,73 @@ def import_summary(agency_id, import_job_id):
         return jsonify({"error": str(exc)}), 404
 
     return jsonify(result), 200
+
+
+@api.get(
+    "/agencies/<uuid:agency_id>"
+    "/reports/compliance.pdf"
+)
+def agency_compliance_report_pdf(agency_id):
+    agency = Agency.query.filter_by(
+        id=agency_id,
+    ).one_or_none()
+
+    if agency is None:
+        return jsonify(
+            {
+                "error": "Agency not found."
+            }
+        ), 404
+
+    report = evaluate_agency_compliance_report(
+        agency_id,
+        evaluation_date=date.today(),
+    )
+
+    if report is None:
+        return jsonify(
+            {
+                "error":
+                    "Compliance report could not be generated."
+            }
+        ), 404
+
+    pdf_bytes = render_agency_compliance_pdf(
+        report
+    )
+
+    filename_base = "".join(
+        character
+        if (
+            character.isalnum()
+            or character in {"-", "_"}
+        )
+        else "-"
+        for character in agency.name.strip()
+    )
+
+    while "--" in filename_base:
+        filename_base = filename_base.replace(
+            "--",
+            "-",
+        )
+
+    filename_base = filename_base.strip("-")
+
+    if not filename_base:
+        filename_base = "agency"
+
+    filename = (
+        f"{filename_base}-"
+        "compliance-report.pdf"
+    )
+
+    return send_file(
+        BytesIO(pdf_bytes),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=filename,
+    )
 
 
 @api.get("/agencies/<uuid:agency_id>/compliance/peace-officer-unit")

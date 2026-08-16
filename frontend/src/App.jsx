@@ -5266,6 +5266,19 @@ function OperationalApp({
                   Archived Employees
                 </button>
 
+                {agency?.id && (
+                  <a
+                    className="archived-employees-button"
+                    href={
+                      `/api/agencies/${agency.id}` +
+                      "/reports/compliance.pdf"
+                    }
+                    download
+                  >
+                    Download Compliance Report
+                  </a>
+                )}
+
                 <button
                   type="button"
                   className="communications-launch-button"

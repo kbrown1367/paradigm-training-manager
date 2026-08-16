@@ -5,3 +5,4 @@ gunicorn>=23,<24
 psycopg[binary]>=3.2,<4
 python-dotenv>=1,<2
 pytest>=8,<9
+reportlab>=4,<6
