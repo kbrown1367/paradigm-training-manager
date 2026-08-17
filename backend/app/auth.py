@@ -169,6 +169,13 @@ def get_session_user():
     if (
         user is None
         or user.status != "active"
+        or (
+            user.role == ROLE_AGENCY_ADMIN
+            and (
+                user.agency is None
+                or user.agency.status != "active"
+            )
+        )
     ):
         session.clear()
         return None

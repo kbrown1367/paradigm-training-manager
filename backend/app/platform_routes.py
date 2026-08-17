@@ -27,7 +27,14 @@ from app.extensions import db
 from app.models import (
     Agency,
     AuditEvent,
+    ImportJob,
     Officer,
+    OfficerAssignment,
+    OfficerAward,
+    OfficerCredentialVerification,
+    OfficerLicenseTracking,
+    TrainingCredit,
+    TrainingRecord,
     User,
 )
 
@@ -35,6 +42,20 @@ from app.models import (
 platform_api = Blueprint(
     "platform_api",
     __name__,
+)
+
+
+AGENCY_PURGE_MODELS = (
+    AuditEvent,
+    TrainingCredit,
+    TrainingRecord,
+    OfficerAssignment,
+    OfficerAward,
+    OfficerCredentialVerification,
+    OfficerLicenseTracking,
+    ImportJob,
+    Officer,
+    User,
 )
 
 
@@ -347,10 +368,11 @@ def platform_update_agency(
         if status not in {
             "active",
             "inactive",
+            "archived",
         }:
             return platform_error(
-                "Agency status must be "
-                "active or inactive.",
+                "Agency status must be active, "
+                "inactive, or archived.",
                 400,
             )
 
@@ -363,6 +385,202 @@ def platform_update_agency(
             agency,
             include_users=True,
         )
+    ), 200
+
+
+@platform_api.post(
+    "/agencies/<uuid:agency_id>/archive"
+)
+def platform_archive_agency(
+    agency_id,
+):
+    agency = get_agency_or_none(
+        agency_id
+    )
+
+    if agency is None:
+        return platform_error(
+            "Resource not found.",
+            404,
+        )
+
+    if agency.status == "archived":
+        return jsonify(
+            serialize_platform_agency(
+                agency,
+                include_users=True,
+            )
+        ), 200
+
+    platform_user = get_session_user()
+
+    agency.status = "archived"
+
+    db.session.add(
+        AuditEvent(
+            agency_id=agency.id,
+            user_id=platform_user.id,
+            event_type="PLATFORM_AGENCY_ARCHIVED",
+            created_at=datetime.now(
+                timezone.utc
+            ),
+        )
+    )
+
+    db.session.commit()
+
+    return jsonify(
+        serialize_platform_agency(
+            agency,
+            include_users=True,
+        )
+    ), 200
+
+
+@platform_api.post(
+    "/agencies/<uuid:agency_id>/restore"
+)
+def platform_restore_agency(
+    agency_id,
+):
+    agency = get_agency_or_none(
+        agency_id
+    )
+
+    if agency is None:
+        return platform_error(
+            "Resource not found.",
+            404,
+        )
+
+    if agency.status == "active":
+        return jsonify(
+            serialize_platform_agency(
+                agency,
+                include_users=True,
+            )
+        ), 200
+
+    platform_user = get_session_user()
+
+    agency.status = "active"
+
+    db.session.add(
+        AuditEvent(
+            agency_id=agency.id,
+            user_id=platform_user.id,
+            event_type="PLATFORM_AGENCY_RESTORED",
+            created_at=datetime.now(
+                timezone.utc
+            ),
+        )
+    )
+
+    db.session.commit()
+
+    return jsonify(
+        serialize_platform_agency(
+            agency,
+            include_users=True,
+        )
+    ), 200
+
+
+@platform_api.delete(
+    "/agencies/<uuid:agency_id>"
+)
+def platform_delete_agency(
+    agency_id,
+):
+    agency = get_agency_or_none(
+        agency_id
+    )
+
+    if agency is None:
+        return platform_error(
+            "Resource not found.",
+            404,
+        )
+
+    if agency.status == "active":
+        return platform_error(
+            "Agency must be archived before "
+            "it can be permanently deleted.",
+            409,
+        )
+
+    payload = request.get_json(
+        silent=True
+    ) or {}
+
+    confirmation_name = (
+        payload.get("confirmation_name")
+        or ""
+    ).strip()
+
+    if confirmation_name != agency.name:
+        return platform_error(
+            "Confirmation name does not match "
+            "the agency name.",
+            400,
+        )
+
+    platform_user = get_session_user()
+    deleted_agency_id = str(agency.id)
+    deleted_agency_name = agency.name
+
+    deleted_records = {}
+
+    try:
+        for model in AGENCY_PURGE_MODELS:
+            deleted_records[
+                model.__tablename__
+            ] = (
+                model.query.filter_by(
+                    agency_id=agency.id
+                ).delete(
+                    synchronize_session=False
+                )
+            )
+
+        db.session.delete(agency)
+        db.session.flush()
+
+        # Preserve evidence that Paradigm permanently
+        # deleted a tenant. The deleted agency cannot be
+        # referenced by FK after deletion, so the event is
+        # platform-level. The deleted agency UUID is retained
+        # in the event type.
+        db.session.add(
+            AuditEvent(
+                agency_id=None,
+                user_id=platform_user.id,
+                event_type=(
+                    "PLATFORM_AGENCY_DELETED:"
+                    f"{deleted_agency_id}"
+                ),
+                created_at=datetime.now(
+                    timezone.utc
+                ),
+            )
+        )
+
+        db.session.commit()
+
+    except Exception:
+        db.session.rollback()
+        raise
+
+    return jsonify(
+        {
+            "deleted": True,
+            "agency_id":
+                deleted_agency_id,
+            "agency_name":
+                deleted_agency_name,
+            "deleted_records":
+                deleted_records,
+        }
     ), 200
 
 

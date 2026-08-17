@@ -1,4 +1,5 @@
 import pytest
+from uuid import UUID
 
 from app import create_app
 from app.auth import (
@@ -691,3 +692,252 @@ def test_non_platform_admin_cannot_view_activity(app):
     )
 
     assert response.status_code == 404
+
+
+def test_platform_admin_can_archive_and_restore_agency(
+    app,
+    data,
+):
+    platform_client = app.test_client()
+
+    login(
+        platform_client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    archive = platform_client.post(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/archive"
+    )
+
+    assert archive.status_code == 200
+    assert archive.get_json()["status"] == (
+        "archived"
+    )
+
+    blocked_login = app.test_client().post(
+        "/api/auth/login",
+        json={
+            "email":
+                "agency@example.gov",
+            "password":
+                "AgencyPassword123!",
+        },
+    )
+
+    assert blocked_login.status_code == 401
+
+    restore = platform_client.post(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/restore"
+    )
+
+    assert restore.status_code == 200
+    assert restore.get_json()["status"] == (
+        "active"
+    )
+
+    restored_login = app.test_client().post(
+        "/api/auth/login",
+        json={
+            "email":
+                "agency@example.gov",
+            "password":
+                "AgencyPassword123!",
+        },
+    )
+
+    assert restored_login.status_code == 200
+
+
+def test_archiving_agency_invalidates_existing_session(
+    app,
+    data,
+):
+    agency_client = app.test_client()
+
+    login(
+        agency_client,
+        "agency@example.gov",
+        "AgencyPassword123!",
+    )
+
+    platform_client = app.test_client()
+
+    login(
+        platform_client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    archive = platform_client.post(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/archive"
+    )
+
+    assert archive.status_code == 200
+
+    me = agency_client.get(
+        "/api/auth/me"
+    )
+
+    assert me.status_code == 401
+
+
+def test_platform_admin_cannot_delete_active_agency(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.delete(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}",
+        json={
+            "confirmation_name":
+                "Pilot Police Department",
+        },
+    )
+
+    assert response.status_code == 409
+
+    with app.app_context():
+        assert Agency.query.filter_by(
+            id=UUID(data["agency_id"])
+        ).one_or_none() is not None
+
+
+def test_platform_admin_delete_requires_exact_agency_name(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    archive = client.post(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/archive"
+    )
+
+    assert archive.status_code == 200
+
+    response = client.delete(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}",
+        json={
+            "confirmation_name":
+                "Wrong Agency Name",
+        },
+    )
+
+    assert response.status_code == 400
+
+    with app.app_context():
+        assert Agency.query.filter_by(
+            id=UUID(data["agency_id"])
+        ).one_or_none() is not None
+
+
+def test_platform_admin_can_permanently_delete_archived_agency(
+    app,
+    data,
+):
+    from app.models import AuditEvent
+
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    archive = client.post(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/archive"
+    )
+
+    assert archive.status_code == 200
+
+    response = client.delete(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}",
+        json={
+            "confirmation_name":
+                "Pilot Police Department",
+        },
+    )
+
+    assert response.status_code == 200
+
+    result = response.get_json()
+
+    assert result["deleted"] is True
+    assert result["agency_id"] == (
+        data["agency_id"]
+    )
+
+    with app.app_context():
+        assert Agency.query.filter_by(
+            id=UUID(data["agency_id"])
+        ).one_or_none() is None
+
+        assert Officer.query.filter_by(
+            agency_id=UUID(data["agency_id"])
+        ).count() == 0
+
+        assert User.query.filter_by(
+            agency_id=UUID(data["agency_id"])
+        ).count() == 0
+
+        deletion_event = (
+            AuditEvent.query.filter(
+                AuditEvent.event_type
+                == (
+                    "PLATFORM_AGENCY_DELETED:"
+                    f"{data['agency_id']}"
+                )
+            ).one_or_none()
+        )
+
+        assert deletion_event is not None
+        assert deletion_event.agency_id is None
+
+
+def test_agency_purge_plan_covers_all_agency_owned_tables(
+    app,
+):
+    from app.platform_routes import (
+        AGENCY_PURGE_MODELS,
+    )
+
+    with app.app_context():
+        agency_owned_tables = {
+            table.name
+            for table in db.metadata.tables.values()
+            if "agency_id" in table.columns
+        }
+
+        purge_tables = {
+            model.__tablename__
+            for model in AGENCY_PURGE_MODELS
+        }
+
+        assert purge_tables == agency_owned_tables

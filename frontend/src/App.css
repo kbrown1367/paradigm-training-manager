@@ -8300,3 +8300,179 @@ body:has(.login-page) .product-footer strong {
     padding: 20px;
   }
 }
+
+/* v0.5.7 agency tenant lifecycle */
+
+.platform-status.archived {
+  background: #fff4e5;
+  color: #b54708;
+}
+
+.platform-agency-count {
+  min-width: 32px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #f2f4f7;
+  color: #475467;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.platform-archived-agencies {
+  margin-top: 28px;
+}
+
+.platform-archived-agencies .platform-table {
+  opacity: 0.88;
+}
+
+.platform-empty-state {
+  padding: 28px 22px;
+  color: #667085;
+  font-size: 0.82rem;
+}
+
+.platform-lifecycle-content {
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.platform-lifecycle-content > div:first-child {
+  max-width: 700px;
+}
+
+.platform-lifecycle-content strong {
+  color: #101828;
+  font-size: 0.9rem;
+}
+
+.platform-lifecycle-content p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.platform-lifecycle-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+}
+
+.platform-warning-button,
+.platform-danger-button {
+  padding: 10px 14px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.platform-warning-button {
+  border: 1px solid #f79009;
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.platform-danger-button {
+  border: 1px solid #d92d20;
+  background: #d92d20;
+  color: #ffffff;
+}
+
+.platform-warning-button:disabled,
+.platform-danger-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.platform-lifecycle-modal {
+  width: min(620px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  border: 1px solid #d9dee7;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(23, 32, 51, 0.22);
+}
+
+.platform-lifecycle-modal-actions {
+  padding: 20px 26px 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.platform-delete-confirmation {
+  padding: 24px 26px 0;
+}
+
+.platform-delete-confirmation label {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.platform-delete-confirmation label > span {
+  color: #344054;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.platform-delete-confirmation input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #cfd5df;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #101828;
+  font: inherit;
+}
+
+.platform-confirmation-name {
+  color: #101828;
+  font-size: 0.84rem;
+}
+
+.platform-danger-notice {
+  padding: 14px 16px;
+  border: 1px solid #f2b8b5;
+  border-radius: 8px;
+  background: #fff5f4;
+}
+
+.platform-danger-notice > strong {
+  color: #b42318;
+  font-size: 0.82rem;
+}
+
+.platform-danger-notice p {
+  margin: 5px 0 0;
+  color: #7a271a;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 620px) {
+  .platform-lifecycle-content {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .platform-lifecycle-actions {
+    flex-direction: column;
+  }
+
+  .platform-lifecycle-actions button,
+  .platform-lifecycle-modal-actions button {
+    width: 100%;
+  }
+
+  .platform-lifecycle-modal-actions {
+    flex-direction: column-reverse;
+  }
+}

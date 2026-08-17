@@ -61,6 +61,13 @@ def login():
     if (
         user is None
         or user.status != "active"
+        or (
+            user.role == "AGENCY_ADMIN"
+            and (
+                user.agency is None
+                or user.agency.status != "active"
+            )
+        )
         or not verify_password(
             user.password_hash,
             password,

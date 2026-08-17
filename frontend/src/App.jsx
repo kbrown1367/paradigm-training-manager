@@ -6330,6 +6330,7 @@ function OperationalApp({
 
           </>
         )}
+
       </main>
     </div>
   );
@@ -6894,6 +6895,15 @@ function PlatformAdministration({
     email: "",
   });
 
+  const [archiveAgencyOpen, setArchiveAgencyOpen] =
+    useState(false);
+
+  const [deleteAgencyOpen, setDeleteAgencyOpen] =
+    useState(false);
+
+  const [deleteAgencyConfirmation, setDeleteAgencyConfirmation] =
+    useState("");
+
   async function fetchJson(
     url,
     options = {},
@@ -6928,7 +6938,7 @@ function PlatformAdministration({
         activityData,
       ] = await Promise.all([
         fetchJson(
-          "/api/platform/agencies"
+          "/api/platform/agencies?include_archived=true"
         ),
         fetchJson(
           "/api/platform/activity/agencies"
@@ -6981,6 +6991,9 @@ function PlatformAdministration({
       setResetUser(null);
       setEditAgencyOpen(false);
       setEditAdminUser(null);
+      setArchiveAgencyOpen(false);
+      setDeleteAgencyOpen(false);
+      setDeleteAgencyConfirmation("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -7389,6 +7402,203 @@ function PlatformAdministration({
   }
 
 
+  async function handleArchiveAgency() {
+    if (!selectedAgency?.id) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const data = await fetchJson(
+        `/api/platform/agencies/${selectedAgency.id}/archive`,
+        {
+          method: "POST",
+        }
+      );
+
+      setSelectedAgency(data);
+      setArchiveAgencyOpen(false);
+      await loadAgencies();
+
+      setNotice(
+        `${data.name} was archived. Agency administrator access is now blocked.`
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRestoreAgency() {
+    if (!selectedAgency?.id) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const data = await fetchJson(
+        `/api/platform/agencies/${selectedAgency.id}/restore`,
+        {
+          method: "POST",
+        }
+      );
+
+      setSelectedAgency(data);
+      await loadAgencies();
+
+      setNotice(
+        `${data.name} was restored to active status.`
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteAgency(event) {
+    event.preventDefault();
+
+    if (!selectedAgency?.id) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const agencyName = selectedAgency.name;
+
+      await fetchJson(
+        `/api/platform/agencies/${selectedAgency.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            confirmation_name:
+              deleteAgencyConfirmation,
+          }),
+        }
+      );
+
+      setDeleteAgencyOpen(false);
+      setDeleteAgencyConfirmation("");
+      setSelectedAgency(null);
+      setSelectedAgencyActivity(null);
+
+      await loadAgencies();
+
+      setNotice(
+        `${agencyName} was permanently deleted.`
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const activeAgencies = agencies.filter(
+    (agency) => agency.status !== "archived"
+  );
+
+  const archivedAgencies = agencies.filter(
+    (agency) => agency.status === "archived"
+  );
+
+  function renderAgencyTable(agencyList) {
+    return (
+      <div className="platform-table-wrap">
+        <table className="platform-table">
+          <thead>
+            <tr>
+              <th>Agency</th>
+              <th>Status</th>
+              <th>Licensed Employees</th>
+              <th>Administrators</th>
+              <th>Last Login</th>
+              <th>30-Day Logins</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {agencyList.map((agency) => (
+              <tr key={agency.id}>
+                <td>
+                  <strong>{agency.name}</strong>
+
+                  {agency.tcole_agency_number && (
+                    <span>
+                      TCOLE {agency.tcole_agency_number}
+                    </span>
+                  )}
+                </td>
+
+                <td>
+                  <span
+                    className={
+                      "platform-status " +
+                      agency.status
+                    }
+                  >
+                    {agency.status}
+                  </span>
+                </td>
+
+                <td>
+                  {agency.active_employee_count}
+                </td>
+
+                <td>
+                  {agency.active_administrator_count}
+                  {" active / "}
+                  {agency.administrator_count}
+                  {" total"}
+                </td>
+
+                <td>
+                  {agency.activity?.last_login_at
+                    ? formatPlatformDate(
+                        agency.activity.last_login_at
+                      )
+                    : "Never"}
+                </td>
+
+                <td>
+                  {agency.activity?.logins_30_days ?? 0}
+                </td>
+
+                <td>
+                  <button
+                    type="button"
+                    className="platform-link-button"
+                    disabled={busy}
+                    onClick={() =>
+                      openAgency(agency.id)
+                    }
+                  >
+                    Manage Agency
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <div className="platform-shell">
       <header className="topbar platform-topbar">
@@ -7674,113 +7884,54 @@ function PlatformAdministration({
                 Loading agencies...
               </div>
             ) : (
-              <section className="platform-panel">
-                <div className="platform-table-wrap">
-                  <table className="platform-table">
-                    <thead>
-                      <tr>
-                        <th>Agency</th>
-                        <th>Status</th>
-                        <th>
-                          Licensed Employees
-                        </th>
-                        <th>
-                          Administrators
-                        </th>
-                        <th>
-                          Last Login
-                        </th>
-                        <th>
-                          30-Day Logins
-                        </th>
-                        <th></th>
-                      </tr>
-                    </thead>
+              <>
+                <section className="platform-panel">
+                  <div className="platform-panel-heading">
+                    <div>
+                      <h3>Active Agencies</h3>
+                      <p>
+                        Active PTM tenants with agency administrator access.
+                      </p>
+                    </div>
 
-                    <tbody>
-                      {agencies.map((agency) => (
-                        <tr key={agency.id}>
-                          <td>
-                            <strong>
-                              {agency.name}
-                            </strong>
+                    <span className="platform-agency-count">
+                      {activeAgencies.length}
+                    </span>
+                  </div>
 
-                            {agency.tcole_agency_number && (
-                              <span>
-                                TCOLE{" "}
-                                {
-                                  agency.tcole_agency_number
-                                }
-                              </span>
-                            )}
-                          </td>
+                  {activeAgencies.length ? (
+                    renderAgencyTable(activeAgencies)
+                  ) : (
+                    <div className="platform-empty-state">
+                      No active agencies.
+                    </div>
+                  )}
+                </section>
 
-                          <td>
-                            <span
-                              className={
-                                "platform-status " +
-                                agency.status
-                              }
-                            >
-                              {agency.status}
-                            </span>
-                          </td>
+                <section className="platform-panel platform-archived-agencies">
+                  <div className="platform-panel-heading">
+                    <div>
+                      <h3>Archived Agencies</h3>
+                      <p>
+                        Archived tenants retain their data but cannot be
+                        accessed by agency administrators.
+                      </p>
+                    </div>
 
-                          <td>
-                            {
-                              agency.active_employee_count
-                            }
-                          </td>
+                    <span className="platform-agency-count">
+                      {archivedAgencies.length}
+                    </span>
+                  </div>
 
-                          <td>
-                            {
-                              agency.active_administrator_count
-                            }
-                            {" active / "}
-                            {
-                              agency.administrator_count
-                            }
-                            {" total"}
-                          </td>
-
-                          <td>
-                            {agency.activity
-                              ?.last_login_at
-                              ? formatPlatformDate(
-                                  agency.activity
-                                    .last_login_at
-                                )
-                              : "Never"}
-                          </td>
-
-                          <td>
-                            {
-                              agency.activity
-                                ?.logins_30_days ??
-                              0
-                            }
-                          </td>
-
-                          <td>
-                            <button
-                              type="button"
-                              className="platform-link-button"
-                              disabled={busy}
-                              onClick={() =>
-                                openAgency(
-                                  agency.id
-                                )
-                              }
-                            >
-                              Manage Agency
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+                  {archivedAgencies.length ? (
+                    renderAgencyTable(archivedAgencies)
+                  ) : (
+                    <div className="platform-empty-state">
+                      No archived agencies.
+                    </div>
+                  )}
+                </section>
+              </>
             )}
           </>
         ) : (
@@ -8008,6 +8159,236 @@ function PlatformAdministration({
                 </div>
               )}
             </section>
+
+            <section className="platform-panel platform-lifecycle-panel">
+              <div className="platform-panel-heading">
+                <div>
+                  <h3>Agency Lifecycle</h3>
+
+                  <p>
+                    Archive, restore, or permanently remove this PTM tenant.
+                  </p>
+                </div>
+              </div>
+
+              <div className="platform-lifecycle-content">
+                {selectedAgency.status === "archived" ? (
+                  <>
+                    <div>
+                      <strong>Archived Agency</strong>
+                      <p>
+                        This agency is retained in PTM, but its agency
+                        administrators cannot sign in. Restore it to return
+                        the tenant to active use.
+                      </p>
+                    </div>
+
+                    <div className="platform-lifecycle-actions">
+                      <button
+                        type="button"
+                        className="platform-primary-button"
+                        disabled={busy}
+                        onClick={handleRestoreAgency}
+                      >
+                        {busy
+                          ? "Restoring..."
+                          : "Restore Agency"}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="platform-danger-button"
+                        disabled={busy}
+                        onClick={() => {
+                          setDeleteAgencyConfirmation("");
+                          setDeleteAgencyOpen(true);
+                          setError("");
+                          setNotice("");
+                        }}
+                      >
+                        Permanently Delete Agency
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <strong>Active Agency</strong>
+                      <p>
+                        Archiving preserves the agency and its records while
+                        immediately blocking agency administrator access.
+                      </p>
+                    </div>
+
+                    <div className="platform-lifecycle-actions">
+                      <button
+                        type="button"
+                        className="platform-warning-button"
+                        disabled={busy}
+                        onClick={() => {
+                          setArchiveAgencyOpen(true);
+                          setError("");
+                          setNotice("");
+                        }}
+                      >
+                        Archive Agency
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </section>
+
+            {archiveAgencyOpen && selectedAgency && (
+              <div
+                className="platform-modal-backdrop"
+                role="presentation"
+                onMouseDown={(event) => {
+                  if (
+                    event.target === event.currentTarget &&
+                    !busy
+                  ) {
+                    setArchiveAgencyOpen(false);
+                  }
+                }}
+              >
+                <section
+                  className="platform-lifecycle-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="archive-agency-title"
+                >
+                  <div className="platform-modal-heading">
+                    <div>
+                      <span>AGENCY LIFECYCLE</span>
+                      <h2 id="archive-agency-title">
+                        Archive Agency?
+                      </h2>
+                      <p>
+                        {selectedAgency.name} will remain in PTM and its data
+                        will be preserved. Agency administrators will no longer
+                        be able to sign in until the agency is restored.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="platform-lifecycle-modal-actions">
+                    <button
+                      type="button"
+                      className="platform-secondary-button"
+                      disabled={busy}
+                      onClick={() =>
+                        setArchiveAgencyOpen(false)
+                      }
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      className="platform-warning-button"
+                      disabled={busy}
+                      onClick={handleArchiveAgency}
+                    >
+                      {busy
+                        ? "Archiving..."
+                        : "Archive Agency"}
+                    </button>
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {deleteAgencyOpen && selectedAgency && (
+              <div
+                className="platform-modal-backdrop"
+                role="presentation"
+              >
+                <section
+                  className="platform-lifecycle-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="delete-agency-title"
+                >
+                  <div className="platform-modal-heading">
+                    <div>
+                      <span>PERMANENT DELETION</span>
+                      <h2 id="delete-agency-title">
+                        Permanently Delete Agency?
+                      </h2>
+                      <p>
+                        This permanently removes the tenant and its associated
+                        PTM data. This action cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+
+                  <form
+                    className="platform-delete-confirmation"
+                    onSubmit={handleDeleteAgency}
+                  >
+                    <div className="platform-danger-notice">
+                      <strong>Warning</strong>
+                      <p>
+                        You are permanently deleting{" "}
+                        <strong>{selectedAgency.name}</strong>.
+                        Archived data will not be recoverable after deletion.
+                      </p>
+                    </div>
+
+                    <label>
+                      <span>
+                        Type the exact agency name to confirm:
+                      </span>
+
+                      <strong className="platform-confirmation-name">
+                        {selectedAgency.name}
+                      </strong>
+
+                      <input
+                        type="text"
+                        autoComplete="off"
+                        value={deleteAgencyConfirmation}
+                        disabled={busy}
+                        onChange={(event) =>
+                          setDeleteAgencyConfirmation(
+                            event.target.value
+                          )
+                        }
+                      />
+                    </label>
+
+                    <div className="platform-lifecycle-modal-actions">
+                      <button
+                        type="button"
+                        className="platform-secondary-button"
+                        disabled={busy}
+                        onClick={() => {
+                          setDeleteAgencyOpen(false);
+                          setDeleteAgencyConfirmation("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        className="platform-danger-button"
+                        disabled={
+                          busy ||
+                          deleteAgencyConfirmation !==
+                            selectedAgency.name
+                        }
+                      >
+                        {busy
+                          ? "Deleting..."
+                          : "Permanently Delete Agency"}
+                      </button>
+                    </div>
+                  </form>
+                </section>
+              </div>
+            )}
 
             {selectedAgencyActivity && (
               <section className="platform-panel">
