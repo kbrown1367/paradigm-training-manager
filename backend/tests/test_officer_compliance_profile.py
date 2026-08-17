@@ -707,3 +707,131 @@ def test_peace_officer_cycle_requirement_drives_profile_due(app):
         ]
 
         assert len(cycle_requirements) == 4
+
+
+def test_police_chief_profile_uses_3740_equivalency_and_alerrt_credit(
+    app,
+):
+    with app.app_context():
+        agency, officer = make_peace_officer()
+
+        db.session.add(
+            OfficerAssignment(
+                agency_id=agency.id,
+                officer_id=officer.id,
+                assignment_type="POLICE_CHIEF",
+                effective_date=date(2020, 1, 1),
+            )
+        )
+
+        # Initial chief training.
+        add_course(
+            agency,
+            officer,
+            "3780",
+            date(2020, 6, 1),
+            40,
+        )
+        add_course(
+            agency,
+            officer,
+            "3740",
+            date(2021, 6, 1),
+            40,
+        )
+
+        # Current-unit Chief Leadership Series.
+        # This satisfies #3189 and contributes
+        # 8 embedded ALERRT hours.
+        add_course(
+            agency,
+            officer,
+            "3740",
+            date(2026, 1, 1),
+            40,
+        )
+
+        # Additional approved ALERRT credit.
+        add_course(
+            agency,
+            officer,
+            "3312",
+            date(2026, 2, 1),
+            2,
+        )
+
+        db.session.commit()
+
+        result = evaluate_officer_compliance_profile(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        chief = result["components"]["POLICE_CHIEF"]
+        peace = result["components"]["PEACE_OFFICER"]
+
+        assert chief["applicable"] is True
+        assert peace["applicable"] is True
+
+        assert (
+            chief["result"]["current_unit_3740_completed"]
+            is True
+        )
+
+        assert (
+            chief["result"][
+                "state_federal_law_update_satisfied_by_3740"
+            ]
+            is True
+        )
+
+        peace_result = peace["result"]
+
+        assert peace_result["alerrt_hours"] == 10.0
+        assert (
+            peace_result["remaining_alerrt_hours"]
+            == 6.0
+        )
+
+        course_3189 = next(
+            item
+            for item in peace_result["required_courses"]
+            if item["course_number"] == "3189"
+        )
+
+        assert course_3189["completed"] is True
+        assert course_3189["status"] == "COMPLETE"
+        assert (
+            course_3189["satisfaction_basis"]
+            == "EQUIVALENCY"
+        )
+
+        # The unified employee profile must not
+        # reintroduce #3189 as an outstanding item.
+        assert not any(
+            item.get("course_number") == "3189"
+            and item.get("source_component")
+            == "PEACE_OFFICER"
+            for item in result["requirements"]
+        )
+
+        alerrt_requirement = next(
+            item
+            for item in result[
+                "outstanding_requirements"
+            ]
+            if (
+                item.get("source_component")
+                == "PEACE_OFFICER"
+                and item.get("type")
+                == "ALERRT_HOURS"
+            )
+        )
+
+        assert (
+            alerrt_requirement["message"]
+            == (
+                "6.00 additional approved "
+                "ALERRT hours required."
+            )
+        )

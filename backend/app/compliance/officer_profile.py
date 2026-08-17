@@ -211,21 +211,6 @@ def evaluate_officer_compliance_profile(
         )
     )
 
-    if track_peace:
-        peace_officer = evaluate_peace_officer_unit(
-            officer,
-            evaluation_date=evaluation_date,
-        )
-    else:
-        peace_officer = {
-            "applicable": False,
-            "unit_status": "NOT_APPLICABLE",
-            "requirements": [],
-            "deficiencies": [],
-            "tracking_disabled":
-                has_peace and not track_peace,
-        }
-
     if track_jailer:
         county_jailer = evaluate_county_jailer(
             officer,
@@ -295,6 +280,29 @@ def evaluate_officer_compliance_profile(
             "status": "NOT_APPLICABLE",
             "requirements": [],
             "deficiencies": [],
+        }
+
+    if track_peace:
+        if (
+            police_chief.get("applicable")
+            and police_chief.get("peace_officer")
+        ):
+            peace_officer = police_chief[
+                "peace_officer"
+            ]
+        else:
+            peace_officer = evaluate_peace_officer_unit(
+                officer,
+                evaluation_date=evaluation_date,
+            )
+    else:
+        peace_officer = {
+            "applicable": False,
+            "unit_status": "NOT_APPLICABLE",
+            "requirements": [],
+            "deficiencies": [],
+            "tracking_disabled":
+                has_peace and not track_peace,
         }
 
     components = [

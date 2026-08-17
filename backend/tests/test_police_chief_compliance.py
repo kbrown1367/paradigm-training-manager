@@ -263,7 +263,7 @@ def test_current_unit_3740_satisfies_chief_ce_and_3189(app):
         )
 
 
-def test_3740_does_not_automatically_add_alerrt_hours(app):
+def test_current_unit_3740_adds_8_embedded_alerrt_hours(app):
     with app.app_context():
         agency, officer = make_chief(
             date(2020, 1, 1)
@@ -298,12 +298,12 @@ def test_3740_does_not_automatically_add_alerrt_hours(app):
             evaluation_date=date(2026, 8, 8),
         )
 
-        assert result["peace_officer"]["alerrt_hours"] == 0.0
+        assert result["peace_officer"]["alerrt_hours"] == 8.0
         assert (
             result["peace_officer"][
                 "remaining_alerrt_hours"
             ]
-            == 16.0
+            == 8.0
         )
 
 
@@ -360,4 +360,97 @@ def test_direct_3189_remains_direct_even_when_3740_exists(app):
         assert (
             course_3189["satisfaction_basis"]
             == "DIRECT"
+        )
+
+
+def test_chief_3740_plus_3312_satisfies_3189_and_leaves_6_alerrt_hours(app):
+    with app.app_context():
+        agency, officer = make_chief(
+            date(2020, 1, 1)
+        )
+
+        add_course(
+            agency,
+            officer,
+            "3780",
+            date(2020, 6, 1),
+            40,
+        )
+        add_course(
+            agency,
+            officer,
+            "3740",
+            date(2021, 6, 1),
+            40,
+        )
+
+        # Current-unit Chief Leadership Series.
+        # This satisfies #3189 and contributes
+        # 8 embedded ALERRT hours.
+        add_course(
+            agency,
+            officer,
+            "3740",
+            date(2026, 1, 1),
+            40,
+        )
+
+        # Two additional approved ALERRT hours.
+        add_course(
+            agency,
+            officer,
+            "3312",
+            date(2026, 2, 1),
+            2,
+        )
+
+        db.session.commit()
+
+        result = evaluate_police_chief(
+            officer,
+            evaluation_date=date(2026, 8, 8),
+        )
+
+        peace = result["peace_officer"]
+
+        course_3189 = next(
+            item
+            for item in peace["required_courses"]
+            if item["course_number"] == "3189"
+        )
+
+        assert result["current_unit_3740_completed"] is True
+
+        assert (
+            result[
+                "state_federal_law_update_satisfied_by_3740"
+            ]
+            is True
+        )
+
+        assert course_3189["completed"] is True
+        assert course_3189["status"] == "COMPLETE"
+        assert (
+            course_3189["satisfaction_basis"]
+            == "EQUIVALENCY"
+        )
+
+        assert peace["alerrt_hours"] == 10.0
+        assert peace["required_alerrt_hours"] == 16.0
+        assert peace["remaining_alerrt_hours"] == 6.0
+
+        assert not any(
+            item.get("course_number") == "3189"
+            for item in peace["requirements"]
+        )
+
+        alerrt_requirement = next(
+            item
+            for item in peace["requirements"]
+            if item["type"] == "ALERRT_HOURS"
+        )
+
+        assert (
+            alerrt_requirement["message"]
+            == "6.00 additional approved ALERRT hours required."
         )
