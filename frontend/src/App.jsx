@@ -3159,6 +3159,11 @@ function OperationalApp({
     setTcoleReportsGuideOpen,
   ] = useState(false);
 
+  const [
+    agencyGettingStartedOpen,
+    setAgencyGettingStartedOpen,
+  ] = useState(false);
+
   useEffect(() => {
     if (!tcoleReportsGuideOpen) {
       return undefined;
@@ -3182,6 +3187,30 @@ function OperationalApp({
       );
     };
   }, [tcoleReportsGuideOpen]);
+
+  useEffect(() => {
+    if (!agencyGettingStartedOpen) {
+      return undefined;
+    }
+
+    function handleAgencyGettingStartedKeyDown(event) {
+      if (event.key === "Escape") {
+        setAgencyGettingStartedOpen(false);
+      }
+    }
+
+    document.addEventListener(
+      "keydown",
+      handleAgencyGettingStartedKeyDown
+    );
+
+    return () => {
+      document.removeEventListener(
+        "keydown",
+        handleAgencyGettingStartedKeyDown
+      );
+    };
+  }, [agencyGettingStartedOpen]);
   const [emailDomain, setEmailDomain] = useState("");
   const [emailPattern, setEmailPattern] = useState("");
   const [emailSettingsBusy, setEmailSettingsBusy] = useState(false);
@@ -4885,6 +4914,234 @@ function OperationalApp({
         </div>
       )}
 
+      {agencyGettingStartedOpen && (
+        <div
+          className="agency-getting-started-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setAgencyGettingStartedOpen(false);
+            }
+          }}
+        >
+          <section
+            className="agency-getting-started-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="agency-getting-started-title"
+          >
+            <div className="agency-getting-started-heading">
+              <div>
+                <span>AGENCY SETUP GUIDE</span>
+
+                <h2 id="agency-getting-started-title">
+                  Getting Started with PTM
+                </h2>
+
+                <p>
+                  Complete these steps after importing your
+                  agency's TCOLE reports to finish setting up
+                  Paradigm Training Manager.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="agency-getting-started-close"
+                aria-label="Close Getting Started guide"
+                onClick={() =>
+                  setAgencyGettingStartedOpen(false)
+                }
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="agency-getting-started-content">
+              <ol className="agency-getting-started-list">
+                <li>
+                  <strong>
+                    Identify the Chief Administrator
+                  </strong>
+                  <p>
+                    Designate the employee currently serving
+                    as the agency's Chief Administrator.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>Identify Supervisors</strong>
+                  <p>
+                    Designate all employees who currently
+                    serve in a supervisory role.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>
+                    Identify Public Information Officers
+                    (PIOs)
+                  </strong>
+                  <p>
+                    Designate all employees who currently
+                    serve as a Public Information Officer.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>Add College Education</strong>
+                  <p>
+                    Enter applicable college credit hours
+                    and degree information for employees.
+                    This information may affect proficiency
+                    certificate eligibility.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>
+                    Add Qualifying Military Service
+                  </strong>
+                  <p>
+                    Enter qualifying military service for
+                    applicable employees. Military service
+                    may affect proficiency certificate
+                    eligibility.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>Review Employee Status</strong>
+                  <p>
+                    Review the employee roster and archive
+                    employees who are no longer active with
+                    your agency.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>
+                    Verify Employee Information
+                  </strong>
+                  <p>
+                    Review employees for correct licenses,
+                    proficiency certificates, operational
+                    assignments, and other information used
+                    by PTM.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>
+                    Configure Agency Email Settings
+                  </strong>
+                  <p>
+                    Review the agency's email domain and
+                    organizational email-address format.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>
+                    Review Employee Email Addresses
+                  </strong>
+                  <p>
+                    Correct employee email addresses that
+                    do not follow the agency's
+                    organizational standard.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>
+                    Verify Notification Recipients
+                  </strong>
+                  <p>
+                    Make sure every employee who should
+                    receive PTM compliance notifications
+                    has a valid email address.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>
+                    Review the Compliance Dashboard
+                  </strong>
+                  <p>
+                    Review compliant, training-due,
+                    noncompliant, and not-evaluated
+                    employees. Investigate any result that
+                    appears unexpected.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>
+                    Resolve Agency Review Items
+                  </strong>
+                  <p>
+                    Review employees marked Agency Review
+                    or Pending Review and supply any
+                    information PTM needs to complete the
+                    evaluation.
+                  </p>
+                </li>
+              </ol>
+
+              <section className="agency-getting-started-data-note">
+                <div>
+                  <span>KEEP YOUR TCOLE DATA CURRENT</span>
+
+                  <h3>
+                    PTM does not automatically retrieve data
+                    from TCOLE.
+                  </h3>
+
+                  <p>
+                    Paradigm Training Manager evaluates the
+                    TCOLE data uploaded by your agency. To
+                    keep your Compliance Dashboard current,
+                    periodically download updated reports
+                    from TCLEDDS and import them into PTM.
+                  </p>
+
+                  <p>
+                    You may update your agency's data as
+                    often as you like. New imports reconcile
+                    with your existing PTM records and
+                    update the Compliance Dashboard using
+                    the latest TCOLE information available
+                    in those reports.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="agency-getting-started-reports"
+                  onClick={() => {
+                    setAgencyGettingStartedOpen(false);
+                    setTcoleReportsGuideOpen(true);
+                  }}
+                >
+                  Which TCOLE Reports Do I Need?
+                </button>
+              </section>
+            </div>
+
+            <div className="agency-getting-started-actions">
+              <button
+                type="button"
+                onClick={() =>
+                  setAgencyGettingStartedOpen(false)
+                }
+              >
+                Close
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {accountOpen && (
         <div
           className="account-modal-backdrop"
@@ -5316,31 +5573,12 @@ function OperationalApp({
               <div className="dashboard-header-actions">
                 <button
                   type="button"
-                  className="archived-employees-button"
-                  onClick={openArchivedEmployees}
+                  className="agency-getting-started-button"
+                  onClick={() =>
+                    setAgencyGettingStartedOpen(true)
+                  }
                 >
-                  Archived Employees
-                </button>
-
-                {agency?.id && (
-                  <a
-                    className="archived-employees-button"
-                    href={
-                      `/api/agencies/${agency.id}` +
-                      "/reports/compliance.pdf"
-                    }
-                    download
-                  >
-                    Download Compliance Report
-                  </a>
-                )}
-
-                <button
-                  type="button"
-                  className="communications-launch-button"
-                  onClick={openComplianceCommunications}
-                >
-                  Email Compliance Updates
+                  Getting Started
                 </button>
 
                 <button
@@ -5358,6 +5596,35 @@ function OperationalApp({
                   }}
                 >
                   Email Settings
+                </button>
+
+                <button
+                  type="button"
+                  className="communications-launch-button"
+                  onClick={openComplianceCommunications}
+                >
+                  Email Compliance Updates
+                </button>
+
+                {agency?.id && (
+                  <a
+                    className="archived-employees-button"
+                    href={
+                      `/api/agencies/${agency.id}` +
+                      "/reports/compliance.pdf"
+                    }
+                    download
+                  >
+                    Download Compliance Report
+                  </a>
+                )}
+
+                <button
+                  type="button"
+                  className="archived-employees-button"
+                  onClick={openArchivedEmployees}
+                >
+                  Archived Employees
                 </button>
               </div>
 
