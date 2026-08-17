@@ -1024,3 +1024,283 @@ def test_agency_purge_plan_covers_all_agency_owned_tables(
         }
 
         assert purge_tables == agency_owned_tables
+
+
+def test_platform_admin_can_list_retained_tcole_files(
+    app,
+    data,
+):
+    from uuid import UUID
+
+    from app.extensions import db
+    from app.models import ImportJob
+    from app.services.retained_tcole_files import (
+        FILE_TYPE_AWARDS,
+        retain_tcole_file,
+    )
+
+    with app.app_context():
+        agency_id = UUID(data["agency_id"])
+
+        job = ImportJob(
+            agency_id=agency_id,
+            status="completed",
+        )
+        db.session.add(job)
+        db.session.flush()
+
+        retain_tcole_file(
+            agency_id=agency_id,
+            import_job_id=job.id,
+            file_type=FILE_TYPE_AWARDS,
+            filename="rptAwards.csv",
+            content=b"column,value\\none,two\\n",
+        )
+
+        db.session.commit()
+
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.get(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/tcole-files"
+    )
+
+    assert response.status_code == 200
+
+    result = response.get_json()
+
+    assert result["agency_id"] == (
+        data["agency_id"]
+    )
+    assert result["retention_days"] == 90
+    assert len(result["files"]) == 1
+
+    retained = result["files"][0]
+
+    assert retained["file_type"] == "awards"
+    assert retained["original_filename"] == (
+        "rptAwards.csv"
+    )
+    assert retained["size_bytes"] > 0
+    assert len(retained["sha256"]) == 64
+    assert retained["uploaded_at"]
+    assert retained["expires_at"]
+
+    assert "content" not in retained
+
+
+def test_platform_admin_can_download_retained_tcole_file(
+    app,
+    data,
+):
+    from uuid import UUID
+
+    from app.extensions import db
+    from app.models import (
+        AuditEvent,
+        ImportJob,
+    )
+    from app.services.retained_tcole_files import (
+        FILE_TYPE_COURSES,
+        retain_tcole_file,
+    )
+
+    content = (
+        b"P_ID,COURSE_ID\\n"
+        b"123456,3189\\n"
+    )
+
+    with app.app_context():
+        agency_id = UUID(data["agency_id"])
+
+        job = ImportJob(
+            agency_id=agency_id,
+            status="completed",
+        )
+        db.session.add(job)
+        db.session.flush()
+
+        retained = retain_tcole_file(
+            agency_id=agency_id,
+            import_job_id=job.id,
+            file_type=FILE_TYPE_COURSES,
+            filename="rptCourseTaken.csv",
+            content=content,
+        )
+
+        retained_id = retained.id
+
+        db.session.commit()
+
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.get(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/tcole-files/courses/download"
+    )
+
+    assert response.status_code == 200
+    assert response.data == content
+
+    disposition = response.headers.get(
+        "Content-Disposition",
+        "",
+    )
+
+    assert "attachment" in disposition
+    assert "rptCourseTaken.csv" in disposition
+
+    with app.app_context():
+        event = (
+            AuditEvent.query
+            .filter_by(
+                agency_id=UUID(
+                    data["agency_id"]
+                ),
+                event_type=(
+                    "PLATFORM_TCOLE_FILE_DOWNLOADED"
+                ),
+            )
+            .order_by(
+                AuditEvent.created_at.desc()
+            )
+            .first()
+        )
+
+        assert event is not None
+        assert event.object_type == (
+            "RETAINED_TCOLE_FILE"
+        )
+        assert event.object_id == str(
+            retained_id
+        )
+        assert event.result == "success"
+        assert event.details["file_type"] == (
+            "courses"
+        )
+        assert event.details["filename"] == (
+            "rptCourseTaken.csv"
+        )
+
+
+def test_agency_admin_cannot_access_retained_tcole_files(
+    app,
+    data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "agency@example.gov",
+        "AgencyPassword123!",
+    )
+
+    list_response = client.get(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/tcole-files"
+    )
+
+    download_response = client.get(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/tcole-files/awards/download"
+    )
+
+    assert list_response.status_code == 404
+    assert download_response.status_code == 404
+
+
+def test_expired_retained_file_is_not_available_to_platform_admin(
+    app,
+    data,
+):
+    from datetime import timedelta
+    from uuid import UUID
+
+    from app.extensions import db
+    from app.models import (
+        ImportJob,
+        RetainedTcoleFile,
+        utcnow,
+    )
+    from app.services.retained_tcole_files import (
+        FILE_TYPE_AWARDS,
+        retain_tcole_file,
+    )
+
+    with app.app_context():
+        agency_id = UUID(data["agency_id"])
+
+        job = ImportJob(
+            agency_id=agency_id,
+            status="completed",
+        )
+        db.session.add(job)
+        db.session.flush()
+
+        retained = retain_tcole_file(
+            agency_id=agency_id,
+            import_job_id=job.id,
+            file_type=FILE_TYPE_AWARDS,
+            filename="expired.csv",
+            content=b"expired",
+        )
+
+        retained.expires_at = (
+            utcnow() - timedelta(seconds=1)
+        )
+
+        db.session.commit()
+
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    list_response = client.get(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/tcole-files"
+    )
+
+    assert list_response.status_code == 200
+    assert list_response.get_json()["files"] == []
+
+    download_response = client.get(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/tcole-files/awards/download"
+    )
+
+    assert download_response.status_code == 404
+
+    with app.app_context():
+        assert (
+            RetainedTcoleFile.query
+            .filter_by(
+                agency_id=UUID(
+                    data["agency_id"]
+                )
+            )
+            .count()
+            == 0
+        )

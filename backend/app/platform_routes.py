@@ -6,12 +6,14 @@
 # Software ID: PTM-PSP-2026
 
 from datetime import datetime, timedelta, timezone
+from io import BytesIO
 from uuid import UUID
 
 from flask import (
     Blueprint,
     jsonify,
     request,
+    send_file,
 )
 
 from app.auth import (
@@ -24,6 +26,13 @@ from app.auth import (
     user_is_platform_admin,
 )
 from app.extensions import db
+from app.services.audit_log import (
+    record_audit_event,
+)
+from app.services.retained_tcole_files import (
+    FILE_TYPES,
+    purge_expired_tcole_files,
+)
 from app.models import (
     Agency,
     AuditEvent,
@@ -33,6 +42,7 @@ from app.models import (
     OfficerAward,
     OfficerCredentialVerification,
     OfficerLicenseTracking,
+    RetainedTcoleFile,
     TrainingCredit,
     TrainingRecord,
     User,
@@ -53,6 +63,7 @@ AGENCY_PURGE_MODELS = (
     OfficerAward,
     OfficerCredentialVerification,
     OfficerLicenseTracking,
+    RetainedTcoleFile,
     ImportJob,
     Officer,
     User,
@@ -934,6 +945,155 @@ def platform_reset_agency_administrator_password(
                 ),
         }
     ), 200
+
+def serialize_retained_tcole_file(retained):
+    return {
+        "id": str(retained.id),
+        "agency_id": str(retained.agency_id),
+        "import_job_id": str(retained.import_job_id),
+        "file_type": retained.file_type,
+        "original_filename":
+            retained.original_filename,
+        "content_type": retained.content_type,
+        "size_bytes": retained.size_bytes,
+        "sha256": retained.sha256,
+        "uploaded_at": (
+            retained.uploaded_at.isoformat()
+            if retained.uploaded_at
+            else None
+        ),
+        "expires_at": (
+            retained.expires_at.isoformat()
+            if retained.expires_at
+            else None
+        ),
+    }
+
+
+@platform_api.get(
+    "/agencies/<uuid:agency_id>/tcole-files"
+)
+def platform_list_retained_tcole_files(
+    agency_id,
+):
+    agency = get_agency_or_none(
+        agency_id
+    )
+
+    if agency is None:
+        return platform_error(
+            "Resource not found.",
+            404,
+        )
+
+    purged = purge_expired_tcole_files()
+    if purged:
+        db.session.commit()
+
+    retained_files = (
+        RetainedTcoleFile.query
+        .filter_by(
+            agency_id=agency.id,
+        )
+        .order_by(
+            RetainedTcoleFile.file_type
+        )
+        .all()
+    )
+
+    return jsonify(
+        {
+            "agency_id": str(agency.id),
+            "agency_name": agency.name,
+            "retention_days": 90,
+            "files": [
+                serialize_retained_tcole_file(
+                    retained
+                )
+                for retained in retained_files
+            ],
+        }
+    ), 200
+
+
+@platform_api.get(
+    "/agencies/<uuid:agency_id>/tcole-files/"
+    "<file_type>/download"
+)
+def platform_download_retained_tcole_file(
+    agency_id,
+    file_type,
+):
+    agency = get_agency_or_none(
+        agency_id
+    )
+
+    if agency is None:
+        return platform_error(
+            "Resource not found.",
+            404,
+        )
+
+    if file_type not in FILE_TYPES:
+        return platform_error(
+            "Resource not found.",
+            404,
+        )
+
+    purged = purge_expired_tcole_files()
+    if purged:
+        db.session.commit()
+
+    retained = (
+        RetainedTcoleFile.query
+        .filter_by(
+            agency_id=agency.id,
+            file_type=file_type,
+        )
+        .one_or_none()
+    )
+
+    if retained is None:
+        return platform_error(
+            "Resource not found.",
+            404,
+        )
+
+    user = get_session_user()
+
+    record_audit_event(
+        agency_id=agency.id,
+        user_id=(
+            user.id
+            if user is not None
+            else None
+        ),
+        event_type="PLATFORM_TCOLE_FILE_DOWNLOADED",
+        object_type="RETAINED_TCOLE_FILE",
+        object_id=str(retained.id),
+        result="success",
+        details={
+            "file_type": retained.file_type,
+            "filename":
+                retained.original_filename,
+            "import_job_id":
+                str(retained.import_job_id),
+            "sha256": retained.sha256,
+            "size_bytes":
+                retained.size_bytes,
+        },
+    )
+
+    db.session.commit()
+
+    return send_file(
+        BytesIO(retained.content),
+        mimetype=retained.content_type,
+        as_attachment=True,
+        download_name=
+            retained.original_filename,
+    )
+
 
 def serialize_activity_event(event):
     return {

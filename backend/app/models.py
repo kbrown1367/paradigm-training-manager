@@ -52,6 +52,12 @@ class Agency(db.Model):
         cascade="save-update, merge",
     )
 
+    retained_tcole_files = db.relationship(
+        "RetainedTcoleFile",
+        back_populates="agency",
+        cascade="save-update, merge",
+    )
+
     officer_assignments = db.relationship(
         "OfficerAssignment",
         back_populates="agency",
@@ -660,6 +666,89 @@ class ImportJob(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
     agency = db.relationship("Agency", back_populates="import_jobs")
+
+
+class RetainedTcoleFile(db.Model):
+    """
+    Current retained TCOLE source file for an agency/import type.
+
+    PTM retains the exact successfully imported CSV bytes for
+    platform support/review. A newer successful import of the
+    same file type replaces the prior retained copy. Files also
+    expire after 90 days.
+    """
+
+    __tablename__ = "retained_tcole_files"
+
+    id = db.Column(
+        db.Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    agency_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("agencies.id"),
+        nullable=False,
+        index=True,
+    )
+    import_job_id = db.Column(
+        db.Uuid(as_uuid=True),
+        db.ForeignKey("import_jobs.id"),
+        nullable=False,
+        index=True,
+    )
+    file_type = db.Column(
+        db.String(30),
+        nullable=False,
+    )
+    original_filename = db.Column(
+        db.String(255),
+        nullable=False,
+    )
+    content_type = db.Column(
+        db.String(100),
+        nullable=False,
+        default="text/csv",
+    )
+    content = db.Column(
+        db.LargeBinary,
+        nullable=False,
+    )
+    size_bytes = db.Column(
+        db.Integer,
+        nullable=False,
+    )
+    sha256 = db.Column(
+        db.String(64),
+        nullable=False,
+    )
+    uploaded_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=utcnow,
+    )
+    expires_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        index=True,
+    )
+
+    agency = db.relationship(
+        "Agency",
+        back_populates="retained_tcole_files",
+    )
+
+    import_job = db.relationship(
+        "ImportJob",
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "agency_id",
+            "file_type",
+            name="uq_retained_tcole_file_agency_type",
+        ),
+    )
 
 
 class OfficerAward(db.Model):

@@ -25,6 +25,28 @@ def create_app(config=None):
     migrate.init_app(app, db)
 
     from . import models
+    from .services.retained_tcole_files import (
+        purge_expired_tcole_files,
+    )
+
+    @app.cli.command(
+        "purge-expired-tcole-files"
+    )
+    def purge_expired_tcole_files_command():
+        """
+        Permanently remove retained TCOLE source files
+        after their retention period expires.
+        """
+        deleted_count = (
+            purge_expired_tcole_files()
+        )
+        db.session.commit()
+
+        print(
+            "Purged "
+            f"{deleted_count} expired "
+            "retained TCOLE file(s)."
+        )
     from .auth_routes import auth_api
     from .frontend_routes import frontend_web
     from .platform_routes import platform_api

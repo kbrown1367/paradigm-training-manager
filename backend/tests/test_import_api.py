@@ -4,7 +4,14 @@ import pytest
 
 from app import create_app
 from app.extensions import db
-from app.models import Agency, ImportJob, Officer, OfficerAward, TrainingRecord
+from app.models import (
+    Agency,
+    ImportJob,
+    Officer,
+    OfficerAward,
+    RetainedTcoleFile,
+    TrainingRecord,
+)
 
 
 @pytest.fixture()
@@ -111,6 +118,155 @@ def test_tcole_import_api_accepts_four_files(app):
         assert OfficerAward.query.count() == 3
         assert TrainingRecord.query.count() == 2
         assert ImportJob.query.count() == 1
+
+
+def test_full_tcole_import_retains_exact_source_files(app):
+    with app.app_context():
+        agency_id = make_agency()
+
+    client = app.test_client()
+
+    response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole",
+        data=import_payload(),
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 201
+
+    import_job_id = response.get_json()[
+        "import_job_id"
+    ]
+
+    with app.app_context():
+        retained = (
+            RetainedTcoleFile.query
+            .filter_by(
+                agency_id=agency_id,
+            )
+            .all()
+        )
+
+        assert len(retained) == 4
+
+        by_type = {
+            item.file_type: item
+            for item in retained
+        }
+
+        assert by_type["awards"].content == AWARDS
+        assert (
+            by_type["courses"].content
+            == COURSES
+        )
+        assert by_type["cycle"].content == CYCLE
+        assert (
+            by_type["licensee_search"].content
+            == LICENSEE_SEARCH
+        )
+
+        assert (
+            by_type["awards"].original_filename
+            == "rptAwards.csv"
+        )
+        assert (
+            by_type["courses"].original_filename
+            == "rptCourseTaken.csv"
+        )
+        assert (
+            by_type["cycle"].original_filename
+            == "rptCycleT_All.csv"
+        )
+        assert (
+            by_type[
+                "licensee_search"
+            ].original_filename
+            == "rptDepartmentOfficerSearch.csv"
+        )
+
+        assert all(
+            str(item.import_job_id)
+            == import_job_id
+            for item in retained
+        )
+
+
+def test_failed_staged_replacement_preserves_last_successful_file(
+    app,
+):
+    with app.app_context():
+        agency_id = make_agency()
+
+    client = app.test_client()
+
+    first = client.post(
+        f"/api/agencies/{agency_id}"
+        "/imports/tcole/awards",
+        data=single_file_payload(
+            AWARDS,
+            "rptAwards-original.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert first.status_code == 201
+
+    with app.app_context():
+        retained = (
+            RetainedTcoleFile.query
+            .filter_by(
+                agency_id=agency_id,
+                file_type="awards",
+            )
+            .one()
+        )
+
+        original_id = retained.id
+        original_job_id = retained.import_job_id
+        original_uploaded_at = retained.uploaded_at
+
+        assert retained.content == AWARDS
+        assert (
+            retained.original_filename
+            == "rptAwards-original.csv"
+        )
+
+    failed = client.post(
+        f"/api/agencies/{agency_id}"
+        "/imports/tcole/awards",
+        data=single_file_payload(
+            b"PID,NAME\n1,BAD\n",
+            "rptAwards-bad.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert failed.status_code == 400
+
+    with app.app_context():
+        retained = (
+            RetainedTcoleFile.query
+            .filter_by(
+                agency_id=agency_id,
+                file_type="awards",
+            )
+            .one()
+        )
+
+        assert retained.id == original_id
+        assert (
+            retained.import_job_id
+            == original_job_id
+        )
+        assert (
+            retained.uploaded_at
+            == original_uploaded_at
+        )
+        assert retained.content == AWARDS
+        assert (
+            retained.original_filename
+            == "rptAwards-original.csv"
+        )
 
 
 def test_tcole_import_api_requires_all_four_files(app):

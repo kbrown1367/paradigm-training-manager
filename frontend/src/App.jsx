@@ -6844,6 +6844,8 @@ const PLATFORM_ACTIVITY_LABELS = {
     "Agency Archived",
   PLATFORM_AGENCY_RESTORED:
     "Agency Restored",
+  PLATFORM_TCOLE_FILE_DOWNLOADED:
+    "TCOLE Source File Downloaded",
 };
 
 
@@ -6863,6 +6865,48 @@ function formatPlatformActivityLabel(eventType) {
           character.toUpperCase()
       )
   );
+}
+
+
+const PLATFORM_TCOLE_FILE_LABELS = {
+  awards: "Awards",
+  courses: "Course History",
+  cycle: "Cycle Training",
+  licensee_search: "Department Licensee Search",
+};
+
+
+function formatPlatformTcoleFileType(fileType) {
+  return (
+    PLATFORM_TCOLE_FILE_LABELS[fileType] ||
+    fileType ||
+    "TCOLE File"
+  );
+}
+
+
+function formatPlatformFileSize(sizeBytes) {
+  const numericSize = Number(sizeBytes);
+
+  if (
+    !Number.isFinite(numericSize) ||
+    numericSize < 0
+  ) {
+    return "Unknown";
+  }
+
+  if (numericSize < 1024) {
+    return `${numericSize} B`;
+  }
+
+  if (numericSize < 1024 * 1024) {
+    return `${(numericSize / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(
+    numericSize /
+    (1024 * 1024)
+  ).toFixed(1)} MB`;
 }
 
 
@@ -6892,6 +6936,11 @@ function PlatformAdministration({
   const [
     selectedAgencyActivity,
     setSelectedAgencyActivity,
+  ] = useState(null);
+
+  const [
+    selectedAgencyTcoleFiles,
+    setSelectedAgencyTcoleFiles,
   ] = useState(null);
 
   const [loading, setLoading] = useState(true);
@@ -7039,6 +7088,7 @@ function PlatformAdministration({
       const [
         agencyData,
         activityData,
+        tcoleFileData,
       ] = await Promise.all([
         fetchJson(
           `/api/platform/agencies/${agencyId}`
@@ -7046,10 +7096,14 @@ function PlatformAdministration({
         fetchJson(
           `/api/platform/agencies/${agencyId}/activity`
         ),
+        fetchJson(
+          `/api/platform/agencies/${agencyId}/tcole-files`
+        ),
       ]);
 
       setSelectedAgency(agencyData);
       setSelectedAgencyActivity(activityData);
+      setSelectedAgencyTcoleFiles(tcoleFileData);
       setNewAdminOpen(false);
       setResetUser(null);
       setEditAgencyOpen(false);
@@ -7558,6 +7612,7 @@ function PlatformAdministration({
       setDeleteAgencyConfirmation("");
       setSelectedAgency(null);
       setSelectedAgencyActivity(null);
+      setSelectedAgencyTcoleFiles(null);
 
       await loadAgencies();
 
@@ -7748,6 +7803,7 @@ function PlatformAdministration({
                 onClick={() => {
                   setSelectedAgency(null);
                   setSelectedAgencyActivity(null);
+                  setSelectedAgencyTcoleFiles(null);
                   setError("");
                   setNotice("");
                 }}
@@ -8451,6 +8507,119 @@ function PlatformAdministration({
                   </form>
                 </section>
               </div>
+            )}
+
+            {selectedAgencyTcoleFiles && (
+              <section className="platform-panel">
+                <div className="platform-panel-heading">
+                  <div>
+                    <h3>
+                      Retained TCOLE Source Files
+                    </h3>
+
+                    <p>
+                      Source CSV files successfully
+                      imported by this agency. Each file
+                      is retained for up to{" "}
+                      {
+                        selectedAgencyTcoleFiles
+                          .retention_days
+                      }{" "}
+                      days or until a newer successful
+                      upload replaces the same report
+                      type.
+                    </p>
+                  </div>
+                </div>
+
+                {selectedAgencyTcoleFiles.files?.length ? (
+                  <div className="platform-table-wrap">
+                    <table
+                      className={
+                        "platform-table " +
+                        "platform-tcole-file-table"
+                      }
+                    >
+                      <thead>
+                        <tr>
+                          <th>Report</th>
+                          <th>File Name</th>
+                          <th>Uploaded</th>
+                          <th>Expires</th>
+                          <th>Size</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {selectedAgencyTcoleFiles.files
+                          .map((retainedFile) => (
+                            <tr key={retainedFile.id}>
+                              <td>
+                                <strong>
+                                  {formatPlatformTcoleFileType(
+                                    retainedFile.file_type
+                                  )}
+                                </strong>
+                              </td>
+
+                              <td>
+                                {
+                                  retainedFile
+                                    .original_filename
+                                }
+                              </td>
+
+                              <td>
+                                {formatPlatformDate(
+                                  retainedFile.uploaded_at
+                                )}
+                              </td>
+
+                              <td>
+                                {formatPlatformDate(
+                                  retainedFile.expires_at
+                                )}
+                              </td>
+
+                              <td>
+                                {formatPlatformFileSize(
+                                  retainedFile.size_bytes
+                                )}
+                              </td>
+
+                              <td>
+                                <a
+                                  className={
+                                    "platform-secondary-button " +
+                                    "platform-file-download"
+                                  }
+                                  href={
+                                    `/api/platform/agencies/` +
+                                    `${selectedAgency.id}/` +
+                                    `tcole-files/` +
+                                    `${retainedFile.file_type}/` +
+                                    `download`
+                                  }
+                                >
+                                  Download
+                                </a>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="platform-activity-empty">
+                    No retained TCOLE source files are
+                    currently available for this agency.
+                    Files uploaded before this retention
+                    feature was enabled are not available
+                    retroactively.
+                  </div>
+                )}
+              </section>
             )}
 
             {selectedAgencyActivity && (

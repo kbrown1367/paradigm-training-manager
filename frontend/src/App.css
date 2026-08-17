@@ -8504,3 +8504,30 @@ body:has(.login-page) .product-footer strong {
   background: #fef3f2;
   color: #b42318;
 }
+
+/* v0.6.0 retained TCOLE source files */
+
+.platform-tcole-file-table th:last-child,
+.platform-tcole-file-table td:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.platform-tcole-file-table td:nth-child(2) {
+  max-width: 320px;
+  overflow-wrap: anywhere;
+}
+
+.platform-file-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .platform-tcole-file-table {
+    min-width: 920px;
+  }
+}

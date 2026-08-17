@@ -100,6 +100,13 @@ from app.services.tcole_import import (
     run_tcole_cycle_stage,
     run_tcole_licensee_search_stage,
 )
+from app.services.retained_tcole_files import (
+    FILE_TYPE_AWARDS,
+    FILE_TYPE_COURSES,
+    FILE_TYPE_CYCLE,
+    FILE_TYPE_LICENSEE_SEARCH,
+    retain_tcole_file,
+)
 
 
 api = Blueprint("api", __name__)
@@ -196,13 +203,16 @@ def import_tcole_awards_stage(agency_id):
     if uploaded_file is None:
         return jsonify({"error": "file is required."}), 400
 
+    uploaded_content = uploaded_file.read()
+    uploaded_filename = (
+        uploaded_file.filename or "rptAwards.csv"
+    )
+
     try:
         result = start_tcole_awards_import(
             agency_id=agency_id,
-            awards_content=uploaded_file.read(),
-            awards_filename=(
-                uploaded_file.filename or "rptAwards.csv"
-            ),
+            awards_content=uploaded_content,
+            awards_filename=uploaded_filename,
         )
     except (TcoleImportError, ValueError) as exc:
         audit_tcole_import_failure(
@@ -217,6 +227,15 @@ def import_tcole_awards_stage(agency_id):
         )
 
         return jsonify({"error": str(exc)}), 400
+
+    retain_tcole_file(
+        agency_id=agency_id,
+        import_job_id=result.get("import_job_id"),
+        file_type=FILE_TYPE_AWARDS,
+        filename=uploaded_filename,
+        content=uploaded_content,
+        content_type=uploaded_file.mimetype,
+    )
 
     record_audit_event(
         agency_id=agency_id,
@@ -255,15 +274,18 @@ def import_tcole_courses_stage(
     if uploaded_file is None:
         return jsonify({"error": "file is required."}), 400
 
+    uploaded_content = uploaded_file.read()
+    uploaded_filename = (
+        uploaded_file.filename
+        or "rptCourseTaken.csv"
+    )
+
     try:
         result = run_tcole_courses_stage(
             agency_id=agency_id,
             import_job_id=import_job_id,
-            courses_content=uploaded_file.read(),
-            courses_filename=(
-                uploaded_file.filename
-                or "rptCourseTaken.csv"
-            ),
+            courses_content=uploaded_content,
+            courses_filename=uploaded_filename,
         )
     except (TcoleImportError, ValueError) as exc:
         audit_tcole_import_failure(
@@ -279,6 +301,15 @@ def import_tcole_courses_stage(
         )
 
         return jsonify({"error": str(exc)}), 400
+
+    retain_tcole_file(
+        agency_id=agency_id,
+        import_job_id=import_job_id,
+        file_type=FILE_TYPE_COURSES,
+        filename=uploaded_filename,
+        content=uploaded_content,
+        content_type=uploaded_file.mimetype,
+    )
 
     record_audit_event(
         agency_id=agency_id,
@@ -317,15 +348,18 @@ def import_tcole_cycle_stage(
     if uploaded_file is None:
         return jsonify({"error": "file is required."}), 400
 
+    uploaded_content = uploaded_file.read()
+    uploaded_filename = (
+        uploaded_file.filename
+        or "rptCycleT_All.csv"
+    )
+
     try:
         result = run_tcole_cycle_stage(
             agency_id=agency_id,
             import_job_id=import_job_id,
-            cycle_content=uploaded_file.read(),
-            cycle_filename=(
-                uploaded_file.filename
-                or "rptCycleT_All.csv"
-            ),
+            cycle_content=uploaded_content,
+            cycle_filename=uploaded_filename,
         )
     except (TcoleImportError, ValueError) as exc:
         audit_tcole_import_failure(
@@ -341,6 +375,15 @@ def import_tcole_cycle_stage(
         )
 
         return jsonify({"error": str(exc)}), 400
+
+    retain_tcole_file(
+        agency_id=agency_id,
+        import_job_id=import_job_id,
+        file_type=FILE_TYPE_CYCLE,
+        filename=uploaded_filename,
+        content=uploaded_content,
+        content_type=uploaded_file.mimetype,
+    )
 
     record_audit_event(
         agency_id=agency_id,
@@ -381,15 +424,18 @@ def import_tcole_licensee_search_stage(
     if uploaded_file is None:
         return jsonify({"error": "file is required."}), 400
 
+    uploaded_content = uploaded_file.read()
+    uploaded_filename = (
+        uploaded_file.filename
+        or "rptDepartmentOfficerSearch.csv"
+    )
+
     try:
         result = run_tcole_licensee_search_stage(
             agency_id=agency_id,
             import_job_id=import_job_id,
-            licensee_search_content=uploaded_file.read(),
-            licensee_search_filename=(
-                uploaded_file.filename
-                or "rptDepartmentOfficerSearch.csv"
-            ),
+            licensee_search_content=uploaded_content,
+            licensee_search_filename=uploaded_filename,
         )
     except (TcoleImportError, ValueError) as exc:
         audit_tcole_import_failure(
@@ -405,6 +451,15 @@ def import_tcole_licensee_search_stage(
         )
 
         return jsonify({"error": str(exc)}), 400
+
+    retain_tcole_file(
+        agency_id=agency_id,
+        import_job_id=import_job_id,
+        file_type=FILE_TYPE_LICENSEE_SEARCH,
+        filename=uploaded_filename,
+        content=uploaded_content,
+        content_type=uploaded_file.mimetype,
+    )
 
     record_audit_event(
         agency_id=agency_id,
@@ -464,26 +519,42 @@ def import_tcole_records(agency_id):
             400,
         )
 
+    awards_content = awards_file.read()
+    courses_content = courses_file.read()
+    cycle_content = cycle_file.read()
+    licensee_search_content = (
+        licensee_search_file.read()
+    )
+
+    awards_filename = (
+        awards_file.filename or "rptAwards.csv"
+    )
+    courses_filename = (
+        courses_file.filename or "rptCourseTaken.csv"
+    )
+    cycle_filename = (
+        cycle_file.filename
+        or "rptCycleT_All.csv"
+    )
+    licensee_search_filename = (
+        licensee_search_file.filename
+        or "rptDepartmentOfficerSearch.csv"
+    )
+
     try:
         result = run_tcole_import(
             agency_id=agency_id,
-            awards_content=awards_file.read(),
-            courses_content=courses_file.read(),
-            cycle_content=cycle_file.read(),
+            awards_content=awards_content,
+            courses_content=courses_content,
+            cycle_content=cycle_content,
             licensee_search_content=(
-                licensee_search_file.read()
+                licensee_search_content
             ),
-            awards_filename=awards_file.filename or "rptAwards.csv",
-            courses_filename=(
-                courses_file.filename or "rptCourseTaken.csv"
-            ),
-            cycle_filename=(
-                cycle_file.filename
-                or "rptCycleT_All.csv"
-            ),
+            awards_filename=awards_filename,
+            courses_filename=courses_filename,
+            cycle_filename=cycle_filename,
             licensee_search_filename=(
-                licensee_search_file.filename
-                or "rptDepartmentOfficerSearch.csv"
+                licensee_search_filename
             ),
         )
     except (TcoleImportError, ValueError) as exc:
@@ -496,6 +567,44 @@ def import_tcole_records(agency_id):
         )
 
         return jsonify({"error": str(exc)}), 400
+
+    import_job_id = result.get("import_job_id")
+
+    retain_tcole_file(
+        agency_id=agency_id,
+        import_job_id=import_job_id,
+        file_type=FILE_TYPE_AWARDS,
+        filename=awards_filename,
+        content=awards_content,
+        content_type=awards_file.mimetype,
+    )
+
+    retain_tcole_file(
+        agency_id=agency_id,
+        import_job_id=import_job_id,
+        file_type=FILE_TYPE_COURSES,
+        filename=courses_filename,
+        content=courses_content,
+        content_type=courses_file.mimetype,
+    )
+
+    retain_tcole_file(
+        agency_id=agency_id,
+        import_job_id=import_job_id,
+        file_type=FILE_TYPE_CYCLE,
+        filename=cycle_filename,
+        content=cycle_content,
+        content_type=cycle_file.mimetype,
+    )
+
+    retain_tcole_file(
+        agency_id=agency_id,
+        import_job_id=import_job_id,
+        file_type=FILE_TYPE_LICENSEE_SEARCH,
+        filename=licensee_search_filename,
+        content=licensee_search_content,
+        content_type=licensee_search_file.mimetype,
+    )
 
     record_audit_event(
         agency_id=agency_id,
