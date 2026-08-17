@@ -8476,3 +8476,31 @@ body:has(.login-page) .product-footer strong {
     flex-direction: column-reverse;
   }
 }
+
+/* v0.5.8 expanded agency activity */
+
+.platform-activity-table td:nth-child(2) small {
+  display: block;
+  margin-top: 3px;
+  color: #667085;
+  font-size: 0.72rem;
+}
+
+.platform-activity-result {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.platform-activity-result.success {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.platform-activity-result.failure {
+  background: #fef3f2;
+  color: #b42318;
+}

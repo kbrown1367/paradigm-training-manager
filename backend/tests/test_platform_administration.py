@@ -606,13 +606,96 @@ def test_platform_admin_can_view_agency_login_activity(
     assert data["logins_7_days"] == 2
     assert data["logins_30_days"] == 3
     assert data["active_admins_30_days"] == 1
-    assert len(data["recent_logins"]) == 4
+    assert len(data["recent_activity"]) >= 4
 
-    first_login = data["recent_logins"][0]
+    login_events = [
+        event
+        for event in data["recent_activity"]
+        if event["event_type"]
+        == "AUTH_LOGIN_SUCCESS"
+    ]
+
+    assert len(login_events) == 4
+
+    first_login = login_events[0]
 
     assert first_login["user"]["email"] == (
         "activity-admin@example.gov"
     )
+
+
+def test_platform_activity_endpoint_includes_non_login_events(
+    app,
+    data,
+):
+    from datetime import datetime, timezone
+    from uuid import UUID
+
+    from app.extensions import db
+    from app.models import AuditEvent
+
+    with app.app_context():
+        db.session.add(
+            AuditEvent(
+                agency_id=UUID(
+                    data["agency_id"]
+                ),
+                user_id=UUID(
+                    data["agency_admin_id"]
+                ),
+                event_type=(
+                    "TCOLE_IMPORT_COURSES_UPLOADED"
+                ),
+                object_type="IMPORT_JOB",
+                object_id="test-import-job",
+                result="success",
+                details={
+                    "filename":
+                        "rptCourseTaken.csv",
+                    "course_rows_processed": 42,
+                },
+                created_at=datetime.now(
+                    timezone.utc
+                ),
+            )
+        )
+
+        db.session.commit()
+
+    client = app.test_client()
+
+    login(
+        client,
+        "platform@paradigm.local",
+        "PlatformPassword123!",
+    )
+
+    response = client.get(
+        "/api/platform/agencies/"
+        f"{data['agency_id']}"
+        "/activity"
+    )
+
+    assert response.status_code == 200
+
+    activity = response.get_json()[
+        "recent_activity"
+    ]
+
+    event = next(
+        item
+        for item in activity
+        if item["event_type"]
+        == "TCOLE_IMPORT_COURSES_UPLOADED"
+    )
+
+    assert event["result"] == "success"
+    assert event["object_type"] == "IMPORT_JOB"
+    assert event["object_id"] == "test-import-job"
+    assert event["details"]["filename"] == (
+        "rptCourseTaken.csv"
+    )
+
 
 
 def test_platform_activity_summary_lists_agencies(

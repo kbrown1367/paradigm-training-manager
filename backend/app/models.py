@@ -200,6 +200,29 @@ class AuditEvent(db.Model):
         index=True,
     )
 
+    object_type = db.Column(
+        db.String(50),
+        nullable=True,
+        index=True,
+    )
+
+    object_id = db.Column(
+        db.String(100),
+        nullable=True,
+        index=True,
+    )
+
+    result = db.Column(
+        db.String(30),
+        nullable=True,
+        index=True,
+    )
+
+    details = db.Column(
+        db.JSON,
+        nullable=True,
+    )
+
     ip_address = db.Column(
         db.String(64),
         nullable=True,

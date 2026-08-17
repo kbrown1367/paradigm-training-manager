@@ -24,6 +24,9 @@ from app.auth import (
     ROLE_PLATFORM_ADMIN,
 )
 from app.models import Agency, Officer
+from app.services.audit_log import (
+    record_audit_event,
+)
 from app.services.credential_verifications import (
     CREDENTIAL_TYPES,
     CredentialVerificationError,
@@ -102,6 +105,41 @@ from app.services.tcole_import import (
 api = Blueprint("api", __name__)
 
 
+def audit_tcole_import_failure(
+    *,
+    agency_id,
+    event_type,
+    stage,
+    filename,
+    error,
+    import_job_id=None,
+):
+    # A failed import should not leave partial work
+    # pending in the current transaction. Roll back
+    # before writing the audit record.
+    db.session.rollback()
+
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type=event_type,
+        object_type="IMPORT_JOB",
+        object_id=import_job_id,
+        result="failure",
+        details={
+            "stage": stage,
+            "filename": filename,
+            "error": str(error),
+        },
+    )
+
+    db.session.commit()
+
+
 @api.before_request
 def enforce_operational_api_authorization():
     return authorize_operational_api_request()
@@ -167,7 +205,39 @@ def import_tcole_awards_stage(agency_id):
             ),
         )
     except (TcoleImportError, ValueError) as exc:
+        audit_tcole_import_failure(
+            agency_id=agency_id,
+            event_type="TCOLE_IMPORT_AWARDS_FAILED",
+            stage="awards",
+            filename=(
+                uploaded_file.filename
+                or "rptAwards.csv"
+            ),
+            error=exc,
+        )
+
         return jsonify({"error": str(exc)}), 400
+
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="TCOLE_IMPORT_AWARDS_UPLOADED",
+        object_type="IMPORT_JOB",
+        object_id=result.get("import_job_id"),
+        details={
+            "filename":
+                result.get("awards_filename"),
+            "award_rows_processed":
+                result.get("award_rows_processed"),
+            "officer_count":
+                result.get("officer_count"),
+        },
+    )
+    db.session.commit()
 
     return jsonify(result), 201
 
@@ -196,7 +266,40 @@ def import_tcole_courses_stage(
             ),
         )
     except (TcoleImportError, ValueError) as exc:
+        audit_tcole_import_failure(
+            agency_id=agency_id,
+            event_type="TCOLE_IMPORT_COURSES_FAILED",
+            stage="courses",
+            filename=(
+                uploaded_file.filename
+                or "rptCourseTaken.csv"
+            ),
+            error=exc,
+            import_job_id=import_job_id,
+        )
+
         return jsonify({"error": str(exc)}), 400
+
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="TCOLE_IMPORT_COURSES_UPLOADED",
+        object_type="IMPORT_JOB",
+        object_id=import_job_id,
+        details={
+            "filename":
+                result.get("courses_filename"),
+            "course_rows_processed":
+                result.get("course_rows_processed"),
+            "course_count":
+                result.get("course_count"),
+        },
+    )
+    db.session.commit()
 
     return jsonify(result), 200
 
@@ -225,7 +328,42 @@ def import_tcole_cycle_stage(
             ),
         )
     except (TcoleImportError, ValueError) as exc:
+        audit_tcole_import_failure(
+            agency_id=agency_id,
+            event_type="TCOLE_IMPORT_CYCLE_FAILED",
+            stage="cycle",
+            filename=(
+                uploaded_file.filename
+                or "rptCycleT_All.csv"
+            ),
+            error=exc,
+            import_job_id=import_job_id,
+        )
+
         return jsonify({"error": str(exc)}), 400
+
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="TCOLE_IMPORT_CYCLE_UPLOADED",
+        object_type="IMPORT_JOB",
+        object_id=import_job_id,
+        details={
+            "filename":
+                result.get("cycle_filename"),
+            "cycle_rows_processed":
+                result.get("cycle_rows_processed"),
+            "training_records_with_hours":
+                result.get(
+                    "training_records_with_hours"
+                ),
+        },
+    )
+    db.session.commit()
 
     return jsonify(result), 200
 
@@ -254,7 +392,46 @@ def import_tcole_licensee_search_stage(
             ),
         )
     except (TcoleImportError, ValueError) as exc:
+        audit_tcole_import_failure(
+            agency_id=agency_id,
+            event_type="TCOLE_IMPORT_LICENSEE_SEARCH_FAILED",
+            stage="licensee_search",
+            filename=(
+                uploaded_file.filename
+                or "rptDepartmentOfficerSearch.csv"
+            ),
+            error=exc,
+            import_job_id=import_job_id,
+        )
+
         return jsonify({"error": str(exc)}), 400
+
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="TCOLE_IMPORT_LICENSEE_SEARCH_UPLOADED",
+        object_type="IMPORT_JOB",
+        object_id=import_job_id,
+        details={
+            "filename":
+                result.get("licensee_search_filename"),
+            "licensee_search_rows_processed":
+                result.get(
+                    "licensee_search_rows_processed"
+                ),
+            "peace_officer_license_rows":
+                result.get(
+                    "peace_officer_license_rows"
+                ),
+            "jailer_license_rows":
+                result.get("jailer_license_rows"),
+        },
+    )
+    db.session.commit()
 
     return jsonify(result), 200
 
@@ -309,10 +486,57 @@ def import_tcole_records(agency_id):
                 or "rptDepartmentOfficerSearch.csv"
             ),
         )
-    except TcoleImportError as exc:
+    except (TcoleImportError, ValueError) as exc:
+        audit_tcole_import_failure(
+            agency_id=agency_id,
+            event_type="TCOLE_IMPORT_FAILED",
+            stage="full_import",
+            filename=None,
+            error=exc,
+        )
+
         return jsonify({"error": str(exc)}), 400
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="TCOLE_IMPORT_COMPLETED",
+        object_type="IMPORT_JOB",
+        object_id=result.get("import_job_id"),
+        details={
+            "awards_filename":
+                result.get("awards_filename"),
+            "courses_filename":
+                result.get("courses_filename"),
+            "cycle_filename":
+                result.get("cycle_filename"),
+            "licensee_search_filename":
+                result.get(
+                    "licensee_search_filename"
+                ),
+            "officer_count":
+                result.get("officer_count"),
+            "award_rows_processed":
+                result.get("award_rows_processed"),
+            "course_rows_processed":
+                result.get("course_rows_processed"),
+            "cycle_rows_processed":
+                result.get("cycle_rows_processed"),
+            "licensee_search_rows_processed":
+                result.get(
+                    "licensee_search_rows_processed"
+                ),
+            "warning_count":
+                result.get("warning_count"),
+            "error_count":
+                result.get("error_count"),
+        },
+    )
+    db.session.commit()
 
     return jsonify(result), 201
 
@@ -603,6 +827,25 @@ def activate_officer_assignment(
             {"error": str(exc)}
         ), 400
 
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="OFFICER_ASSIGNMENT_ACTIVATED",
+        object_type="OFFICER",
+        object_id=officer_id,
+        details={
+            "assignment_type":
+                assignment_type,
+            "effective_date":
+                payload.get("effective_date"),
+        },
+    )
+    db.session.commit()
+
     return jsonify(result), 201
 
 
@@ -633,6 +876,25 @@ def end_officer_assignment(
         return jsonify(
             {"error": str(exc)}
         ), 400
+
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="OFFICER_ASSIGNMENT_ENDED",
+        object_type="OFFICER",
+        object_id=officer_id,
+        details={
+            "assignment_type":
+                assignment_type,
+            "inactive_date":
+                payload.get("inactive_date"),
+        },
+    )
+    db.session.commit()
 
     return jsonify(result), 200
 
@@ -913,6 +1175,30 @@ def update_officer_qualification_facts(
             {"error": "Officer not found."}
         ), 404
 
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="OFFICER_QUALIFICATION_FACTS_UPDATED",
+        object_type="OFFICER",
+        object_id=officer_id,
+        details={
+            key: value
+            for key, value in payload.items()
+            if key in {
+                "verified_education_level",
+                "verified_college_credit_hours",
+                "verified_military_training_credit_hours",
+                "verified_military_months",
+                "verified_jailer_cultural_diversity_exemption",
+            }
+        },
+    )
+    db.session.commit()
+
     return jsonify(result), 200
 
 
@@ -949,6 +1235,22 @@ def archive_agency_employee(
             }
         ), 404
 
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="OFFICER_ARCHIVED",
+        object_type="OFFICER",
+        object_id=officer_id,
+        details={
+            "reason": payload.get("reason"),
+        },
+    )
+    db.session.commit()
+
     return jsonify(result), 200
 
 
@@ -979,6 +1281,19 @@ def restore_agency_employee(
                 "error": "Resource not found.",
             }
         ), 404
+
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="OFFICER_RESTORED",
+        object_type="OFFICER",
+        object_id=officer_id,
+    )
+    db.session.commit()
 
     return jsonify(result), 200
 
@@ -1195,8 +1510,33 @@ def update_agency_email_configuration(agency_id):
                 }
             ), 400
 
+    old_email_domain = agency.email_domain
+    old_email_pattern = agency.email_pattern
+
     agency.email_domain = email_domain
     agency.email_pattern = email_pattern
+
+    record_audit_event(
+        agency_id=agency.id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="AGENCY_EMAIL_CONFIGURATION_UPDATED",
+        object_type="AGENCY",
+        object_id=agency.id,
+        details={
+            "email_domain": {
+                "old": old_email_domain,
+                "new": agency.email_domain,
+            },
+            "email_pattern": {
+                "old": old_email_pattern,
+                "new": agency.email_pattern,
+            },
+        },
+    )
 
     db.session.commit()
 
@@ -1247,7 +1587,28 @@ def update_officer_email(agency_id, officer_id):
                 }
             ), 400
 
+    old_email_override = officer.email_override
+
     officer.email_override = email_override
+
+    record_audit_event(
+        agency_id=agency_id,
+        user_id=getattr(
+            g.current_user,
+            "id",
+            None,
+        ),
+        event_type="OFFICER_EMAIL_OVERRIDE_UPDATED",
+        object_type="OFFICER",
+        object_id=officer.id,
+        details={
+            "old_email_override":
+                old_email_override,
+            "new_email_override":
+                officer.email_override,
+        },
+    )
+
     db.session.commit()
 
     from app.compliance.email_resolver import (

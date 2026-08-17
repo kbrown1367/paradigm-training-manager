@@ -421,6 +421,12 @@ def platform_archive_agency(
             agency_id=agency.id,
             user_id=platform_user.id,
             event_type="PLATFORM_AGENCY_ARCHIVED",
+            object_type="AGENCY",
+            object_id=str(agency.id),
+            result="success",
+            details={
+                "agency_name": agency.name,
+            },
             created_at=datetime.now(
                 timezone.utc
             ),
@@ -470,6 +476,12 @@ def platform_restore_agency(
             agency_id=agency.id,
             user_id=platform_user.id,
             event_type="PLATFORM_AGENCY_RESTORED",
+            object_type="AGENCY",
+            object_id=str(agency.id),
+            result="success",
+            details={
+                "agency_name": agency.name,
+            },
             created_at=datetime.now(
                 timezone.utc
             ),
@@ -923,30 +935,21 @@ def platform_reset_agency_administrator_password(
         }
     ), 200
 
-def serialize_login_event(event):
-    user = event.user
-
+def serialize_activity_event(event):
     return {
         "id": str(event.id),
-        "agency_id": (
-            str(event.agency_id)
-            if event.agency_id is not None
-            else None
-        ),
-        "user_id": (
-            str(event.user_id)
-            if event.user_id is not None
-            else None
-        ),
+        "event_type": event.event_type,
+        "result": event.result,
+        "object_type": event.object_type,
+        "object_id": event.object_id,
+        "details": event.details or {},
         "user": (
-            {
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "email": user.email,
-            }
-            if user is not None
+            serialize_platform_user(event.user)
+            if event.user is not None
             else None
         ),
+        "ip_address": event.ip_address,
+        "user_agent": event.user_agent,
         "created_at": (
             event.created_at.isoformat()
             if event.created_at
@@ -1067,12 +1070,11 @@ def platform_agency_login_activity(
         AuditEvent.query
         .filter_by(
             agency_id=agency.id,
-            event_type="AUTH_LOGIN_SUCCESS",
         )
         .order_by(
             AuditEvent.created_at.desc()
         )
-        .limit(50)
+        .limit(100)
         .all()
     )
 
@@ -1081,8 +1083,8 @@ def platform_agency_login_activity(
             "agency_id": str(agency.id),
             "agency_name": agency.name,
             **activity,
-            "recent_logins": [
-                serialize_login_event(event)
+            "recent_activity": [
+                serialize_activity_event(event)
                 for event in recent_events
             ],
         }

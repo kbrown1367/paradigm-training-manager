@@ -352,3 +352,68 @@ def test_staged_tcole_import_rejects_out_of_order_step(app):
         "Course History must be completed"
         in cycle_response.get_json()["error"]
     )
+
+
+def test_failed_staged_import_is_audited(app):
+    from app.models import AuditEvent
+
+    with app.app_context():
+        agency_id = make_agency()
+
+    client = app.test_client()
+
+    awards_response = client.post(
+        f"/api/agencies/{agency_id}"
+        "/imports/tcole/awards",
+        data=single_file_payload(
+            AWARDS,
+            "rptAwards.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert awards_response.status_code == 201
+
+    import_job_id = (
+        awards_response.get_json()[
+            "import_job_id"
+        ]
+    )
+
+    # Cycle is intentionally attempted before
+    # Course History so this request must fail.
+    cycle_response = client.post(
+        f"/api/agencies/{agency_id}"
+        f"/imports/tcole/{import_job_id}/cycle",
+        data=single_file_payload(
+            CYCLE,
+            "rptCycleT_All.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert cycle_response.status_code == 400
+
+    with app.app_context():
+        event = (
+            AuditEvent.query.filter_by(
+                agency_id=agency_id,
+                event_type=(
+                    "TCOLE_IMPORT_CYCLE_FAILED"
+                ),
+            )
+            .order_by(
+                AuditEvent.created_at.desc()
+            )
+            .first()
+        )
+
+        assert event is not None
+        assert event.object_type == "IMPORT_JOB"
+        assert event.object_id == str(import_job_id)
+        assert event.result == "failure"
+        assert event.details["stage"] == "cycle"
+        assert event.details["filename"] == (
+            "rptCycleT_All.csv"
+        )
+        assert event.details["error"]

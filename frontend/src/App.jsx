@@ -6803,6 +6803,69 @@ function AuthenticatedApplication() {
 }
 
 
+const PLATFORM_ACTIVITY_LABELS = {
+  AUTH_LOGIN_SUCCESS:
+    "Administrator Login",
+  TCOLE_IMPORT_AWARDS_UPLOADED:
+    "Awards Report Uploaded",
+  TCOLE_IMPORT_AWARDS_FAILED:
+    "Awards Report Upload Failed",
+  TCOLE_IMPORT_COURSES_UPLOADED:
+    "Courses Report Uploaded",
+  TCOLE_IMPORT_COURSES_FAILED:
+    "Courses Report Upload Failed",
+  TCOLE_IMPORT_CYCLE_UPLOADED:
+    "Cycle Training Report Uploaded",
+  TCOLE_IMPORT_CYCLE_FAILED:
+    "Cycle Training Report Upload Failed",
+  TCOLE_IMPORT_LICENSEE_SEARCH_UPLOADED:
+    "Department Licensee Report Uploaded",
+  TCOLE_IMPORT_LICENSEE_SEARCH_FAILED:
+    "Department Licensee Report Upload Failed",
+  TCOLE_IMPORT_COMPLETED:
+    "TCOLE Import Completed",
+  TCOLE_IMPORT_FAILED:
+    "TCOLE Import Failed",
+  OFFICER_EMAIL_OVERRIDE_UPDATED:
+    "Employee Email Updated",
+  AGENCY_EMAIL_CONFIGURATION_UPDATED:
+    "Agency Email Settings Updated",
+  OFFICER_QUALIFICATION_FACTS_UPDATED:
+    "Employee Qualification Facts Updated",
+  OFFICER_ASSIGNMENT_ACTIVATED:
+    "Employee Assignment Added",
+  OFFICER_ASSIGNMENT_ENDED:
+    "Employee Assignment Ended",
+  OFFICER_ARCHIVED:
+    "Employee Archived",
+  OFFICER_RESTORED:
+    "Employee Restored",
+  PLATFORM_AGENCY_ARCHIVED:
+    "Agency Archived",
+  PLATFORM_AGENCY_RESTORED:
+    "Agency Restored",
+};
+
+
+function formatPlatformActivityLabel(eventType) {
+  if (!eventType) {
+    return "Activity";
+  }
+
+  return (
+    PLATFORM_ACTIVITY_LABELS[eventType] ||
+    eventType
+      .replaceAll("_", " ")
+      .toLowerCase()
+      .replace(
+        /\b\w/g,
+        (character) =>
+          character.toUpperCase()
+      )
+  );
+}
+
+
 function formatPlatformDate(value) {
   if (!value) {
     return "Never";
@@ -8465,11 +8528,11 @@ function PlatformAdministration({
                 </div>
 
                 <div className="platform-activity-heading">
-                  Recent Login History
+                  Recent Agency Activity
                 </div>
 
                 {selectedAgencyActivity
-                  .recent_logins?.length ? (
+                  .recent_activity?.length ? (
                   <div className="platform-table-wrap">
                     <table
                       className={
@@ -8480,23 +8543,26 @@ function PlatformAdministration({
                       <thead>
                         <tr>
                           <th>
+                            Date / Time
+                          </th>
+                          <th>
                             Administrator
                           </th>
                           <th>
-                            Login Email
+                            Activity
                           </th>
                           <th>
-                            Login Date / Time
+                            Result
                           </th>
                         </tr>
                       </thead>
 
                       <tbody>
                         {selectedAgencyActivity
-                          .recent_logins
-                          .map((loginEvent) => {
+                          .recent_activity
+                          .map((activityEvent) => {
                             const user =
-                              loginEvent.user;
+                              activityEvent.user;
 
                             const userName =
                               user
@@ -8506,35 +8572,68 @@ function PlatformAdministration({
                                   ]
                                     .filter(Boolean)
                                     .join(" ")
-                                : "Unknown User";
+                                : "System";
+
+                            const eventLabel =
+                              formatPlatformActivityLabel(
+                                activityEvent.event_type
+                              );
+
+                            const result =
+                              activityEvent.result ||
+                              (
+                                activityEvent
+                                  .event_type ===
+                                "AUTH_LOGIN_SUCCESS"
+                                  ? "success"
+                                  : null
+                              );
 
                             return (
                               <tr
                                 key={
-                                  loginEvent.id
+                                  activityEvent.id
                                 }
                               >
+                                <td>
+                                  {formatPlatformDate(
+                                    activityEvent
+                                      .created_at
+                                  )}
+                                </td>
+
                                 <td>
                                   <strong>
                                     {userName}
                                   </strong>
+
+                                  {user?.email && (
+                                    <div>
+                                      {user.email}
+                                    </div>
+                                  )}
                                 </td>
 
                                 <td>
-                                  {user?.email ||
-                                    "Unavailable"}
+                                  {eventLabel}
                                 </td>
 
                                 <td>
-                                  {
-                                    loginEvent
-                                      .created_at
-                                      ? formatPlatformDate(
-                                          loginEvent
-                                            .created_at
-                                        )
-                                      : "Unavailable"
-                                  }
+                                  {result ? (
+                                    <span
+                                      className={
+                                        "platform-activity-result " +
+                                        result
+                                      }
+                                    >
+                                      {result
+                                        .charAt(0)
+                                        .toUpperCase() +
+                                        result.slice(1)}
+                                    </span>
+                                  ) : (
+                                    "Recorded"
+                                  )}
                                 </td>
                               </tr>
                             );
@@ -8544,10 +8643,11 @@ function PlatformAdministration({
                   </div>
                 ) : (
                   <div className="platform-activity-empty">
-                    No successful agency administrator
-                    logins have been recorded yet.
+                    No agency activity has been
+                    recorded yet.
                   </div>
                 )}
+
               </section>
             )}
 
