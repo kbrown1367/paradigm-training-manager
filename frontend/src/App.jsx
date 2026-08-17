@@ -6440,7 +6440,9 @@ function RoiCalculator() {
         </label>
 
         <label>
-          <span>Estimated hourly staff cost</span>
+          <span>
+            Hourly rate of staff member managing TCOLE records
+          </span>
           <input
             type="number"
             min="0"
@@ -8774,6 +8776,10 @@ function PublicLandingPage() {
               Why PTM
             </a>
 
+            <a href="#roi-calculator">
+              ROI Calculator
+            </a>
+
             <a href="#pricing">
               Pricing
             </a>
@@ -9194,12 +9200,15 @@ function PublicLandingPage() {
           </div>
         </section>
 
-        <section className="public-roi-section">
+        <section
+          className="public-roi-section"
+          id="roi-calculator"
+        >
           <div className="public-section-inner">
             <div className="public-roi-copy">
               <span>THE FINANCIAL CASE</span>
               <h2>
-                What is your current process costing you?
+                How much is TCOLE compliance costing you?
               </h2>
               <p>
                 PTM does not need to eliminate a position to
@@ -9432,27 +9441,62 @@ function PublicLandingPage() {
             <div className="public-faq-list">
               <FaqItem
                 question="Does PTM replace TCOLE?"
-                answer="No. PTM uses agency-imported TCOLE records to help the agency evaluate and manage compliance."
+                answer="No. PTM is a compliance management platform that organizes and evaluates TCOLE-reported information uploaded by your agency. TCOLE remains the authoritative source for official licensing, certification, and training records."
               />
+
               <FaqItem
                 question="Is PTM an LMS?"
-                answer="No. PTM is a compliance management platform, not a learning management system."
+                answer="No. PTM is not a learning management system and does not deliver courses. It is designed to help Texas law enforcement agencies manage TCOLE compliance."
               />
+
               <FaqItem
                 question="Do we have to manually enter all of our employees' training?"
-                answer="No. PTM is designed around importing the official TCOLE reports the agency already uses."
+                answer="No. PTM is designed around importing the official TCOLE reports your agency already uses. Administrators only need to enter information that is not reliably available from those reports, such as certain operational assignments, education, or qualifying military service."
               />
+
+              <FaqItem
+                question="Which TCOLE reports does PTM use?"
+                answer="PTM currently uses four TCLEDDS Department Reports: Licensees And Awards, Licensees Taken Or Missing A Course, Cycle Training - All Courses, and Department Licensee Search Report."
+              />
+
+              <FaqItem
+                question="Does PTM automatically pull data from TCOLE?"
+                answer="No. PTM evaluates the TCOLE reports uploaded by your agency. Administrators may upload updated reports as often as they like to keep the Compliance Dashboard current."
+              />
+
+              <FaqItem
+                question="Why don't PTM training hours match my TCOLE PSR?"
+                answer="Different TCOLE reports can sometimes show different training-hour totals for the same individual. PTM calculates training hours from the TCOLE Licensees Taken Or Missing A Course report uploaded by your agency because that report contains the course records and credited hours PTM uses in its calculations. If the PSR and that report contain different totals, PTM's total should correspond to the uploaded Licensees Taken Or Missing A Course report. TCOLE remains the authoritative source, so unexpected discrepancies should be verified against the applicable TCOLE record."
+              />
+
               <FaqItem
                 question="Can PTM tell me why an employee is not compliant?"
-                answer="Yes. PTM identifies the applicable requirement and shows what remains outstanding."
+                answer="Yes. PTM identifies the applicable requirements, shows what has been satisfied, identifies what remains outstanding, and displays applicable due dates."
               />
+
               <FaqItem
                 question="Does PTM support peace officers, jailers, and telecommunicators?"
-                answer="Yes. PTM evaluates supported TCOLE requirements for each applicable license track."
+                answer="Yes. PTM evaluates supported TCOLE requirements for Peace Officers, County Jailers, and Telecommunicators based on the licenses and compliance tracks being monitored for each employee."
               />
+
               <FaqItem
-                question="Can one agency see another agency's information?"
-                answer="No. PTM is being built as a multi-tenant system with agency data isolated by design."
+                question="Can PTM handle employees who have more than one TCOLE license?"
+                answer="Yes. PTM preserves license history and can evaluate multiple license types while allowing agency administrators to control which licenses should currently affect compliance tracking."
+              />
+
+              <FaqItem
+                question="What should I do if PTM shows something different from TCOLE?"
+                answer="TCOLE remains the authoritative source. PTM is designed to organize and evaluate TCOLE-reported information, but discrepancies can occur between source reports or unusual records. Administrators should verify unexpected results against the applicable TCOLE record and may report the issue to Paradigm for review."
+              />
+
+              <FaqItem
+                question="Will importing new TCOLE reports delete employees or historical records?"
+                answer="No. PTM treats later imports as reconciliation updates. Employees and historical records are preserved, and an employee is not automatically removed simply because the employee does not appear in a later report. Agency administrators control employee archival."
+              />
+
+              <FaqItem
+                question="Can another agency see our information?"
+                answer="No. PTM is a multi-tenant platform with agency-level access controls. One agency cannot access another agency's employees, training records, compliance results, reports, settings, or administrative information."
               />
             </div>
           </div>
@@ -9471,8 +9515,9 @@ function PublicLandingPage() {
                 Less administrative work.
               </h2>
               <p>
-                The complete public site is being prepared
-                for the trusted-user pilot.
+                See how Paradigm Training Manager can
+                simplify TCOLE compliance management for
+                your agency.
               </p>
             </div>
 
@@ -9484,6 +9529,66 @@ function PublicLandingPage() {
             </button>
           </div>
         </section>
+      </main>
+    </div>
+  );
+}
+
+
+function StandaloneRoiCalculatorPage() {
+  return (
+    <div className="standalone-roi-page">
+      <header className="standalone-roi-header">
+        <a href="/" className="standalone-roi-brand">
+          <img
+            src="/ptm-logo.png"
+            alt=""
+            aria-hidden="true"
+          />
+
+          <span>
+            <strong>
+              Paradigm Training Manager
+              <sup className="product-mark">™</sup>
+            </strong>
+
+            <small>
+              by Paradigm Strategic Partners, LLC
+            </small>
+          </span>
+        </a>
+
+        <a
+          href="/"
+          className="standalone-roi-home"
+        >
+          PTM Home
+        </a>
+      </header>
+
+      <main className="standalone-roi-main">
+        <section className="standalone-roi-intro">
+          <span>THE FINANCIAL CASE</span>
+
+          <h1>
+            How much is TCOLE compliance costing you?
+          </h1>
+
+          <p>
+            See the estimated staff time and financial value
+            your agency could recover with Paradigm Training
+            Manager.
+          </p>
+        </section>
+
+        <div className="standalone-roi-calculator">
+          <RoiCalculator />
+        </div>
+
+        <p className="standalone-roi-caption">
+          Enter your agency's information above to calculate
+          an illustrative estimate.
+        </p>
       </main>
     </div>
   );
@@ -9819,6 +9924,10 @@ function App() {
   const activationPath =
     path === "/activate";
 
+  const roiCalculatorPath =
+    path === "/roi-calculator" ||
+    path === "/roi-calculator/";
+
   const platformPath =
     path === "/platform" ||
     path.startsWith("/platform/");
@@ -9833,6 +9942,8 @@ function App() {
         <LoginPage />
       ) : activationPath ? (
         <InvitationActivationPage />
+      ) : roiCalculatorPath ? (
+        <StandaloneRoiCalculatorPage />
       ) : platformPath ? (
         <PlatformAuthenticatedApplication />
       ) : applicationPath ? (
