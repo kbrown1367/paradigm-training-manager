@@ -579,3 +579,110 @@ def test_inactive_session_user_is_rejected(
 
     with client.session_transaction() as sess:
         assert "user_id" not in sess
+
+
+def test_every_operational_agency_route_is_tenant_guarded(
+    app,
+    tenant_data,
+):
+    """
+    Security regression test.
+
+    Every agency-scoped route registered on the operational
+    API blueprint must reject an Agency Alpha administrator
+    when Agency Bravo's ID is supplied.
+
+    This protects future operational endpoints from being
+    added without tenant isolation.
+    """
+
+    client = app.test_client()
+
+    login(
+        client,
+        "admin@alpha.gov",
+        "AlphaPassword123!",
+    )
+
+    agency_b_id = tenant_data["agency_b_id"]
+
+    agency_rules = []
+
+    for rule in app.url_map.iter_rules():
+        if rule.endpoint.startswith("api.") and (
+            "<uuid:agency_id>" in rule.rule
+        ):
+            agency_rules.append(rule)
+
+    assert agency_rules, (
+        "Expected at least one agency-scoped "
+        "operational API route."
+    )
+
+    failures = []
+
+    for rule in agency_rules:
+        path = rule.rule.replace(
+            "<uuid:agency_id>",
+            agency_b_id,
+        )
+
+        # Other dynamic values do not matter because the
+        # tenant guard must reject the request before the
+        # endpoint itself executes.
+        path = path.replace(
+            "<uuid:officer_id>",
+            tenant_data["officer_b_id"],
+        )
+        path = path.replace(
+            "<uuid:import_job_id>",
+            "00000000-0000-0000-0000-000000000001",
+        )
+        path = path.replace(
+            "<assignment_type>",
+            "SUPERVISOR",
+        )
+        path = path.replace(
+            "<credential_type>",
+            "TEST",
+        )
+        path = path.replace(
+            "<license_type>",
+            "PEACE_OFFICER",
+        )
+
+        methods = sorted(
+            method
+            for method in rule.methods
+            if method not in {
+                "HEAD",
+                "OPTIONS",
+            }
+        )
+
+        for method in methods:
+            response = client.open(
+                path,
+                method=method,
+                json={}
+                if method in {
+                    "POST",
+                    "PATCH",
+                    "PUT",
+                }
+                else None,
+            )
+
+            if response.status_code != 404:
+                failures.append(
+                    (
+                        method,
+                        path,
+                        response.status_code,
+                    )
+                )
+
+    assert not failures, (
+        "Cross-tenant operational routes were not "
+        f"blocked: {failures}"
+    )

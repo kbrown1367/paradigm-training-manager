@@ -6,6 +6,7 @@
 # Software ID: PTM-PSP-2026
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 
@@ -45,6 +46,62 @@ def normalize_database_url(value):
     return value
 
 
+def database_url():
+    """
+    Return the configured PTM database URL.
+
+    Production must always use PostgreSQL. Falling back to
+    the local SQLite development database in production would
+    risk starting PTM against the wrong datastore.
+    """
+    configured = os.getenv(
+        "DATABASE_URL"
+    )
+
+    if configured:
+        value = normalize_database_url(
+            configured
+        )
+    elif environment_name() == "production":
+        raise RuntimeError(
+            "DATABASE_URL is required "
+            "when PTM_ENV=production."
+        )
+    else:
+        value = "sqlite:///ptm.db"
+
+    if (
+        environment_name() == "production"
+        and not value.startswith(
+            "postgresql+psycopg://"
+        )
+    ):
+        raise RuntimeError(
+            "Production DATABASE_URL "
+            "must use PostgreSQL."
+        )
+
+    return value
+
+
+def sqlalchemy_engine_options(
+    database_uri,
+):
+    """
+    Apply connection-health settings appropriate for
+    long-running PostgreSQL application processes.
+    """
+    if database_uri.startswith(
+        "postgresql+psycopg://"
+    ):
+        return {
+            "pool_pre_ping": True,
+        }
+
+    return {}
+
+
+
 def environment_name():
     return (
         os.getenv(
@@ -62,12 +119,25 @@ def session_cookie_secure():
     )
 
     if configured is not None:
-        return (
+        enabled = (
             configured
             .strip()
             .lower()
             == "true"
         )
+
+        if (
+            environment_name()
+            == "production"
+            and not enabled
+        ):
+            raise RuntimeError(
+                "SESSION_COOKIE_SECURE cannot "
+                "be disabled when "
+                "PTM_ENV=production."
+            )
+
+        return enabled
 
     return (
         environment_name()
@@ -109,12 +179,21 @@ class Config:
         session_cookie_secure()
     )
 
-    SQLALCHEMY_DATABASE_URI = (
-        normalize_database_url(
-            os.getenv(
-                "DATABASE_URL",
-                "sqlite:///ptm.db",
-            )
+    # Administrative sessions should not remain valid
+    # for Flask's default 31-day permanent-session period.
+    PERMANENT_SESSION_LIFETIME = timedelta(
+        hours=12,
+    )
+
+    # TCOLE source reports are expected to be far smaller
+    # than this ceiling, including large-agency imports.
+    MAX_CONTENT_LENGTH = 50 * 1024 * 1024
+
+    SQLALCHEMY_DATABASE_URI = database_url()
+
+    SQLALCHEMY_ENGINE_OPTIONS = (
+        sqlalchemy_engine_options(
+            SQLALCHEMY_DATABASE_URI
         )
     )
 

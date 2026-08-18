@@ -227,3 +227,164 @@ def test_migrations_do_not_assign_integer_zero_to_boolean_columns():
         "SET verified_jailer_cultural_diversity_exemption = 0"
         not in contents
     )
+
+
+def test_security_configuration_defaults():
+    from datetime import timedelta
+
+    from app.config import Config
+
+    assert Config.SESSION_COOKIE_HTTPONLY is True
+    assert Config.SESSION_COOKIE_SAMESITE == "Lax"
+    assert (
+        Config.PERMANENT_SESSION_LIFETIME
+        == timedelta(hours=12)
+    )
+    assert (
+        Config.MAX_CONTENT_LENGTH
+        == 50 * 1024 * 1024
+    )
+
+
+def test_production_defaults_to_secure_session_cookie(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "PTM_ENV",
+        "production",
+    )
+    monkeypatch.delenv(
+        "SESSION_COOKIE_SECURE",
+        raising=False,
+    )
+
+    from app.config import session_cookie_secure
+
+    assert session_cookie_secure() is True
+
+
+def test_production_rejects_disabled_secure_cookie(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "PTM_ENV",
+        "production",
+    )
+    monkeypatch.setenv(
+        "SESSION_COOKIE_SECURE",
+        "false",
+    )
+
+    from app.config import session_cookie_secure
+
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            "SESSION_COOKIE_SECURE cannot "
+            "be disabled"
+        ),
+    ):
+        session_cookie_secure()
+
+
+def test_development_allows_insecure_session_cookie(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "PTM_ENV",
+        "development",
+    )
+    monkeypatch.setenv(
+        "SESSION_COOKIE_SECURE",
+        "false",
+    )
+
+    from app.config import session_cookie_secure
+
+    assert session_cookie_secure() is False
+
+
+def test_production_requires_database_url(
+    monkeypatch,
+):
+    from app.config import database_url
+
+    monkeypatch.setenv(
+        "PTM_ENV",
+        "production",
+    )
+    monkeypatch.delenv(
+        "DATABASE_URL",
+        raising=False,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="DATABASE_URL is required",
+    ):
+        database_url()
+
+
+def test_production_rejects_sqlite_database(
+    monkeypatch,
+):
+    from app.config import database_url
+
+    monkeypatch.setenv(
+        "PTM_ENV",
+        "production",
+    )
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "sqlite:///production.db",
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="must use PostgreSQL",
+    ):
+        database_url()
+
+
+def test_production_accepts_render_postgres_url(
+    monkeypatch,
+):
+    from app.config import database_url
+
+    monkeypatch.setenv(
+        "PTM_ENV",
+        "production",
+    )
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        (
+            "postgresql://"
+            "user:password@db.internal/ptm"
+        ),
+    )
+
+    assert database_url() == (
+        "postgresql+psycopg://"
+        "user:password@db.internal/ptm"
+    )
+
+
+def test_postgres_engine_enables_pre_ping():
+    from app.config import sqlalchemy_engine_options
+
+    options = sqlalchemy_engine_options(
+        (
+            "postgresql+psycopg://"
+            "user:password@db.internal/ptm"
+        )
+    )
+
+    assert options["pool_pre_ping"] is True
+
+
+def test_sqlite_engine_does_not_receive_postgres_options():
+    from app.config import sqlalchemy_engine_options
+
+    assert sqlalchemy_engine_options(
+        "sqlite:///ptm.db"
+    ) == {}
