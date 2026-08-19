@@ -5,13 +5,79 @@
 # Unauthorized copying, modification, distribution, or use is prohibited.
 # Software ID: PTM-PSP-2026
 
+import logging
+import traceback
 from pathlib import Path
 
-from flask import Flask
+from flask import (
+    Flask,
+    g,
+    jsonify,
+    request,
+)
+from werkzeug.exceptions import HTTPException
 
 from .config import Config
 from .extensions import db, migrate
 from .software_identity import get_software_identity
+
+
+
+def _safe_traceback(exc):
+    """
+    Return traceback locations without exception messages
+    or local-variable values.
+    """
+    extracted = traceback.extract_tb(
+        exc.__traceback__
+    )
+
+    return " > ".join(
+        (
+            f"{frame.filename}:"
+            f"{frame.lineno}:"
+            f"{frame.name}"
+        )
+        for frame in extracted
+    )
+
+
+def _safe_request_context():
+    """
+    Return diagnostic request context that intentionally
+    excludes query strings, request bodies, headers,
+    cookies, uploaded files, and session contents.
+    """
+    view_args = request.view_args or {}
+
+    agency_id = view_args.get("agency_id")
+
+    current_user = getattr(
+        g,
+        "current_user",
+        None,
+    )
+
+    user_id = getattr(
+        current_user,
+        "id",
+        None,
+    )
+
+    return {
+        "method": request.method,
+        "path": request.path,
+        "agency_id": (
+            str(agency_id)
+            if agency_id is not None
+            else "-"
+        ),
+        "user_id": (
+            str(user_id)
+            if user_id is not None
+            else "-"
+        ),
+    }
 
 
 def create_app(config=None):
@@ -20,6 +86,19 @@ def create_app(config=None):
 
     if config:
         app.config.update(config)
+
+    app.logger.setLevel(
+        getattr(
+            logging,
+            str(
+                app.config.get(
+                    "LOG_LEVEL",
+                    "INFO",
+                )
+            ).upper(),
+            logging.INFO,
+        )
+    )
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -67,6 +146,61 @@ def create_app(config=None):
     app.register_blueprint(
         frontend_web,
     )
+
+    @app.errorhandler(404)
+    def handle_not_found(error):
+        if request.path.startswith("/api/"):
+            return jsonify(
+                {
+                    "error":
+                        "Resource not found."
+                }
+            ), 404
+
+        return error
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(error):
+        if isinstance(
+            error,
+            HTTPException,
+        ):
+            return error
+
+        context = _safe_request_context()
+
+        app.logger.error(
+            (
+                "Unhandled PTM exception "
+                "method=%s "
+                "path=%s "
+                "agency_id=%s "
+                "user_id=%s "
+                "exception_type=%s "
+                "traceback=%s"
+            ),
+            context["method"],
+            context["path"],
+            context["agency_id"],
+            context["user_id"],
+            type(error).__name__,
+            _safe_traceback(error),
+        )
+
+        if request.path.startswith("/api/"):
+            return jsonify(
+                {
+                    "error": (
+                        "An unexpected server error "
+                        "occurred."
+                    )
+                }
+            ), 500
+
+        return (
+            "An unexpected server error occurred.",
+            500,
+        )
 
     @app.get("/api/health")
     def health():

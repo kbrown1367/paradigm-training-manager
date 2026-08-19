@@ -145,6 +145,34 @@ def session_cookie_secure():
     )
 
 
+
+def log_level():
+    """
+    Return PTM's operational application log level.
+
+    Production defaults to INFO. The level may be
+    changed through LOG_LEVEL without a code change.
+    """
+    configured = (
+        os.getenv("LOG_LEVEL", "INFO")
+        .strip()
+        .upper()
+    )
+
+    allowed = {
+        "DEBUG",
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "CRITICAL",
+    }
+
+    if configured not in allowed:
+        return "INFO"
+
+    return configured
+
+
 def secret_key():
     configured = os.getenv(
         "SECRET_KEY"
@@ -172,6 +200,8 @@ class Config:
     PTM_ENV = environment_name()
 
     SECRET_KEY = secret_key()
+
+    LOG_LEVEL = log_level()
 
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
