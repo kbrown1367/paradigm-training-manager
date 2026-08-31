@@ -99,6 +99,7 @@ from app.services.tcole_import import (
     run_tcole_courses_stage,
     run_tcole_cycle_stage,
     run_tcole_licensee_search_stage,
+    fail_tcole_import,
 )
 from app.services.retained_tcole_files import (
     FILE_TYPE_AWARDS,
@@ -213,6 +214,7 @@ def import_tcole_awards_stage(agency_id):
             agency_id=agency_id,
             awards_content=uploaded_content,
             awards_filename=uploaded_filename,
+            commit=False,
         )
     except (TcoleImportError, ValueError) as exc:
         audit_tcole_import_failure(
@@ -228,14 +230,21 @@ def import_tcole_awards_stage(agency_id):
 
         return jsonify({"error": str(exc)}), 400
 
-    retain_tcole_file(
-        agency_id=agency_id,
-        import_job_id=result.get("import_job_id"),
-        file_type=FILE_TYPE_AWARDS,
-        filename=uploaded_filename,
-        content=uploaded_content,
-        content_type=uploaded_file.mimetype,
-    )
+    try:
+        retain_tcole_file(
+            agency_id=agency_id,
+            import_job_id=result.get("import_job_id"),
+            file_type=FILE_TYPE_AWARDS,
+            filename=uploaded_filename,
+            content=uploaded_content,
+            content_type=uploaded_file.mimetype,
+        )
+    except Exception as exc:
+        fail_tcole_import(
+            result.get("import_job_id"),
+            exc,
+        )
+        raise
 
     record_audit_event(
         agency_id=agency_id,
@@ -286,6 +295,7 @@ def import_tcole_courses_stage(
             import_job_id=import_job_id,
             courses_content=uploaded_content,
             courses_filename=uploaded_filename,
+            commit=False,
         )
     except (TcoleImportError, ValueError) as exc:
         audit_tcole_import_failure(
@@ -302,14 +312,22 @@ def import_tcole_courses_stage(
 
         return jsonify({"error": str(exc)}), 400
 
-    retain_tcole_file(
-        agency_id=agency_id,
-        import_job_id=import_job_id,
-        file_type=FILE_TYPE_COURSES,
-        filename=uploaded_filename,
-        content=uploaded_content,
-        content_type=uploaded_file.mimetype,
-    )
+    try:
+        retain_tcole_file(
+            agency_id=agency_id,
+            import_job_id=import_job_id,
+            file_type=FILE_TYPE_COURSES,
+            filename=uploaded_filename,
+            content=uploaded_content,
+            content_type=uploaded_file.mimetype,
+        )
+    except Exception as exc:
+        fail_tcole_import(
+            import_job_id,
+            exc,
+            recovery_status="awards_completed",
+        )
+        raise
 
     record_audit_event(
         agency_id=agency_id,
@@ -360,6 +378,7 @@ def import_tcole_cycle_stage(
             import_job_id=import_job_id,
             cycle_content=uploaded_content,
             cycle_filename=uploaded_filename,
+            commit=False,
         )
     except (TcoleImportError, ValueError) as exc:
         audit_tcole_import_failure(
@@ -376,14 +395,22 @@ def import_tcole_cycle_stage(
 
         return jsonify({"error": str(exc)}), 400
 
-    retain_tcole_file(
-        agency_id=agency_id,
-        import_job_id=import_job_id,
-        file_type=FILE_TYPE_CYCLE,
-        filename=uploaded_filename,
-        content=uploaded_content,
-        content_type=uploaded_file.mimetype,
-    )
+    try:
+        retain_tcole_file(
+            agency_id=agency_id,
+            import_job_id=import_job_id,
+            file_type=FILE_TYPE_CYCLE,
+            filename=uploaded_filename,
+            content=uploaded_content,
+            content_type=uploaded_file.mimetype,
+        )
+    except Exception as exc:
+        fail_tcole_import(
+            import_job_id,
+            exc,
+            recovery_status="courses_completed",
+        )
+        raise
 
     record_audit_event(
         agency_id=agency_id,
@@ -436,6 +463,7 @@ def import_tcole_licensee_search_stage(
             import_job_id=import_job_id,
             licensee_search_content=uploaded_content,
             licensee_search_filename=uploaded_filename,
+            commit=False,
         )
     except (TcoleImportError, ValueError) as exc:
         audit_tcole_import_failure(
@@ -452,14 +480,22 @@ def import_tcole_licensee_search_stage(
 
         return jsonify({"error": str(exc)}), 400
 
-    retain_tcole_file(
-        agency_id=agency_id,
-        import_job_id=import_job_id,
-        file_type=FILE_TYPE_LICENSEE_SEARCH,
-        filename=uploaded_filename,
-        content=uploaded_content,
-        content_type=uploaded_file.mimetype,
-    )
+    try:
+        retain_tcole_file(
+            agency_id=agency_id,
+            import_job_id=import_job_id,
+            file_type=FILE_TYPE_LICENSEE_SEARCH,
+            filename=uploaded_filename,
+            content=uploaded_content,
+            content_type=uploaded_file.mimetype,
+        )
+    except Exception as exc:
+        fail_tcole_import(
+            import_job_id,
+            exc,
+            recovery_status="cycle_completed",
+        )
+        raise
 
     record_audit_event(
         agency_id=agency_id,
@@ -556,6 +592,7 @@ def import_tcole_records(agency_id):
             licensee_search_filename=(
                 licensee_search_filename
             ),
+            commit=False,
         )
     except (TcoleImportError, ValueError) as exc:
         audit_tcole_import_failure(
@@ -569,43 +606,50 @@ def import_tcole_records(agency_id):
         return jsonify({"error": str(exc)}), 400
 
     import_job_id = result.get("import_job_id")
+    try:
 
-    retain_tcole_file(
-        agency_id=agency_id,
-        import_job_id=import_job_id,
-        file_type=FILE_TYPE_AWARDS,
-        filename=awards_filename,
-        content=awards_content,
-        content_type=awards_file.mimetype,
-    )
+        retain_tcole_file(
+            agency_id=agency_id,
+            import_job_id=import_job_id,
+            file_type=FILE_TYPE_AWARDS,
+            filename=awards_filename,
+            content=awards_content,
+            content_type=awards_file.mimetype,
+        )
 
-    retain_tcole_file(
-        agency_id=agency_id,
-        import_job_id=import_job_id,
-        file_type=FILE_TYPE_COURSES,
-        filename=courses_filename,
-        content=courses_content,
-        content_type=courses_file.mimetype,
-    )
+        retain_tcole_file(
+            agency_id=agency_id,
+            import_job_id=import_job_id,
+            file_type=FILE_TYPE_COURSES,
+            filename=courses_filename,
+            content=courses_content,
+            content_type=courses_file.mimetype,
+        )
 
-    retain_tcole_file(
-        agency_id=agency_id,
-        import_job_id=import_job_id,
-        file_type=FILE_TYPE_CYCLE,
-        filename=cycle_filename,
-        content=cycle_content,
-        content_type=cycle_file.mimetype,
-    )
+        retain_tcole_file(
+            agency_id=agency_id,
+            import_job_id=import_job_id,
+            file_type=FILE_TYPE_CYCLE,
+            filename=cycle_filename,
+            content=cycle_content,
+            content_type=cycle_file.mimetype,
+        )
 
-    retain_tcole_file(
-        agency_id=agency_id,
-        import_job_id=import_job_id,
-        file_type=FILE_TYPE_LICENSEE_SEARCH,
-        filename=licensee_search_filename,
-        content=licensee_search_content,
-        content_type=licensee_search_file.mimetype,
-    )
+        retain_tcole_file(
+            agency_id=agency_id,
+            import_job_id=import_job_id,
+            file_type=FILE_TYPE_LICENSEE_SEARCH,
+            filename=licensee_search_filename,
+            content=licensee_search_content,
+            content_type=licensee_search_file.mimetype,
+        )
 
+    except Exception as exc:
+        fail_tcole_import(
+            import_job_id,
+            exc,
+        )
+        raise
     record_audit_event(
         agency_id=agency_id,
         user_id=getattr(

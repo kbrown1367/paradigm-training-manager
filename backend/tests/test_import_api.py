@@ -573,3 +573,368 @@ def test_failed_staged_import_is_audited(app):
             "rptCycleT_All.csv"
         )
         assert event.details["error"]
+
+
+
+def _post_successful_awards_stage(client, agency_id):
+    response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/awards",
+        data=single_file_payload(
+            AWARDS,
+            "rptAwards.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 201
+    return response.get_json()["import_job_id"]
+
+
+def _post_successful_courses_stage(
+    client,
+    agency_id,
+    import_job_id,
+):
+    response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/"
+        f"{import_job_id}/courses",
+        data=single_file_payload(
+            COURSES,
+            "rptCourseTaken.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 200
+
+
+def _post_successful_cycle_stage(
+    client,
+    agency_id,
+    import_job_id,
+):
+    response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/"
+        f"{import_job_id}/cycle",
+        data=single_file_payload(
+            CYCLE,
+            "rptCycleT_All.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 200
+
+
+def test_awards_retention_failure_rolls_back_stage(
+    app,
+    monkeypatch,
+):
+    import app.routes as routes
+
+    with app.app_context():
+        agency_id = make_agency()
+
+    def fail_retention(**kwargs):
+        raise RuntimeError("Injected retained-file failure")
+
+    monkeypatch.setattr(
+        routes,
+        "retain_tcole_file",
+        fail_retention,
+    )
+
+    client = app.test_client()
+    response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/awards",
+        data=single_file_payload(
+            AWARDS,
+            "rptAwards.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        "error": "An unexpected server error occurred."
+    }
+
+    with app.app_context():
+        assert ImportJob.query.count() == 1
+        job = ImportJob.query.one()
+        assert job.status == "failed"
+
+        assert Officer.query.count() == 0
+        assert OfficerAward.query.count() == 0
+        assert TrainingRecord.query.count() == 0
+        assert RetainedTcoleFile.query.count() == 0
+
+
+def test_courses_retention_failure_preserves_awards_stage(
+    app,
+    monkeypatch,
+):
+    import app.routes as routes
+
+    with app.app_context():
+        agency_id = make_agency()
+
+    client = app.test_client()
+    import_job_id = _post_successful_awards_stage(
+        client,
+        agency_id,
+    )
+
+    with app.app_context():
+        assert Officer.query.count() == 2
+        assert OfficerAward.query.count() == 3
+        assert TrainingRecord.query.count() == 0
+        assert RetainedTcoleFile.query.count() == 1
+
+    def fail_retention(**kwargs):
+        raise RuntimeError("Injected retained-file failure")
+
+    monkeypatch.setattr(
+        routes,
+        "retain_tcole_file",
+        fail_retention,
+    )
+
+    response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/"
+        f"{import_job_id}/courses",
+        data=single_file_payload(
+            COURSES,
+            "rptCourseTaken.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        "error": "An unexpected server error occurred."
+    }
+
+    with app.app_context():
+        job = ImportJob.query.one()
+        assert job.status == "awards_completed"
+        assert job.error_count == 1
+        assert job.failure_reason
+        assert job.completed_at is None
+
+        assert Officer.query.count() == 2
+        assert OfficerAward.query.count() == 3
+        assert TrainingRecord.query.count() == 0
+
+        retained = RetainedTcoleFile.query.all()
+        assert len(retained) == 1
+        assert retained[0].file_type == "awards"
+        assert retained[0].content == AWARDS
+
+
+def test_cycle_retention_failure_preserves_prior_stages(
+    app,
+    monkeypatch,
+):
+    import app.routes as routes
+
+    with app.app_context():
+        agency_id = make_agency()
+
+    client = app.test_client()
+    import_job_id = _post_successful_awards_stage(
+        client,
+        agency_id,
+    )
+    _post_successful_courses_stage(
+        client,
+        agency_id,
+        import_job_id,
+    )
+
+    with app.app_context():
+        assert Officer.query.count() == 2
+        assert OfficerAward.query.count() == 3
+        assert TrainingRecord.query.count() == 2
+        assert RetainedTcoleFile.query.count() == 2
+
+        before_hours = {
+            str(record.id): record.credited_hours
+            for record in TrainingRecord.query.all()
+        }
+
+    def fail_retention(**kwargs):
+        raise RuntimeError("Injected retained-file failure")
+
+    monkeypatch.setattr(
+        routes,
+        "retain_tcole_file",
+        fail_retention,
+    )
+
+    response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/"
+        f"{import_job_id}/cycle",
+        data=single_file_payload(
+            CYCLE,
+            "rptCycleT_All.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        "error": "An unexpected server error occurred."
+    }
+
+    with app.app_context():
+        job = ImportJob.query.one()
+        assert job.status == "courses_completed"
+        assert job.error_count == 1
+        assert job.failure_reason
+        assert job.completed_at is None
+
+        assert Officer.query.count() == 2
+        assert OfficerAward.query.count() == 3
+        assert TrainingRecord.query.count() == 2
+
+        after_hours = {
+            str(record.id): record.credited_hours
+            for record in TrainingRecord.query.all()
+        }
+        assert after_hours == before_hours
+
+        retained = RetainedTcoleFile.query.all()
+        assert len(retained) == 2
+        assert {
+            item.file_type
+            for item in retained
+        } == {"awards", "courses"}
+
+
+def test_licensee_retention_failure_preserves_prior_stages(
+    app,
+    monkeypatch,
+):
+    import app.routes as routes
+
+    with app.app_context():
+        agency_id = make_agency()
+
+    client = app.test_client()
+    import_job_id = _post_successful_awards_stage(
+        client,
+        agency_id,
+    )
+    _post_successful_courses_stage(
+        client,
+        agency_id,
+        import_job_id,
+    )
+    _post_successful_cycle_stage(
+        client,
+        agency_id,
+        import_job_id,
+    )
+
+    with app.app_context():
+        assert Officer.query.count() == 2
+        assert OfficerAward.query.count() == 3
+        assert TrainingRecord.query.count() == 2
+        assert RetainedTcoleFile.query.count() == 3
+
+    def fail_retention(**kwargs):
+        raise RuntimeError("Injected retained-file failure")
+
+    monkeypatch.setattr(
+        routes,
+        "retain_tcole_file",
+        fail_retention,
+    )
+
+    response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole/"
+        f"{import_job_id}/licensee-search",
+        data=single_file_payload(
+            LICENSEE_SEARCH,
+            "rptDepartmentOfficerSearch.csv",
+        ),
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        "error": "An unexpected server error occurred."
+    }
+
+    with app.app_context():
+        job = ImportJob.query.one()
+        assert job.status == "cycle_completed"
+        assert job.error_count == 1
+        assert job.failure_reason
+        assert job.completed_at is None
+
+        assert Officer.query.count() == 2
+        assert OfficerAward.query.count() == 3
+        assert TrainingRecord.query.count() == 2
+
+        retained = RetainedTcoleFile.query.all()
+        assert len(retained) == 3
+        assert {
+            item.file_type
+            for item in retained
+        } == {"awards", "courses", "cycle"}
+
+
+def test_retention_failure_does_not_leave_committed_full_import(
+    app,
+    monkeypatch,
+):
+    """
+    If retained-source-file persistence fails after the TCOLE
+    reconciliation succeeds, the operational import must not
+    remain committed.
+    """
+    import app.routes as routes
+
+    with app.app_context():
+        agency_id = make_agency()
+
+    def fail_retention(**kwargs):
+        raise RuntimeError(
+            "Injected retained-file failure"
+        )
+
+    monkeypatch.setattr(
+        routes,
+        "retain_tcole_file",
+        fail_retention,
+    )
+
+    client = app.test_client()
+
+    response = client.post(
+        f"/api/agencies/{agency_id}/imports/tcole",
+        data=import_payload(),
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 500
+    assert response.get_json() == {
+        "error": "An unexpected server error occurred."
+    }
+
+    with app.app_context():
+        # The durable import attempt remains for troubleshooting.
+        assert ImportJob.query.count() == 1
+
+        job = ImportJob.query.one()
+
+        # A request that failed to preserve its required source
+        # evidence must not be recorded as completed.
+        assert job.status == "failed"
+
+        # No operational import mutations may survive.
+        assert Officer.query.count() == 0
+        assert OfficerAward.query.count() == 0
+        assert TrainingRecord.query.count() == 0
+
+        # No partial retained-source set may survive either.
+        assert RetainedTcoleFile.query.count() == 0

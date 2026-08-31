@@ -11,6 +11,7 @@ from uuid import UUID
 
 from app.extensions import db
 from app.models import (
+    ImportJob,
     RetainedTcoleFile,
     utcnow,
 )
@@ -69,6 +70,20 @@ def retain_tcole_file(
             "Retained TCOLE file import_job_id "
             "must be a valid UUID."
         ) from exc
+
+    import_job = (
+        ImportJob.query
+        .filter_by(
+            id=normalized_import_job_id,
+            agency_id=agency_id,
+        )
+        .one_or_none()
+    )
+
+    if import_job is None:
+        raise ValueError(
+            "Import job does not exist for this agency."
+        )
 
     now = utcnow()
 

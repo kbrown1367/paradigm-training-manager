@@ -113,7 +113,37 @@ def _get_staged_import_job(agency_id, import_job_id):
     return job
 
 
-def _fail_staged_import(job_id, exc):
+
+def fail_tcole_import(
+    job_id,
+    exc,
+    recovery_status=None,
+):
+    """Roll back an import and restore its last successful checkpoint."""
+    normalized_job_id = uuid.UUID(str(job_id))
+    db.session.rollback()
+    failed_job = db.session.get(
+        ImportJob,
+        normalized_job_id,
+    )
+    if failed_job is not None:
+        failed_job.status = recovery_status or "failed"
+        failed_job.error_count = 1
+        failed_job.failure_reason = str(exc)
+        failed_job.completed_at = (
+            utcnow()
+            if recovery_status is None
+            else None
+        )
+        db.session.commit()
+
+
+def _fail_staged_import(
+    job_id,
+    exc,
+    recovery_status=None,
+):
+    """Roll back a failed stage and restore its last good checkpoint."""
     db.session.rollback()
 
     failed_job = db.session.get(
@@ -122,10 +152,14 @@ def _fail_staged_import(job_id, exc):
     )
 
     if failed_job is not None:
-        failed_job.status = "failed"
+        failed_job.status = recovery_status or "failed"
         failed_job.error_count = 1
         failed_job.failure_reason = str(exc)
-        failed_job.completed_at = utcnow()
+        failed_job.completed_at = (
+            utcnow()
+            if recovery_status is None
+            else None
+        )
         db.session.commit()
 
 
@@ -133,6 +167,7 @@ def start_tcole_awards_import(
     agency_id,
     awards_content,
     awards_filename="rptAwards.csv",
+    commit=True,
 ):
     agency = db.session.get(Agency, agency_id)
 
@@ -173,7 +208,10 @@ def start_tcole_awards_import(
         job.error_count = 0
         job.failure_reason = None
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
 
         return serialize_import_job(job)
 
@@ -187,6 +225,7 @@ def run_tcole_courses_stage(
     import_job_id,
     courses_content,
     courses_filename="rptCourseTaken.csv",
+    commit=True,
 ):
     job = _get_staged_import_job(
         agency_id,
@@ -216,13 +255,23 @@ def run_tcole_courses_stage(
         job.skipped_course_count = result[
             "training_records_skipped"
         ]
+        job.error_count = 0
+        job.failure_reason = None
+        job.completed_at = None
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
 
         return serialize_import_job(job)
 
     except Exception as exc:
-        _fail_staged_import(job.id, exc)
+        _fail_staged_import(
+            job.id,
+            exc,
+            recovery_status="awards_completed",
+        )
         raise
 
 
@@ -231,6 +280,7 @@ def run_tcole_cycle_stage(
     import_job_id,
     cycle_content,
     cycle_filename="rptCycleT_All.csv",
+    commit=True,
 ):
     job = _get_staged_import_job(
         agency_id,
@@ -265,13 +315,23 @@ def run_tcole_cycle_stage(
             )
             .count()
         )
+        job.error_count = 0
+        job.failure_reason = None
+        job.completed_at = None
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
 
         return serialize_import_job(job)
 
     except Exception as exc:
-        _fail_staged_import(job.id, exc)
+        _fail_staged_import(
+            job.id,
+            exc,
+            recovery_status="courses_completed",
+        )
         raise
 
 
@@ -282,6 +342,7 @@ def run_tcole_licensee_search_stage(
     licensee_search_filename=(
         "rptDepartmentOfficerSearch.csv"
     ),
+    commit=True,
 ):
     job = _get_staged_import_job(
         agency_id,
@@ -345,12 +406,19 @@ def run_tcole_licensee_search_stage(
         job.failure_reason = None
         job.completed_at = utcnow()
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
 
         return serialize_import_job(job)
 
     except Exception as exc:
-        _fail_staged_import(job.id, exc)
+        _fail_staged_import(
+            job.id,
+            exc,
+            recovery_status="cycle_completed",
+        )
         raise
 
 
@@ -366,6 +434,7 @@ def run_tcole_import(
     licensee_search_filename=(
         "rptDepartmentOfficerSearch.csv"
     ),
+    commit=True,
 ):
     agency = db.session.get(Agency, agency_id)
 
@@ -531,7 +600,10 @@ def run_tcole_import(
         job.failure_reason = None
         job.completed_at = utcnow()
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
 
         return serialize_import_job(job)
 

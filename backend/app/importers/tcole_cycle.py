@@ -138,12 +138,31 @@ def import_cycle_hours(agency_id, csv_content, commit=True):
                     f"Row {row_number}: no officer exists for TCOLE PID {pid}."
                 )
 
-            training_record = TrainingRecord.query.filter_by(
-                agency_id=agency_id,
-                officer_id=officer.id,
-                course_number=course_number,
-                course_date=course_date,
-            ).one_or_none()
+            training_records = (
+                TrainingRecord.query.filter_by(
+                    agency_id=agency_id,
+                    officer_id=officer.id,
+                    course_number=course_number,
+                    course_date=course_date,
+                )
+                .order_by(TrainingRecord.id)
+                .all()
+            )
+
+            training_record = None
+
+            if training_records:
+                cycle_credited_records = [
+                    record
+                    for record in training_records
+                    if record.hours_source
+                    == "TCOLE_CYCLE_REPORT"
+                ]
+
+                if cycle_credited_records:
+                    training_record = cycle_credited_records[0]
+                else:
+                    training_record = training_records[0]
 
             if training_record is None:
                 raise CycleImportError(

@@ -686,3 +686,240 @@ def test_every_operational_agency_route_is_tenant_guarded(
         "Cross-tenant operational routes were not "
         f"blocked: {failures}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Object-level tenant isolation
+#
+# These tests deliberately combine Agency Alpha's legitimate agency ID with
+# an Officer belonging to Agency Bravo. The agency-level before_request guard
+# cannot detect that mismatch because Alpha's agency ID is valid for the
+# authenticated administrator. The underlying services/routes must therefore
+# independently reject the foreign officer ID.
+# ---------------------------------------------------------------------------
+
+
+def test_cross_tenant_officer_id_cannot_access_assignments(
+    app,
+    tenant_data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "admin@alpha.gov",
+        "AlphaPassword123!",
+    )
+
+    response = client.get(
+        "/api/agencies/"
+        f"{tenant_data['agency_a_id']}"
+        "/officers/"
+        f"{tenant_data['officer_b_id']}"
+        "/assignments"
+    )
+
+    assert response.status_code in {400, 404}
+
+
+def test_cross_tenant_officer_id_cannot_mutate_assignments(
+    app,
+    tenant_data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "admin@alpha.gov",
+        "AlphaPassword123!",
+    )
+
+    response = client.post(
+        "/api/agencies/"
+        f"{tenant_data['agency_a_id']}"
+        "/officers/"
+        f"{tenant_data['officer_b_id']}"
+        "/assignments/SUPERVISOR",
+        json={
+            "effective_date": "2026-08-27",
+        },
+    )
+
+    assert response.status_code in {400, 404}
+
+
+def test_cross_tenant_officer_id_cannot_access_credentials(
+    app,
+    tenant_data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "admin@alpha.gov",
+        "AlphaPassword123!",
+    )
+
+    response = client.get(
+        "/api/agencies/"
+        f"{tenant_data['agency_a_id']}"
+        "/officers/"
+        f"{tenant_data['officer_b_id']}"
+        "/credential-verifications"
+    )
+
+    assert response.status_code in {400, 404}
+
+
+def test_cross_tenant_officer_id_cannot_create_credential(
+    app,
+    tenant_data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "admin@alpha.gov",
+        "AlphaPassword123!",
+    )
+
+    response = client.post(
+        "/api/agencies/"
+        f"{tenant_data['agency_a_id']}"
+        "/officers/"
+        f"{tenant_data['officer_b_id']}"
+        "/credential-verifications/"
+        "TDEM_PIO_CERTIFICATION",
+        json={
+            "effective_date": "2026-08-27",
+            "verified_by": "Tenant isolation test",
+        },
+    )
+
+    assert response.status_code in {400, 404}
+
+
+def test_cross_tenant_officer_id_cannot_access_qualification_facts(
+    app,
+    tenant_data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "admin@alpha.gov",
+        "AlphaPassword123!",
+    )
+
+    response = client.get(
+        "/api/agencies/"
+        f"{tenant_data['agency_a_id']}"
+        "/officers/"
+        f"{tenant_data['officer_b_id']}"
+        "/qualification-facts"
+    )
+
+    assert response.status_code == 404
+
+
+def test_cross_tenant_officer_id_cannot_mutate_qualification_facts(
+    app,
+    tenant_data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "admin@alpha.gov",
+        "AlphaPassword123!",
+    )
+
+    response = client.patch(
+        "/api/agencies/"
+        f"{tenant_data['agency_a_id']}"
+        "/officers/"
+        f"{tenant_data['officer_b_id']}"
+        "/qualification-facts",
+        json={
+            "verified_college_credit_hours": 999,
+        },
+    )
+
+    assert response.status_code == 404
+
+
+def test_cross_tenant_officer_id_cannot_change_license_tracking(
+    app,
+    tenant_data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "admin@alpha.gov",
+        "AlphaPassword123!",
+    )
+
+    response = client.patch(
+        "/api/agencies/"
+        f"{tenant_data['agency_a_id']}"
+        "/officers/"
+        f"{tenant_data['officer_b_id']}"
+        "/license-tracking/PEACE_OFFICER",
+        json={
+            "tracking_enabled": False,
+            "reason": "Tenant isolation test",
+        },
+    )
+
+    assert response.status_code in {400, 404}
+
+
+def test_cross_tenant_officer_id_cannot_archive_employee(
+    app,
+    tenant_data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "admin@alpha.gov",
+        "AlphaPassword123!",
+    )
+
+    response = client.post(
+        "/api/agencies/"
+        f"{tenant_data['agency_a_id']}"
+        "/officers/"
+        f"{tenant_data['officer_b_id']}"
+        "/archive",
+        json={
+            "reason": "Tenant isolation test",
+        },
+    )
+
+    assert response.status_code == 404
+
+
+def test_cross_tenant_officer_id_cannot_restore_employee(
+    app,
+    tenant_data,
+):
+    client = app.test_client()
+
+    login(
+        client,
+        "admin@alpha.gov",
+        "AlphaPassword123!",
+    )
+
+    response = client.post(
+        "/api/agencies/"
+        f"{tenant_data['agency_a_id']}"
+        "/officers/"
+        f"{tenant_data['officer_b_id']}"
+        "/restore",
+        json={},
+    )
+
+    assert response.status_code == 404

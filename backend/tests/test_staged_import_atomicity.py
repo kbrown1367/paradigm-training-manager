@@ -241,7 +241,12 @@ def test_failed_courses_stage_preserves_awards_and_rolls_back_courses(
 
         job = get_job(job_id)
 
-        assert job.status == "failed"
+        assert job.status == "awards_completed"
+        assert job.error_count == 1
+        assert job.failure_reason == (
+            "Injected courses-stage failure."
+        )
+        assert job.completed_at is None
         assert job.error_count == 1
         assert job.failure_reason == (
             "Injected courses-stage failure."
@@ -373,7 +378,12 @@ def test_failed_cycle_stage_preserves_prior_stages_and_rolls_back_changes(
 
         job = get_job(job_id)
 
-        assert job.status == "failed"
+        assert job.status == "courses_completed"
+        assert job.error_count == 1
+        assert job.failure_reason == (
+            "Injected cycle-stage failure."
+        )
+        assert job.completed_at is None
         assert job.error_count == 1
         assert job.failure_reason == (
             "Injected cycle-stage failure."
@@ -508,7 +518,12 @@ def test_failed_licensee_stage_preserves_prior_stages_and_rolls_back_changes(
 
         job = get_job(job_id)
 
-        assert job.status == "failed"
+        assert job.status == "cycle_completed"
+        assert job.error_count == 1
+        assert job.failure_reason == (
+            "Injected licensee-stage failure."
+        )
+        assert job.completed_at is None
         assert job.error_count == 1
         assert job.failure_reason == (
             "Injected licensee-stage failure."

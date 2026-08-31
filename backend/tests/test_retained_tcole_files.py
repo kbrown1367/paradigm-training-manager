@@ -287,3 +287,46 @@ def test_cli_is_safe_when_nothing_is_expired(app):
 
     with app.app_context():
         assert RetainedTcoleFile.query.count() == 1
+
+
+def test_rejects_import_job_from_different_agency(app):
+    """
+    A retained TCOLE source file must never reference an
+    ImportJob belonging to another tenant.
+    """
+    with app.app_context():
+        agency_one_id, _ = make_agency_and_job()
+
+        agency_two = Agency(
+            name="Cross Tenant Police Department"
+        )
+        db.session.add(agency_two)
+        db.session.flush()
+
+        agency_two_job = ImportJob(
+            agency_id=agency_two.id,
+            status="completed",
+        )
+        db.session.add(agency_two_job)
+        db.session.commit()
+
+        with pytest.raises(
+            ValueError,
+            match="Import job does not exist for this agency",
+        ):
+            retain_tcole_file(
+                agency_id=agency_one_id,
+                import_job_id=agency_two_job.id,
+                file_type=FILE_TYPE_AWARDS,
+                filename="cross-tenant.csv",
+                content=b"cross-tenant",
+            )
+
+        db.session.rollback()
+
+        assert (
+            RetainedTcoleFile.query
+            .filter_by(agency_id=agency_one_id)
+            .count()
+            == 0
+        )
