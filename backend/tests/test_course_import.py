@@ -193,3 +193,47 @@ def test_invalid_file_is_rejected(app):
                 agency.id,
                 csv_content,
             )
+
+
+def test_long_plus_course_id_is_preserved_and_reimport_is_idempotent(app):
+    plus_id = "7887 - Interacting with drivers deaf or hard of hearing"
+    csv_content = (
+        "P_ID1,P_ID,STUDENT_NAME,PLUS_COURSE_ID,COURSE_ID,COURSE_DATE\n"
+        f'1,484608,"ACOSTA, CELIA",{plus_id},'
+        '"7887 - Interacting with drivers deaf or hard of hearing",'
+        "10/11/2016\n"
+    )
+
+    with app.app_context():
+        agency, _ = make_agency_and_officer()
+
+        first = import_training_records(agency.id, csv_content)
+        second = import_training_records(agency.id, csv_content)
+
+        assert first["training_records_created"] == 1
+        assert second["training_records_created"] == 0
+        assert second["training_records_skipped"] == 1
+        assert TrainingRecord.query.count() == 1
+        assert TrainingRecord.query.one().plus_course_id == plus_id
+
+
+def test_oversized_plus_course_id_rejects_entire_import(app):
+    plus_id = "X" * 501
+    csv_content = (
+        "P_ID1,P_ID,STUDENT_NAME,PLUS_COURSE_ID,COURSE_ID,COURSE_DATE\n"
+        '1,484608,"ACOSTA, CELIA",,'
+        '"1849 - De-escalation Tech",12/12/2019\n'
+        f'2,484608,"ACOSTA, CELIA",{plus_id},'
+        '"7887 - Example Course",10/11/2016\n'
+    )
+
+    with app.app_context():
+        agency, _ = make_agency_and_officer()
+
+        with pytest.raises(
+            CourseImportError,
+            match="PLUS_COURSE_ID exceeds",
+        ):
+            import_training_records(agency.id, csv_content)
+
+        assert TrainingRecord.query.count() == 0

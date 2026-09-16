@@ -806,7 +806,7 @@ class TrainingRecord(db.Model):
     course_number = db.Column(db.String(50), nullable=False)
     course_title = db.Column(db.String(500), nullable=False)
     course_date = db.Column(db.Date, nullable=False, index=True)
-    plus_course_id = db.Column(db.String(50), nullable=True)
+    plus_course_id = db.Column(db.String(500), nullable=True)
     credited_hours = db.Column(db.Numeric(8, 2), nullable=True)
     hours_source = db.Column(db.String(50), nullable=True)
     source = db.Column(db.String(50), nullable=False, default="TCOLE")

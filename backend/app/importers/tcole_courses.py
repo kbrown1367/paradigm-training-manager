@@ -103,6 +103,11 @@ def import_training_records(agency_id, csv_content, commit=True):
             pid = (row.get("P_ID") or "").strip()
             student_name = (row.get("STUDENT_NAME") or "").strip()
             plus_course_id = (row.get("PLUS_COURSE_ID") or "").strip() or None
+            if plus_course_id is not None and len(plus_course_id) > 500:
+                raise CourseImportError(
+                    "PLUS_COURSE_ID exceeds the supported "
+                    "500-character limit."
+                )
 
             if not pid:
                 raise CourseImportError(

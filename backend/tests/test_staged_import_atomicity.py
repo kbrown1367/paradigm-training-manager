@@ -528,3 +528,94 @@ def test_failed_licensee_stage_preserves_prior_stages_and_rolls_back_changes(
         assert job.failure_reason == (
             "Injected licensee-stage failure."
         )
+
+
+def test_database_failure_restores_awards_checkpoint_and_allows_retry(
+    app,
+    monkeypatch,
+):
+    from sqlalchemy.exc import IntegrityError
+
+    with app.app_context():
+        agency = make_agency()
+        awards = tcole_import.start_tcole_awards_import(
+            agency.id,
+            AWARDS,
+        )
+        job_id = UUID(awards["import_job_id"])
+
+        officer_count = Officer.query.filter_by(
+            agency_id=agency.id
+        ).count()
+        award_count = OfficerAward.query.filter_by(
+            agency_id=agency.id
+        ).count()
+
+        original_import = tcole_import.import_training_records
+
+        def failing_import(agency_id, content, commit=False):
+            existing = Officer.query.filter_by(
+                agency_id=agency_id
+            ).first()
+
+            db.session.add(
+                Officer(
+                    id=existing.id,
+                    agency_id=agency_id,
+                    tcole_pid="999999",
+                    first_name="Duplicate",
+                    last_name="Record",
+                )
+            )
+
+            # This flush must fail inside the database transaction.
+            db.session.flush()
+
+        with monkeypatch.context() as patch:
+            patch.setattr(
+                tcole_import,
+                "import_training_records",
+                failing_import,
+            )
+
+            with pytest.raises(IntegrityError):
+                tcole_import.run_tcole_courses_stage(
+                    agency.id,
+                    job_id,
+                    COURSES,
+                )
+
+        job = db.session.get(ImportJob, job_id)
+
+        assert job.status == "awards_completed"
+        assert job.error_count == 1
+        assert job.failure_reason
+        assert job.completed_at is None
+
+        assert Officer.query.filter_by(
+            agency_id=agency.id
+        ).count() == officer_count
+        assert OfficerAward.query.filter_by(
+            agency_id=agency.id
+        ).count() == award_count
+        assert TrainingRecord.query.filter_by(
+            agency_id=agency.id
+        ).count() == 0
+
+        # Retry using the original importer and the same job.
+        result = tcole_import.run_tcole_courses_stage(
+            agency.id,
+            job_id,
+            COURSES,
+        )
+
+        assert result["status"] == "courses_completed"
+
+        job = db.session.get(ImportJob, job_id)
+        assert job.status == "courses_completed"
+        assert job.error_count == 0
+        assert job.failure_reason is None
+
+        assert TrainingRecord.query.filter_by(
+            agency_id=agency.id
+        ).count() == 2

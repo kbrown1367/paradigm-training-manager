@@ -184,6 +184,7 @@ def start_tcole_awards_import(
     db.session.add(job)
     db.session.commit()
 
+    job_id = job.id
     try:
         result = import_awards_roster(
             agency_id,
@@ -216,7 +217,7 @@ def start_tcole_awards_import(
         return serialize_import_job(job)
 
     except Exception as exc:
-        _fail_staged_import(job.id, exc)
+        _fail_staged_import(job_id, exc)
         raise
 
 
@@ -237,6 +238,7 @@ def run_tcole_courses_stage(
             "Awards Report must be completed before Course History."
         )
 
+    job_id = job.id
     try:
         result = import_training_records(
             agency_id,
@@ -268,7 +270,7 @@ def run_tcole_courses_stage(
 
     except Exception as exc:
         _fail_staged_import(
-            job.id,
+            job_id,
             exc,
             recovery_status="awards_completed",
         )
@@ -293,6 +295,7 @@ def run_tcole_cycle_stage(
             "the Cycle Training Report."
         )
 
+    job_id = job.id
     try:
         result = import_cycle_hours(
             agency_id,
@@ -328,7 +331,7 @@ def run_tcole_cycle_stage(
 
     except Exception as exc:
         _fail_staged_import(
-            job.id,
+            job_id,
             exc,
             recovery_status="courses_completed",
         )
@@ -355,6 +358,7 @@ def run_tcole_licensee_search_stage(
             "the Department Licensee Search Report."
         )
 
+    job_id = job.id
     try:
         result = import_licensee_search(
             agency_id,
@@ -415,7 +419,7 @@ def run_tcole_licensee_search_stage(
 
     except Exception as exc:
         _fail_staged_import(
-            job.id,
+            job_id,
             exc,
             recovery_status="cycle_completed",
         )
